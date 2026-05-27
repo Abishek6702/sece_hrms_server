@@ -118,7 +118,43 @@ exports.changePassword = async (req, res) => {
   }
 };
 
+exports.createAdmin = async (req, res) => {
+  try {
+    const { name, email, department, role, phone } = req.body;
 
+    if (!name || !email || !phone) {
+      return res.status(400).json({ message: "All fields required" });
+    }
+
+    const exists = await User.findOne({ email });
+
+    if (exists) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    const password = "Admin@123";
+    const hashed = await bcrypt.hash(password, 10);
+
+    const admin = await User.create({
+      name,
+      email,
+      phone,
+      password: hashed,
+      isFirstTimeLogin: true,
+      department,
+      role,
+      isadmin: true,
+    });
+
+    res.status(201).json({
+      message: "Admin created",
+      defaultPassword: password,
+      data: admin,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 
 exports.getProfile = async (req, res) => {
   try {
@@ -127,7 +163,7 @@ exports.getProfile = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-``
+
     res.json(user);
   } catch (err) {
     res.status(500).json({ message: err.message });
