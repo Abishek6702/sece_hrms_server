@@ -1,0 +1,389 @@
+{
+  "info": {
+    "_postman_id": "b20be72e-558f-4a19-939f-9372564afa5c",
+    "name": "SECE_HRMS",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "43278742"
+  },
+  "item": [
+    {
+      "name": "Faculty",
+      "item": [
+        {
+          "name": "Excel_Faculty_Import",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "faculties",
+                  "type": "file",
+                  "uuid": "23ff8874-e452-436d-a64d-68d06c1d3a78",
+                  "src": "/E:/Events/server/files/Faculty_Details.xlsx"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/faculty/import-faculty",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "faculty",
+                "import-faculty"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Individaul Faculty add",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"name\": \"Chandru R\",\r\n  \"empId\": \"Sece129\",\r\n  \"email\": \"chandru.r@sece.ac.in\",\r\n  \"phone\": 6382073665,\r\n  \"department\": \"Placement\",\r\n  \"dob\": \"2002-07-06\",\r\n  \"gender\": \"Male\",\r\n  \"doj\": \"2024-12-01\",\r\n  \"designation\": \"Full Stack Developer\",\r\n  \"employeeCategory\": \"Non-Teaching\",\r\n  \"location\": \"Chennai\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/faculty/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "faculty",
+                ""
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get individual faculty",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/faculty/69e71ad143efebd19aadc05d",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "faculty",
+                "69e71ad143efebd19aadc05d"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get all facilty",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/faculty",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "faculty"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Edit faculty",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"name\":\"Abishekkrishna\",\r\n    \"department\":\"ECE\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/faculty/69e71ad143efebd19aadc05d",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "faculty",
+                "69e71ad143efebd19aadc05d"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "faculty and asscoiated login delete",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/faculty/69e71ad143efebd19aadc05d",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "faculty",
+                "69e71ad143efebd19aadc05d"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Profile image",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/faculty/69eb77eb24e52ee13e40f077/profile-image",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "faculty",
+                "69eb77eb24e52ee13e40f077",
+                "profile-image"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add profile image",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "profileImage",
+                  "type": "file",
+                  "uuid": "08a456db-0dac-42f9-b829-1473784a1b01",
+                  "src": "/C:/Users/USER/Downloads/pms/jpg1.jpg"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/faculty/69eb77eb24e52ee13e40f077/profile-image",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "faculty",
+                "69eb77eb24e52ee13e40f077",
+                "profile-image"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "login",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"email\":\"venkateshwaran.c@sece.ac.in\",\r\n    \"password\":\"Sece@123\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "change-password",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"email\":\"venkateshwaran.c@sece.ac.in\",\r\n    \"newPassword\":\"Sece@123\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/change-password",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "change-password"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "reset-password",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"email\":\"venkateshwaran.c@sece.ac.in\",\"otp\":\"771486\",\"newPassword\":\"123\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/reset-password",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "reset-password"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "forgot-password",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"email\":\"venkateshwaran.c@sece.ac.in\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/forgot-password",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "forgot-password"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "add-admin",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"name\":\"Placement Admin\",\r\n    \"email\":\"placement@sece.ac.in\",\r\n    \"phone\":\"7550120108\",\r\n    \"department\":\"Placement\",\r\n    \"role\":\"hod\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/add-admin",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "add-admin"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
