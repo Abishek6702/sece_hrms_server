@@ -1,7 +1,9 @@
 const forgotPassword = require("./mailTemplates/forgotpassword.js");
+const welcomeFaculty = require("./mailTemplates/welcomeFaculty.js");
 
 const templates = {
-  forgotPassword
+  forgotPassword,
+  welcomeFaculty,
 };
 
 function renderTemplate(templateName, data) {
@@ -12,4 +14,4 @@ function renderTemplate(templateName, data) {
   return templateFn(data);
 }
 
-module.exports= renderTemplate;
+module.exports = renderTemplate;

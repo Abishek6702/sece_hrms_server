@@ -4,6 +4,9 @@ const cors = require("cors");
 const axios = require("axios");
 
 const connectDB = require("./config/db");
+const shiftRoutes = require("./routes/shiftRoutes");
+const facultyRoutes = require("./routes/facultyRoutes");
+const authRoutes = require("./routes/authRoutes");
 
 
 dotenv.config();
@@ -30,6 +33,9 @@ app.use(
 connectDB();
 
 app.use(express.json());
+app.use("/api/auth", authRoutes);
+app.use("/api/shifts", shiftRoutes);
+app.use("/api/faculties", facultyRoutes);
 
 const PORT = process.env.PORT || 5000;
 

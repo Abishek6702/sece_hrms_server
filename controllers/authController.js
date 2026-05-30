@@ -18,7 +18,11 @@ exports.login = async (req, res) => {
     if (!user) {
       return res.status(401).json({ message: "User Not Found" });
     }
-
+    if (!user.hasAccess) {
+      return res.status(403).json({
+        message: "Access denied. Contact HR.",
+      });
+    }
     const isMatch = await bcrypt.compare(password, user.password);
 
     // ❌ WRONG PASSWORD
@@ -28,11 +32,11 @@ exports.login = async (req, res) => {
 
     res.json({
       _id: user._id,
-      name: user.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
       email: user.email,
       department: user.department,
       role: user.role,
-      isadmin: user.isadmin,
       isFirstTimeLogin: user.isFirstTimeLogin,
       facultyId: user.facultyId,
       hasAccess: user.hasAccess,
@@ -58,7 +62,7 @@ exports.forgotPassword = async (req, res) => {
     await user.save();
 
     const htmlContent = renderTemplate("forgotPassword", {
-      studentName: user.name,
+      name: `${user.firstName} ${user.lastName}`,
       email: user.email,
       otp,
       frontendUrl: process.env.FRONTEND_URL,
@@ -66,7 +70,7 @@ exports.forgotPassword = async (req, res) => {
 
     await sendMail(
       email,
-      "Password Reset OTP - SECE Events Portal",
+      "Password Reset OTP - SECE HRMS Portal",
       htmlContent,
     );
 
@@ -118,47 +122,16 @@ exports.changePassword = async (req, res) => {
   }
 };
 
-exports.createAdmin = async (req, res) => {
-  try {
-    const { name, email, department, role, phone } = req.body;
-
-    if (!name || !email || !phone) {
-      return res.status(400).json({ message: "All fields required" });
-    }
-
-    const exists = await User.findOne({ email });
-
-    if (exists) {
-      return res.status(400).json({ message: "User already exists" });
-    }
-
-    const password = "Admin@123";
-    const hashed = await bcrypt.hash(password, 10);
-
-    const admin = await User.create({
-      name,
-      email,
-      phone,
-      password: hashed,
-      isFirstTimeLogin: true,
-      department,
-      role,
-      isadmin: true,
-    });
-
-    res.status(201).json({
-      message: "Admin created",
-      defaultPassword: password,
-      data: admin,
-    });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
 exports.getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select("-password");
+    const user = await User.findById(req.user.id)
+  .select("-password")
+  .populate({
+    path: "facultyId",
+    populate: {
+      path: "shiftId"
+    }
+  })
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -167,5 +140,35 @@ exports.getProfile = async (req, res) => {
     res.json(user);
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+
+exports.firstLoginComplete = async (
+  req,
+  res
+) => {
+  try {
+    const user = await User.findById(
+      req.user.id
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    user.isFirstTimeLogin = false;
+
+    await user.save();
+
+    res.status(200).json({
+      message: "First login completed",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
   }
 };

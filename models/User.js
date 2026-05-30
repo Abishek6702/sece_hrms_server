@@ -2,33 +2,78 @@ const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema(
   {
-    firstName: { type: String, required: true },
-    lastName: { type: String, required: true },
+    firstName: {
+      type: String,
+      required: true,
+    },
 
-    email: { type: String, required: true, unique: true },
-    phone: { type: String, required: true, unique: true },
+    lastName: {
+      type: String,
+      required: true,
+    },
 
-    password: { type: String },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+    },
 
-    isFirstTimeLogin: { type: Boolean, default: false },
+    phone: {
+      type: String,
+      required: true,
+      unique: true,
+    },
 
-    hasAccess: { type: Boolean, default: true },
+    password: {
+      type: String,
+      required: true,
+    },
+
+    isFirstTimeLogin: {
+      type: Boolean,
+      default: true,
+    },
+
+    hasAccess: {
+      type: Boolean,
+      default: true,
+    },
 
     facultyId: {
-      type: mongoose.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       ref: "Faculty",
       unique: true,
       sparse: true,
     },
 
-    department: { type: String, required: true },
+    department: {
+      type: String,
+      required: true,
+    },
 
-    role: { type: String, required: true, default: "faculty" },
+    role: {
+      type: String,
+      enum: [
+        "admin",
+        "principal",
+        "hod",
+        "faculty",
+        "non-teaching",
+        "driver",
+        "housekeeping",
+        "dean",
+      ],
+      default: "faculty",
+    },
 
     resetOtp: String,
+
     resetOtpExpiry: Date,
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+  }
 );
 
 module.exports = mongoose.model("User", userSchema);

@@ -3,18 +3,23 @@ const bcrypt = require("bcryptjs");
 
 const Faculty = require("../models/Faculty");
 const User = require("../models/User");
+const Shift = require("../models/shift");
+const generateEmployeeId = require("../utils/empIdGenerator");
 const cloudinary = require("cloudinary").v2;
 
-
-// helper to generate default password
-const generatePassword = async (empId) => {
-  const password = "Sece@123";
-  const hashed = await bcrypt.hash(password, 10);
-  return { plain: password, hashed };
-};
+const sendMail = require("../utils/sendMail");
+const renderTemplate = require("../utils/renderTemplate");
 
 // ================= IMPORT EXCEL =================
 const XLSX = require("xlsx");
+
+const allowedDocumentTypes = [
+  "markSheets",
+  "degreeCertificates",
+  "experienceCertificates",
+  "relievingLetter",
+  "otherDocuments",
+];
 
 exports.importExcelFaculty = async (req, res) => {
   try {
@@ -36,28 +41,75 @@ exports.importExcelFaculty = async (req, res) => {
     }
 
     const created = [];
+    const failed = [];
 
     for (let data of faculties) {
+      const shift = await Shift.findOne({
+        shiftName: data.shiftName,
+      });
+
+      if (!shift) {
+        failed.push({
+          empId: data.empId,
+          name: `${data.firstName} ${data.lastName}`,
+          reason: `Shift not found: ${data.shiftName}`,
+        });
+
+        continue;
+      }
       // map column names (IMPORTANT)
       const facultyData = {
-        name: data.name,
         empId: data.empId,
+        salutation: data.salutation,
+        firstName: data.firstName,
+        lastName: data.lastName,
+
         email: data.email,
+        organizationEmail: data.organizationEmail,
+
         phone: data.phone,
-        department: data.department,
-        dob: data.dob,
+
         gender: data.gender,
+
+        dob: data.dob,
+
         doj: data.doj,
+
+        department: data.department,
+
         designation: data.designation,
+
+        jobTitle: data.jobTitle,
+
         employeeCategory: data.employeeCategory,
-        location: data.location,
+
+        workType: data.workType,
+
+        timeType: data.timeType,
+
+        shiftId: shift._id,
+
+        employmentStatus: data.employmentStatus ?? true,
       };
 
       const exists = await Faculty.findOne({
-        $or: [{ email: facultyData.email }, { empId: facultyData.empId }],
+        $or: [
+          { empId: facultyData.empId },
+          { email: facultyData.email },
+          { organizationEmail: facultyData.organizationEmail },
+          { phone: facultyData.phone },
+        ],
       });
 
-      if (exists) continue;
+      if (exists) {
+        failed.push({
+          empId: data.empId,
+          name: `${data.firstName} ${data.lastName}`,
+          reason: "Faculty already exists",
+        });
+
+        continue;
+      }
 
       const faculty = await Faculty.create(facultyData);
 
@@ -65,23 +117,48 @@ exports.importExcelFaculty = async (req, res) => {
       const hashed = await bcrypt.hash(password, 10);
 
       await User.create({
-        name: facultyData.name,
-        email: facultyData.email,
-        phone: facultyData.phone,
-        password: hashed,
+        firstName: faculty.firstName,
+        lastName: faculty.lastName,
+
+        email: faculty.organizationEmail,
+
+        phone: faculty.phone,
+
         department: faculty.department,
-        role: data.role?.toLowerCase() === "hod" ? "hod" : "faculty",
-        isadmin: false,
+
+        password: hashed,
+
         facultyId: faculty._id,
+
+        role: data.role?.toLowerCase() || "faculty",
+
         isFirstTimeLogin: true,
       });
+      if (
+        faculty.employeeCategory !== "Driver" &&
+        faculty.employeeCategory !== "Housekeeping"
+      ) {
+        const html = renderTemplate("welcomeFaculty", {
+          name: `${faculty.firstName} ${faculty.lastName}`,
+          empId: faculty.empId,
+          email: faculty.organizationEmail,
+          password: "Sece@123",
+          role: data.role?.toLowerCase() || "faculty",
+        });
+
+        sendMail(faculty.organizationEmail, "Welcome to SECE HRMS", html).catch(
+          console.error,
+        );
+      }
 
       created.push(faculty);
     }
 
     res.status(201).json({
       message: "Excel imported successfully",
-      count: created.length,
+      createdCount: created.length,
+      failedCount: failed.length,
+      failed,
     });
   } catch (err) {
     console.error(err);
@@ -91,99 +168,72 @@ exports.importExcelFaculty = async (req, res) => {
 // ================= ADD SINGLE =================
 exports.addIndividualFaculty = async (req, res) => {
   try {
-    const {
-      name,
-      empId,
-      email,
-      phone,
-      department,
-      dob,
-      gender,
-      doj,
-      designation,
-      employeeCategory,
-      location,
-      profileImage,
-      role,
-    } = req.body;
+    const empId = await generateEmployeeId(
+      req.body.employeeCategory,
+      req.body.department,
+      req.body.role,
+    );
 
-    // ✅ Validation
-    if (
-      !name ||
-      !empId ||
-      !email ||
-      !phone ||
-      !department ||
-      !dob ||
-      !gender ||
-      !doj ||
-      !designation ||
-      !employeeCategory ||
-      !location
-    ) {
-      return res.status(400).json({ message: "All fields are required" });
-    }
-
-    // ✅ Duplicate check
-    const exists = await Faculty.findOne({
-      $or: [{ email }, { empId }, { phone }],
-    });
-
-    if (exists) {
-      return res.status(400).json({
-        message: "Faculty with same email/empId/phone already exists",
-      });
-    }
-
-    // ✅ Create faculty
     const faculty = await Faculty.create({
-      name,
+      ...req.body,
       empId,
-      email,
-      phone,
-      department,
-      dob: new Date(dob),
-      gender,
-      doj: new Date(doj),
-      designation,
-      employeeCategory,
-      location,
-      profileImage,
     });
 
-    // ✅ Generate password (consistent with Excel)
-    const password = "Sece@123";
-    const hashed = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash("Sece@123", 10);
 
-    // ✅ Create login
     await User.create({
-      name,
-      email,
-      phone,
-      password: hashed,
+      firstName: faculty.firstName,
+      lastName: faculty.lastName,
+      email: faculty.organizationEmail,
+      phone: faculty.phone,
       department: faculty.department,
-      role: role === "hod" ? "hod" : "faculty",
-      isadmin: false,
+
+      password: hashedPassword,
+
       facultyId: faculty._id,
+
+      role: req.body.role || "faculty",
+
       isFirstTimeLogin: true,
     });
+    if (
+      faculty.employeeCategory !== "Driver" &&
+      faculty.employeeCategory !== "Housekeeping"
+    ) {
+      const html = renderTemplate("welcomeFaculty", {
+        name: `${faculty.firstName} ${faculty.lastName}`,
+        empId: faculty.empId,
+        email: faculty.organizationEmail,
+        password: "Sece@123",
+        role: req.body.role?.toLowerCase() || "faculty",
+      });
+
+      sendMail(faculty.organizationEmail, "Welcome to SECE HRMS", html).catch(
+        console.error,
+      );
+    }
 
     res.status(201).json({
-      message: "Faculty added successfully",
-      defaultPassword: password, // remove in production if needed
-      data: faculty,
+      success: true,
+      message: "Faculty created successfully",
+      defaultPassword: "Sece@123",
+      faculty,
     });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: err.message });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
 // ================= GET ALL =================
 exports.getFaculties = async (req, res) => {
   try {
-    const faculties = await Faculty.find().sort({ createdAt: -1 });
-
+    const faculties = await Faculty.find()
+      .populate("shiftId")
+      .populate("reportingTo.facultyId")
+      .sort({ createdAt: -1 });
     res.status(200).json(faculties);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -195,7 +245,9 @@ exports.getFacultyId = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const faculty = await Faculty.findById(id);
+    const faculty = await Faculty.findById(id)
+      .populate("shiftId")
+      .populate("reportingTo.facultyId");
 
     if (!faculty) {
       return res.status(404).json({ message: "Faculty not found" });
@@ -215,6 +267,7 @@ exports.editFaculty = async (req, res) => {
 
     const faculty = await Faculty.findByIdAndUpdate(id, data, {
       new: true,
+      runValidators: true,
     });
 
     if (!faculty) {
@@ -225,8 +278,12 @@ exports.editFaculty = async (req, res) => {
     await User.findOneAndUpdate(
       { facultyId: id },
       {
-        name: data.name,
-        email: data.email,
+        firstName: faculty.firstName,
+        lastName: faculty.lastName,
+        email: faculty.organizationEmail,
+        phone: faculty.phone,
+        department: faculty.department,
+        role: data.role?.toLowerCase() || "faculty",
       },
     );
 
@@ -260,7 +317,6 @@ exports.deleteFaculty = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
 
 exports.uploadProfileImage = async (req, res) => {
   try {
@@ -320,5 +376,85 @@ exports.deleteProfileImage = async (req, res) => {
   } catch (err) {
     console.error("Delete error:", err);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.uploadDocuments = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { documentType } = req.body;
+
+    if (!allowedDocumentTypes.includes(documentType)) {
+      return res.status(400).json({
+        message: "Invalid document type",
+      });
+    }
+
+    const faculty = await Faculty.findById(id);
+
+    if (!faculty) {
+      return res.status(404).json({
+        message: "Faculty not found",
+      });
+    }
+
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({
+        message: "No files uploaded",
+      });
+    }
+
+    const uploadedDocs = req.files.map((file) => ({
+      url: file.path,
+      publicId: file.filename,
+    }));
+
+    faculty.documents[documentType].push(...uploadedDocs);
+
+    await faculty.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Documents uploaded successfully",
+      documents: faculty.documents[documentType],
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+exports.deleteDocument = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { documentType, publicId } = req.body;
+
+    const faculty = await Faculty.findById(id);
+
+    if (!faculty) {
+      return res.status(404).json({
+        message: "Faculty not found",
+      });
+    }
+
+    await cloudinary.uploader.destroy(publicId);
+
+    faculty.documents[documentType] =
+      faculty.documents[documentType].filter(
+        (doc) => doc.publicId !== publicId
+      );
+
+    await faculty.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Document deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
   }
 };

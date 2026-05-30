@@ -9,31 +9,41 @@ const {
   editFaculty,
   uploadProfileImage,
   deleteProfileImage,
+  uploadDocuments,
+  deleteDocument,
 } = require("../controllers/facultyController");
-const { protect } = require("../middleware/protect");
+const protect = require("../middleware/protect");
+
 const upload = require("../middleware/upload");
 const uploadCloudinary = require("../middleware/multerConfig.js");
 
 const router = express.Router();
 
-router.post("/import-faculty", upload.single("faculties"), importExcelFaculty);
+router.post("/import-faculty", upload.single("faculties"), protect, importExcelFaculty);
 
-router.post("/", addIndividualFaculty);
+router.post("/", protect, addIndividualFaculty);
 
-router.get("/", getFaculties);
+router.get("/", protect, getFaculties);
 
-router.get("/:id", getFacultyId);
+router.get("/:id", protect, getFacultyId);
 
-router.delete("/:id", deleteFaculty);
+router.delete("/:id", protect, deleteFaculty);
 
-router.put("/:id", editFaculty);
+router.put("/:id", protect, editFaculty);
 
 router.patch(
-  "/:id/profile-image",
+  "/:id/profile-image",protect,
   uploadCloudinary.single("profileImage"),
   uploadProfileImage,
 );
+router.patch(
+  "/:id/documents",protect,
+  uploadCloudinary.array("files", 10),
+  uploadDocuments
+);
 
-router.delete("/:id/profile-image", deleteProfileImage);
+router.delete("/:id/documents", protect, deleteDocument);
+
+router.delete("/:id/profile-image", protect, deleteProfileImage);
 
 module.exports = router;

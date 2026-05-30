@@ -6,7 +6,7 @@ module.exports = ({ name, email, otp }) => `
     </div>
 
     <p>Dear <b>${name || "User"}</b>,</p>
-    <p>We received a request to reset the password for your SECE Events Portal account (<b>${email}</b>).</p>
+    <p>We received a request to reset the password for your SECE HRMS Portal account (<b>${email}</b>).</p>
 
     <p style="margin-top:20px;">Please use the OTP below to reset your password:</p>
 
@@ -21,7 +21,7 @@ module.exports = ({ name, email, otp }) => `
 
     <p style="text-align:center; margin-top:30px; color:#888;">
       Regards,<br>
-      <b>SECE Events</b>
+      <b>SECE HRMS</b>
     </p>
   </div>
 `;

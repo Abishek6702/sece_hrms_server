@@ -82,6 +82,13 @@ const facultySchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
+    organizationEmail: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
 
     phone: {
       type: String,
@@ -174,16 +181,20 @@ const facultySchema = new mongoose.Schema(
       aadharNumber: {
         type: String,
         unique: true,
+        sparse: true,
       },
 
       panNumber: {
         type: String,
         unique: true,
+        sparse: true,
       },
 
       pfNumber: {
         type: String,
         unique: true,
+
+        sparse: true,
       },
     },
 
@@ -191,6 +202,7 @@ const facultySchema = new mongoose.Schema(
       accountNumber: {
         type: String,
         unique: true,
+        sparse: true,
       },
 
       bankName: String,
@@ -210,6 +222,11 @@ const facultySchema = new mongoose.Schema(
       relievingLetter: [documentSchema],
 
       otherDocuments: [documentSchema],
+    },
+    shiftId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Shift",
+      required: true,
     },
   },
   {

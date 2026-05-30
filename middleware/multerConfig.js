@@ -15,7 +15,7 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: "events", 
+    folder: "faculty-doc", 
     allowed_formats: ["jpeg", "jpg", "png", "pdf"], 
     resource_type: "auto", 
   },
