@@ -24,18 +24,18 @@
                   "key": "faculties",
                   "type": "file",
                   "uuid": "23ff8874-e452-436d-a64d-68d06c1d3a78",
-                  "src": "/E:/Events/server/files/Faculty_Details.xlsx"
+                  "src": "/E:/hrms/server/files/faculty_final.xlsx"
                 }
               ]
             },
             "url": {
-              "raw": "{{base_url}}/api/faculty/import-faculty",
+              "raw": "{{base_url}}/api/faculties/import-faculty",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
-                "faculty",
+                "faculties",
                 "import-faculty"
               ]
             }
@@ -52,7 +52,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\r\n  \"name\": \"Chandru R\",\r\n  \"empId\": \"Sece129\",\r\n  \"email\": \"chandru.r@sece.ac.in\",\r\n  \"phone\": 6382073665,\r\n  \"department\": \"Placement\",\r\n  \"dob\": \"2002-07-06\",\r\n  \"gender\": \"Male\",\r\n  \"doj\": \"2024-12-01\",\r\n  \"designation\": \"Full Stack Developer\",\r\n  \"employeeCategory\": \"Non-Teaching\",\r\n  \"location\": \"Chennai\"\r\n}",
+              "raw": "{\r\n  \"firstName\": \"Arun\",\r\n  \"lastName\": \"Kumar\",\r\n  \"email\": \"arun@gmail.com\",\r\n  \"organizationEmail\": \"arun@sece.ac.in\",\r\n  \"phone\": \"9876543210\",\r\n\r\n  \"gender\": \"Male\",\r\n  \"dob\": \"1995-01-01\",\r\n\r\n  \"department\": \"CS\",\r\n\r\n  \"designation\": \"Assistant Professor\",\r\n  \"jobTitle\": \"Faculty\",\r\n\r\n  \"employeeCategory\": \"Teaching\",\r\n  \"workType\": \"Permanent\",\r\n  \"timeType\": \"Full-Time\",\r\n\r\n  \"doj\": \"2024-06-01\",\r\n\r\n  \"shiftId\": \"6a1a820a41fd6c314c3eb1e2\",\r\n\r\n  \"role\": \"faculty\"\r\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -60,13 +60,13 @@
               }
             },
             "url": {
-              "raw": "{{base_url}}/api/faculty/",
+              "raw": "{{base_url}}/api/faculties/",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
-                "faculty",
+                "faculties",
                 ""
               ]
             }
@@ -82,14 +82,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/faculty/69e71ad143efebd19aadc05d",
+              "raw": "{{base_url}}/api/faculties/6a1a840a40583f38c90ff3db",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
-                "faculty",
-                "69e71ad143efebd19aadc05d"
+                "faculties",
+                "6a1a840a40583f38c90ff3db"
               ]
             }
           },
@@ -104,13 +104,13 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/faculty",
+              "raw": "{{base_url}}/api/faculties",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
-                "faculty"
+                "faculties"
               ]
             }
           },
@@ -126,7 +126,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\r\n    \"name\":\"Abishekkrishna\",\r\n    \"department\":\"ECE\"\r\n}",
+              "raw": "{\r\n  \"designation\": \"Associate Professor\",\r\n  \"phone\": \"9999999999\"\r\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -134,14 +134,14 @@
               }
             },
             "url": {
-              "raw": "{{base_url}}/api/faculty/69e71ad143efebd19aadc05d",
+              "raw": "{{base_url}}/api/faculties/6a1a840a40583f38c90ff3db",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
-                "faculty",
-                "69e71ad143efebd19aadc05d"
+                "faculties",
+                "6a1a840a40583f38c90ff3db"
               ]
             }
           },
@@ -156,14 +156,14 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/faculty/69e71ad143efebd19aadc05d",
+              "raw": "{{base_url}}/api/faculties/6a1a840a40583f38c90ff3db",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
-                "faculty",
-                "69e71ad143efebd19aadc05d"
+                "faculties",
+                "6a1a840a40583f38c90ff3db"
               ]
             }
           },
@@ -178,14 +178,14 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/faculty/69eb77eb24e52ee13e40f077/profile-image",
+              "raw": "{{base_url}}/api/faculties/6a1aa072ff43155c86d8c0d8/profile-image",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
-                "faculty",
-                "69eb77eb24e52ee13e40f077",
+                "faculties",
+                "6a1aa072ff43155c86d8c0d8",
                 "profile-image"
               ]
             }
@@ -207,20 +207,92 @@
                   "key": "profileImage",
                   "type": "file",
                   "uuid": "08a456db-0dac-42f9-b829-1473784a1b01",
-                  "src": "/C:/Users/USER/Downloads/pms/jpg1.jpg"
+                  "src": "/E:/hrms/server/files/test.png"
                 }
               ]
             },
             "url": {
-              "raw": "{{base_url}}/api/faculty/69eb77eb24e52ee13e40f077/profile-image",
+              "raw": "{{base_url}}/api/faculties/6a1aa072ff43155c86d8c0d8/profile-image",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
-                "faculty",
-                "69eb77eb24e52ee13e40f077",
+                "faculties",
+                "6a1aa072ff43155c86d8c0d8",
                 "profile-image"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "doc_upload",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "documentType",
+                  "value": "otherDocuments",
+                  "type": "text",
+                  "uuid": "aec45413-a7d2-4066-8da6-c0fa57fb534f"
+                },
+                {
+                  "key": "files",
+                  "type": "file",
+                  "uuid": "c4d097e2-8b04-4c4e-960a-bd12b17cb307",
+                  "src": "/C:/Users/USER/Downloads/enquiries (3).pdf"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/faculties/6a1aa072ff43155c86d8c0d8/documents",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "faculties",
+                "6a1aa072ff43155c86d8c0d8",
+                "documents"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "doc delte",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "DELETE",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"documentType\": \"otherDocuments\",\r\n  \"publicId\": \"faculty-doc/o4tcfcssxvrubacc9gqz\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/faculties/6a1aa072ff43155c86d8c0d8/documents",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "faculties",
+                "6a1aa072ff43155c86d8c0d8",
+                "documents"
               ]
             }
           },
@@ -241,7 +313,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\r\n    \"email\":\"venkateshwaran.c@sece.ac.in\",\r\n    \"password\":\"Sece@123\"\r\n}",
+              "raw": "{\r\n    \"email\":\"abishek.k@sece.ac.in\",\r\n    \"password\":\"Sece@123\"\r\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -300,7 +372,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\r\n    \"email\":\"venkateshwaran.c@sece.ac.in\",\"otp\":\"771486\",\"newPassword\":\"123\"\r\n}",
+              "raw": "{\r\n    \"email\":\"abishek.k@sece.ac.in\",\"otp\":\"362498\",\"newPassword\":\"Sece@1234\"\r\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -353,7 +425,296 @@
           "response": []
         },
         {
-          "name": "add-admin",
+          "name": "first time login false",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWFhMDcyZmY0MzE1NWM4NmQ4YzBkOSIsImVtYWlsIjoiYWJpc2hlay5rQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQURNSU4iLCJyb2xlIjoicHJpbmNpcGFsIiwiaXNGaXJzdFRpbWVMb2dpbiI6dHJ1ZSwiZmFjdWx0eUlkIjoiNmExYWEwNzJmZjQzMTU1Yzg2ZDhjMGQ4IiwiaGFzQWNjZXNzIjp0cnVlLCJpYXQiOjE3ODAxMzMyNTEsImV4cCI6MTc4MDIxOTY1MX0.3O5Ln9lmwAMRdgsNCR1MGKVv0_ySZlQn1dZ5zjz4hyM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/first-login-complete",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "first-login-complete"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "profiel data",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWFhMDcyZmY0MzE1NWM4NmQ4YzBkOSIsImVtYWlsIjoiYWJpc2hlay5rQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQURNSU4iLCJyb2xlIjoicHJpbmNpcGFsIiwiaXNGaXJzdFRpbWVMb2dpbiI6dHJ1ZSwiZmFjdWx0eUlkIjoiNmExYWEwNzJmZjQzMTU1Yzg2ZDhjMGQ4IiwiaGFzQWNjZXNzIjp0cnVlLCJpYXQiOjE3ODAxMzMyNTEsImV4cCI6MTc4MDIxOTY1MX0.3O5Ln9lmwAMRdgsNCR1MGKVv0_ySZlQn1dZ5zjz4hyM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Shift",
+      "item": [
+        {
+          "name": "add shift",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"shiftName\": \"Teaching Shift\",\r\n  \"startTime\": \"08:40\",\r\n  \"endTime\": \"16:40\",\r\n  \"graceTime\": 10,\r\n  \"workingHours\": 8,\r\n  \"isActive\": true\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/shifts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "shifts"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get shift",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/shifts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "shifts"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get shift by id",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/shifts/6a1a823c41fd6c314c3eb1e4",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "shifts",
+                "6a1a823c41fd6c314c3eb1e4"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "edit shift",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"graceTime\": 15\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/shifts/6a1a823c41fd6c314c3eb1e4",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "shifts",
+                "6a1a823c41fd6c314c3eb1e4"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "delete shift",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/shifts/6a1a823441fd6c314c3eb1e3",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "shifts",
+                "6a1a823441fd6c314c3eb1e3"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "holiday",
+      "item": [
+        {
+          "name": "add holiday excel",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "holidays",
+                  "type": "file",
+                  "uuid": "2ecf2a65-0c0d-4c14-8243-742fc88aa07e",
+                  "src": "/E:/hrms/server/files/holiday_final.xlsx"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/holidays/import",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "holidays",
+                "import"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get holiday",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/holidays",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "holidays"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get by id",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/holidays/6a1abc87cad850b89672ebbb",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "holidays",
+                "6a1abc87cad850b89672ebbb"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "{{base_url}}/api/holidays/6a1abc87cad850b89672ebbb",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/holidays/6a1abc87cad850b89672ebbb",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "holidays",
+                "6a1abc87cad850b89672ebbb"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "add",
           "request": {
             "auth": {
               "type": "noauth"
@@ -362,7 +723,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\r\n    \"name\":\"Placement Admin\",\r\n    \"email\":\"placement@sece.ac.in\",\r\n    \"phone\":\"7550120108\",\r\n    \"department\":\"Placement\",\r\n    \"role\":\"hod\"\r\n}",
+              "raw": "{\r\n  \"holidayName\": \"Pongal Festival\",\r\n  \"holidayDate\": \"2026-01-26\",\r\n  \"holidayType\": \"Local\",\r\n  \"description\": \"Pongal Festival Holiday\"\r\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -370,14 +731,44 @@
               }
             },
             "url": {
-              "raw": "{{base_url}}/api/auth/add-admin",
+              "raw": "{{base_url}}/api/holidays",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
-                "auth",
-                "add-admin"
+                "holidays"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "edit",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"holidayName\": \"Pongal Festival1\",\r\n  \"holidayDate\": \"2026-01-02\",\r\n  \"holidayType\": \"Local\",\r\n  \"description\": \"Pongal Festival Holiday1\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/holidays/6a1abd71cad850b89672ebbe",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "holidays",
+                "6a1abd71cad850b89672ebbe"
               ]
             }
           },
