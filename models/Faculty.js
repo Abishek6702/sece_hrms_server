@@ -234,4 +234,5 @@ const facultySchema = new mongoose.Schema(
   },
 );
 
-module.exports = mongoose.model("Faculty", facultySchema);
+module.exports =
+  mongoose.models.Faculty || mongoose.model("Faculty", facultySchema);

@@ -10,6 +10,8 @@ const cloudinary = require("cloudinary").v2;
 const sendMail = require("../utils/sendMail");
 const renderTemplate = require("../utils/renderTemplate");
 
+const createLeaveBalances = require("../services/createLeaveBalances");
+
 // ================= IMPORT EXCEL =================
 const XLSX = require("xlsx");
 
@@ -113,6 +115,8 @@ exports.importExcelFaculty = async (req, res) => {
 
       const faculty = await Faculty.create(facultyData);
 
+      await createLeaveBalances(faculty._id);
+
       const password = "Sece@123";
       const hashed = await bcrypt.hash(password, 10);
 
@@ -178,6 +182,8 @@ exports.addIndividualFaculty = async (req, res) => {
       ...req.body,
       empId,
     });
+
+    await createLeaveBalances(faculty._id);
 
     const hashedPassword = await bcrypt.hash("Sece@123", 10);
 
@@ -441,10 +447,9 @@ exports.deleteDocument = async (req, res) => {
 
     await cloudinary.uploader.destroy(publicId);
 
-    faculty.documents[documentType] =
-      faculty.documents[documentType].filter(
-        (doc) => doc.publicId !== publicId
-      );
+    faculty.documents[documentType] = faculty.documents[documentType].filter(
+      (doc) => doc.publicId !== publicId,
+    );
 
     await faculty.save();
 
