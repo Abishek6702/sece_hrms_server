@@ -51,7 +51,5 @@ leaveBalanceSchema.index(
   }
 );
 
-module.exports = mongoose.model(
-  "LeaveBalance",
-  leaveBalanceSchema
-);
+module.exports =
+  mongoose.models.LeaveBalance || mongoose.model("LeaveBalance", leaveBalanceSchema);

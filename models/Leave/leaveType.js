@@ -8,16 +8,15 @@ const leaveTypeSchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
-
+    leaveCategory: {
+      type: String,
+      enum: ["Regular", "On Duty"],
+      default: "Regular",
+    },
     employeeCategories: [
       {
         type: String,
-        enum: [
-          "Teaching",
-          "Non-Teaching",
-          "Driver",
-          "Housekeeping",
-        ],
+        enum: ["Teaching", "Non-Teaching", "Driver", "Housekeeping"],
       },
     ],
 
@@ -60,10 +59,8 @@ const leaveTypeSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
-module.exports = mongoose.model(
-  "LeaveType",
-  leaveTypeSchema
-);
+module.exports =
+  mongoose.models.LeaveType || mongoose.model("LeaveType", leaveTypeSchema);
