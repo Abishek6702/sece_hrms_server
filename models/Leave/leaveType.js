@@ -19,6 +19,11 @@ const leaveTypeSchema = new mongoose.Schema(
         enum: ["Teaching", "Non-Teaching", "Driver", "Housekeeping"],
       },
     ],
+    resetFrequency: {
+      type: String,
+      enum: ["Academic Year", "Semester"],
+      default: "Academic Year",
+    },
 
     daysPerYear: {
       type: Number,
