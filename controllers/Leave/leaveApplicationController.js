@@ -60,7 +60,12 @@ exports.applyLeave = async (req, res) => {
       });
     }
 
-    const totalDays = await calculateLeaveDays(fromDate, toDate, leaveSession,faculty.employeeCategory);
+    const totalDays = await calculateLeaveDays(
+      fromDate,
+      toDate,
+      leaveSession,
+      faculty.employeeCategory,
+    );
 
     if (totalDays <= 0) {
       return res.status(400).json({
@@ -115,7 +120,7 @@ exports.applyLeave = async (req, res) => {
 
     if (
       faculty.employeeCategory === "Driver" ||
-      faculty.employeeCategory === "Housekeeping" 
+      faculty.employeeCategory === "Housekeeping"
     ) {
       currentApprovalLevel = "supervisor";
     }
@@ -437,6 +442,61 @@ exports.rejectLeave = async (req, res) => {
       success: true,
       message: "Leave rejected successfully",
       leaveApplication,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+exports.revokeHodApproval = async (req, res) => {
+  try {
+    const leave = await LeaveApplication.findById(req.params.id);
+
+    if (!leave) {
+      return res.status(404).json({
+        success: false,
+        message: "Leave application not found",
+      });
+    }
+
+    if (req.user.role !== "hod") {
+      return res.status(403).json({
+        success: false,
+        message: "Only HOD can revoke approval",
+      });
+    }
+
+    if (leave.status !== "Pending") {
+      return res.status(400).json({
+        success: false,
+        message: "Leave already processed",
+      });
+    }
+
+    if (leave.currentApprovalLevel !== "principal") {
+      return res.status(400).json({
+        success: false,
+        message: "Only leaves pending at principal can be revoked",
+      });
+    }
+
+    leave.currentApprovalLevel = "hod";
+
+    leave.approvalHistory.push({
+      role: "hod",
+      approvedBy: req.user.id,
+      action: "Rejected",
+      remarks: "HOD approval revoked",
+    });
+
+    await leave.save();
+
+    res.status(200).json({
+      success: true,
+      message: "HOD approval revoked successfully",
     });
   } catch (error) {
     res.status(500).json({

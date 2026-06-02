@@ -8,6 +8,7 @@ const {
   cancelLeave,
   approveLeave,
   rejectLeave,
+  revokeHodApproval,
 } = require("../../controllers/Leave/leaveApplicationController");
 
 const protect = require("../../middleware/protect");
@@ -29,5 +30,7 @@ router.patch("/:id/cancel", protect, cancelLeave);
 router.patch("/:id/approve", protect, approveLeave);
 
 router.patch("/:id/reject", protect, rejectLeave);
+
+router.patch("/:id/revoke-hod", protect, revokeHodApproval);
 
 module.exports = router;
