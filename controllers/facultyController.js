@@ -88,6 +88,8 @@ exports.importExcelFaculty = async (req, res) => {
         timeType: data.timeType,
 
         shiftId: shift._id,
+        
+        punchId: data.punchId,
 
         employmentStatus: data.employmentStatus ?? true,
       };
@@ -441,10 +443,9 @@ exports.deleteDocument = async (req, res) => {
 
     await cloudinary.uploader.destroy(publicId);
 
-    faculty.documents[documentType] =
-      faculty.documents[documentType].filter(
-        (doc) => doc.publicId !== publicId
-      );
+    faculty.documents[documentType] = faculty.documents[documentType].filter(
+      (doc) => doc.publicId !== publicId,
+    );
 
     await faculty.save();
 

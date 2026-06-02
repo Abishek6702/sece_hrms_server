@@ -228,6 +228,12 @@ const facultySchema = new mongoose.Schema(
       ref: "Shift",
       required: true,
     },
+    punchId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+    },
   },
   {
     timestamps: true,
