@@ -11,6 +11,7 @@ const sendMail = require("../utils/sendMail");
 const renderTemplate = require("../utils/renderTemplate");
 
 const createLeaveBalances = require("../services/createLeaveBalances");
+const generatePunchId = require("../utils/generatePunchId");
 
 // ================= IMPORT EXCEL =================
 const XLSX = require("xlsx");
@@ -90,6 +91,8 @@ exports.importExcelFaculty = async (req, res) => {
         timeType: data.timeType,
 
         shiftId: shift._id,
+
+        punchId: data.punchId || (await generatePunchId()),
 
         employmentStatus: data.employmentStatus ?? true,
       };
@@ -177,10 +180,11 @@ exports.addIndividualFaculty = async (req, res) => {
       req.body.department,
       req.body.role,
     );
-
+    const punchId = await generatePunchId();
     const faculty = await Faculty.create({
       ...req.body,
       empId,
+      punchId,
     });
 
     await createLeaveBalances(faculty._id);
