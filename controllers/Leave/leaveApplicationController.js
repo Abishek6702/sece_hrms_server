@@ -12,6 +12,13 @@ exports.applyLeave = async (req, res) => {
     const { leaveTypeId, fromDate, toDate, leaveSession, reason } = req.body;
 
     const user = await User.findById(req.user.id);
+    
+    if (user.role === "principal") {
+      return res.status(400).json({
+        success: false,
+        message: "Principal leave application is not allowed",
+      });
+    }
 
     if (!user || !user.facultyId) {
       return res.status(404).json({
@@ -129,6 +136,14 @@ exports.applyLeave = async (req, res) => {
       faculty.employeeCategory === "Housekeeping"
     ) {
       currentApprovalLevel = "supervisor";
+    }
+
+    if (user.role === "hod") {
+      currentApprovalLevel = "principal";
+    }
+
+    if (user.role === "dean") {
+      currentApprovalLevel = "principal";
     }
 
     const supportingDocuments =
