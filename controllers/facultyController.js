@@ -10,6 +10,9 @@ const cloudinary = require("cloudinary").v2;
 const sendMail = require("../utils/sendMail");
 const renderTemplate = require("../utils/renderTemplate");
 
+const createLeaveBalances = require("../services/createLeaveBalances");
+const generatePunchId = require("../utils/generatePunchId");
+
 // ================= IMPORT EXCEL =================
 const XLSX = require("xlsx");
 
@@ -91,6 +94,8 @@ exports.importExcelFaculty = async (req, res) => {
         
         punchId: data.punchId,
 
+        punchId: data.punchId || (await generatePunchId()),
+
         employmentStatus: data.employmentStatus ?? true,
       };
 
@@ -114,6 +119,8 @@ exports.importExcelFaculty = async (req, res) => {
       }
 
       const faculty = await Faculty.create(facultyData);
+
+      await createLeaveBalances(faculty._id);
 
       const password = "Sece@123";
       const hashed = await bcrypt.hash(password, 10);
@@ -175,11 +182,14 @@ exports.addIndividualFaculty = async (req, res) => {
       req.body.department,
       req.body.role,
     );
-
+    const punchId = await generatePunchId();
     const faculty = await Faculty.create({
       ...req.body,
       empId,
+      punchId,
     });
+
+    await createLeaveBalances(faculty._id);
 
     const hashedPassword = await bcrypt.hash("Sece@123", 10);
 

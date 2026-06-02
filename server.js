@@ -8,7 +8,10 @@ const shiftRoutes = require("./routes/shiftRoutes");
 const facultyRoutes = require("./routes/facultyRoutes");
 const authRoutes = require("./routes/authRoutes");
 const holidayRoutes = require("./routes/holidayRoutes");
-
+const leaveTypeRoutes = require("./routes/Leave/leaveTypeRoutes");
+const leaveBalanceRoutes = require("./routes/Leave/leaveBalanceRoutes");
+const leaveApplicationRoutes = require("./routes/Leave/leaveApplicationRoutes");
+const compOffRoutes = require("./routes/compOffRoutes");
 
 dotenv.config();
 
@@ -38,6 +41,11 @@ app.use("/api/auth", authRoutes);
 app.use("/api/shifts", shiftRoutes);
 app.use("/api/faculties", facultyRoutes);
 app.use("/api/holidays", holidayRoutes);
+app.use("/api/leave-type", leaveTypeRoutes);
+app.use("/api/leave-balance", leaveBalanceRoutes);
+app.use("/api/leave-application", leaveApplicationRoutes);
+
+app.use("/api/comp-off", compOffRoutes);
 
 const PORT = process.env.PORT || 5000;
 

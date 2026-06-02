@@ -63,6 +63,7 @@ const userSchema = new mongoose.Schema(
         "driver",
         "housekeeping",
         "dean",
+        "Supervisor",
       ],
       default: "faculty",
     },
