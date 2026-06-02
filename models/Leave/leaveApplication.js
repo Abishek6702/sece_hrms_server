@@ -12,7 +12,7 @@ const approvalHistorySchema = new mongoose.Schema(
   {
     role: {
       type: String,
-      enum: ["hod", "dean", "principal", "hr", "admin", "supervisor","faculty"],
+      enum: ["hod", "dean", "principal", "hr", "admin", "supervisor","faculty","non-teaching"],
     },
 
     approvedBy: {

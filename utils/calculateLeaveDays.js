@@ -4,6 +4,7 @@ const calculateLeaveDays = async (
   fromDate,
   toDate,
   leaveSession = "Full Day",
+  employeeCategory,
 ) => {
   const startDate = new Date(fromDate);
   const endDate = new Date(toDate);
@@ -11,12 +12,14 @@ const calculateLeaveDays = async (
   let totalDays = 0;
 
   const holidays = await Holiday.find({
-    holidayDate: {
-      $gte: startDate,
-      $lte: endDate,
-    },
-    isActive: true,
-  }).select("holidayDate");
+  holidayDate: {
+    $gte: startDate,
+    $lte: endDate,
+  },
+  isActive: true,
+  applicableEmployeeCategories:
+    employeeCategory,
+}).select("holidayDate");
 
   const holidaySet = new Set(
     holidays.map(

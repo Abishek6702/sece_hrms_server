@@ -60,7 +60,7 @@ exports.applyLeave = async (req, res) => {
       });
     }
 
-    const totalDays = await calculateLeaveDays(fromDate, toDate, leaveSession);
+    const totalDays = await calculateLeaveDays(fromDate, toDate, leaveSession,faculty.employeeCategory);
 
     if (totalDays <= 0) {
       return res.status(400).json({
@@ -115,8 +115,7 @@ exports.applyLeave = async (req, res) => {
 
     if (
       faculty.employeeCategory === "Driver" ||
-      faculty.employeeCategory === "Housekeeping" ||
-      faculty.employeeCategory === "Non-Teaching"
+      faculty.employeeCategory === "Housekeeping" 
     ) {
       currentApprovalLevel = "supervisor";
     }

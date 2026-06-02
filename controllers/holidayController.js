@@ -98,6 +98,13 @@ exports.importHolidayExcel = async (req, res) => {
           holidayType: data.holidayType?.trim(),
           description: data.description?.trim() || "",
           isActive: true,
+
+          applicableEmployeeCategories: [
+            "Teaching",
+            "Non-Teaching",
+            "Driver",
+            "Housekeeping",
+          ],
         });
 
         created.push(holiday);
