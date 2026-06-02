@@ -173,17 +173,25 @@ exports.applyLeave = async (req, res) => {
 
 exports.getLeaveApplications = async (req, res) => {
   try {
+    const { department } = req.query;
+
     const leaveApplications = await LeaveApplication.find()
-      .populate("facultyId", "empId firstName lastName department")
+      .populate({
+        path: "facultyId",
+        select: "empId firstName lastName department",
+        match: department ? { department } : {},
+      })
       .populate("leaveTypeId", "leaveName")
-      .sort({
-        createdAt: -1,
-      });
+      .sort({ createdAt: -1 });
+
+    const filteredLeaves = leaveApplications.filter(
+      (leave) => leave.facultyId !== null,
+    );
 
     res.status(200).json({
       success: true,
-      count: leaveApplications.length,
-      leaveApplications,
+      count: filteredLeaves.length,
+      leaveApplications: filteredLeaves,
     });
   } catch (error) {
     res.status(500).json({
