@@ -34,13 +34,16 @@ exports.applyLeave = async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    const allowedPastDate = new Date(today);
+    allowedPastDate.setDate(allowedPastDate.getDate() - 2);
+
     const startDate = new Date(fromDate);
     startDate.setHours(0, 0, 0, 0);
 
-    if (startDate < today) {
+    if (startDate < allowedPastDate) {
       return res.status(400).json({
         success: false,
-        message: "Cannot apply leave for past dates",
+        message: "Leave can only be applied up to 2 days in the past",
       });
     }
 
@@ -89,7 +92,10 @@ exports.applyLeave = async (req, res) => {
       });
     }
 
-    if (leaveBalance.remainingDays < totalDays) {
+    if (
+      leaveType.leaveName !== "LOP" &&
+      leaveBalance.remainingDays < totalDays
+    ) {
       return res.status(400).json({
         success: false,
         message: "Insufficient leave balance",
@@ -362,9 +368,13 @@ exports.approveLeave = async (req, res) => {
         });
       }
 
-      leaveBalance.usedDays += leaveApplication.totalDays;
+      if (leaveApplication.leaveTypeId.leaveName === "LOP") {
+        leaveBalance.usedDays += leaveApplication.totalDays;
+      } else {
+        leaveBalance.usedDays += leaveApplication.totalDays;
 
-      leaveBalance.remainingDays -= leaveApplication.totalDays;
+        leaveBalance.remainingDays -= leaveApplication.totalDays;
+      }
 
       await leaveBalance.save();
 
