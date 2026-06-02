@@ -1,7 +1,7 @@
 const LeaveApplication = require("../../models/Leave/leaveApplication");
 const LeaveBalance = require("../../models/Leave/leaveBalance");
 const LeaveType = require("../../models/Leave/leaveType");
-const Faculty = require("../../models/faculty");
+const Faculty = require("../../models/Faculty");
 const User = require("../../models/User");
 
 const calculateLeaveDays = require("../../utils/calculateLeaveDays");

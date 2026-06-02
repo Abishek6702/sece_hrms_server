@@ -1,5 +1,5 @@
 const LeaveType = require("../../models/Leave/leaveType");
-const Faculty = require("../../models/faculty");
+const Faculty = require("../../models/Faculty");
 
 const LeaveBalance = require("../../models/Leave/leaveBalance");
 const getCurrentAcademicYear = require("../../utils/getCurrentAcademicYear");

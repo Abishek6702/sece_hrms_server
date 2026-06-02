@@ -1,4 +1,4 @@
-const Faculty = require("../models/faculty");
+const Faculty = require("../models/Faculty");
 const LeaveType = require("../models/Leave/leaveType");
 const LeaveBalance = require("../models/Leave/leaveBalance");
 
