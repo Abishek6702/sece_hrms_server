@@ -200,7 +200,7 @@ exports.getLeaveApplications = async (req, res) => {
     const leaveApplications = await LeaveApplication.find(query)
       .populate({
         path: "facultyId",
-        select: "empId firstName lastName department",
+        select: "empId firstName lastName department designation",
         match: department ? { department } : {},
       })
       .populate("leaveTypeId", "leaveName")
