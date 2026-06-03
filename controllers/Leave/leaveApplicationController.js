@@ -189,9 +189,15 @@ exports.applyLeave = async (req, res) => {
 
 exports.getLeaveApplications = async (req, res) => {
   try {
-    const { department } = req.query;
+    const { department, currentApprovalLevel } = req.query;
 
-    const leaveApplications = await LeaveApplication.find()
+    const query = {};
+
+    if (currentApprovalLevel) {
+      query.currentApprovalLevel = currentApprovalLevel;
+    }
+
+    const leaveApplications = await LeaveApplication.find(query)
       .populate({
         path: "facultyId",
         select: "empId firstName lastName department",
@@ -201,7 +207,7 @@ exports.getLeaveApplications = async (req, res) => {
       .sort({ createdAt: -1 });
 
     const filteredLeaves = leaveApplications.filter(
-      (leave) => leave.facultyId !== null,
+      (leave) => leave.facultyId !== null
     );
 
     res.status(200).json({
