@@ -13,6 +13,7 @@ const leaveTypeSchema = new mongoose.Schema(
       enum: ["Regular", "On Duty"],
       default: "Regular",
     },
+
     employeeCategories: [
       {
         type: String,
@@ -51,6 +52,11 @@ const leaveTypeSchema = new mongoose.Schema(
     },
 
     allowHalfDay: {
+      type: Boolean,
+      default: false,
+    },
+
+    sandwichRuleApplicable: {
       type: Boolean,
       default: false,
     },
