@@ -106,9 +106,7 @@ exports.getLeaveTypeById = async (req, res) => {
 
 exports.updateLeaveType = async (req, res) => {
   try {
-    const oldLeaveType = await LeaveType.findById(
-      req.params.id
-    );
+    const oldLeaveType = await LeaveType.findById(req.params.id);
 
     if (!oldLeaveType) {
       return res.status(404).json({
@@ -123,11 +121,10 @@ exports.updateLeaveType = async (req, res) => {
       {
         new: true,
         runValidators: true,
-      }
+      },
     );
 
-    const academicYear =
-      getCurrentAcademicYear();
+    const academicYear = getCurrentAcademicYear();
 
     // Existing balances
     const balances = await LeaveBalance.find({
@@ -137,15 +134,16 @@ exports.updateLeaveType = async (req, res) => {
     for (const balance of balances) {
       const faculty = balance.facultyId;
 
+      console.log("facultyId =", balance.facultyId);
+      // Faculty record no longer exists
+      if (!faculty) {
+        await LeaveBalance.findByIdAndDelete(balance._id);
+        continue;
+      }
+
       // Category removed
-      if (
-        !leaveType.employeeCategories.includes(
-          faculty.employeeCategory
-        )
-      ) {
-        await LeaveBalance.findByIdAndDelete(
-          balance._id
-        );
+      if (!leaveType.employeeCategories.includes(faculty.employeeCategory)) {
+        await LeaveBalance.findByIdAndDelete(balance._id);
 
         continue;
       }
@@ -153,11 +151,9 @@ exports.updateLeaveType = async (req, res) => {
       // Recalculate balance
       const used = balance.usedDays;
 
-      balance.allocatedDays =
-        leaveType.daysPerYear;
+      balance.allocatedDays = leaveType.daysPerYear;
 
-      balance.remainingDays =
-        leaveType.daysPerYear - used;
+      balance.remainingDays = leaveType.daysPerYear - used;
 
       await balance.save();
     }
@@ -181,23 +177,20 @@ exports.updateLeaveType = async (req, res) => {
           facultyId: faculty._id,
           leaveTypeId: leaveType._id,
           academicYear,
-          allocatedDays:
-            leaveType.daysPerYear,
+          allocatedDays: leaveType.daysPerYear,
           usedDays: 0,
-          remainingDays:
-            leaveType.daysPerYear,
+          remainingDays: leaveType.daysPerYear,
         },
         {
           upsert: true,
           new: true,
-        }
+        },
       );
     }
 
     res.status(200).json({
       success: true,
-      message:
-        "Leave type updated successfully",
+      message: "Leave type updated successfully",
       leaveType,
     });
   } catch (error) {

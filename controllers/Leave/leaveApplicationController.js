@@ -12,7 +12,7 @@ exports.applyLeave = async (req, res) => {
     const { leaveTypeId, fromDate, toDate, leaveSession, reason } = req.body;
 
     const user = await User.findById(req.user.id);
-    
+
     if (user.role === "principal") {
       return res.status(400).json({
         success: false,
@@ -75,6 +75,7 @@ exports.applyLeave = async (req, res) => {
       toDate,
       leaveSession,
       faculty.employeeCategory,
+      leaveType.sandwichRuleApplicable,
     );
 
     if (totalDays <= 0) {
