@@ -6,6 +6,7 @@ const {
   getMyLeaveBalances,
   resetAcademicYear,
   resetSemester,
+  getMyLeaveDashboard
 } = require("../../controllers/Leave/leaveBalanceController");
 
 const protect = require("../../middleware/protect");
@@ -21,5 +22,8 @@ router.get("/me", protect, getMyLeaveBalances);
 router.post("/reset-academic-year", protect, resetAcademicYear);
 
 router.post("/reset-semester", protect, resetSemester);
+
+router.get("/dashboard/me", protect, getMyLeaveDashboard);
+
 
 module.exports = router;

@@ -109,3 +109,37 @@ exports.resetSemester = async (req, res) => {
     });
   }
 };
+
+
+exports.getMyLeaveDashboard = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+
+    if (!user || !user.facultyId) {
+      return res.status(404).json({
+        success: false,
+        message: "Faculty not found",
+      });
+    }
+
+    const balances = await LeaveBalance.find({
+      facultyId: user.facultyId,
+    }).populate("leaveTypeId", "leaveName");
+
+    const leaveBalances = balances.map((balance) => ({
+      leaveType: balance.leaveTypeId?.leaveName,
+      available: balance.remainingDays,
+      used: balance.usedDays,
+    }));
+
+    res.status(200).json({
+      success: true,
+      leaveBalances,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
