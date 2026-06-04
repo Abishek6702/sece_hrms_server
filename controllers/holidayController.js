@@ -99,12 +99,11 @@ exports.importHolidayExcel = async (req, res) => {
           description: data.description?.trim() || "",
           isActive: true,
 
-          applicableEmployeeCategories: [
-            "Teaching",
-            "Non-Teaching",
-            "Driver",
-            "Housekeeping",
-          ],
+          applicableEmployeeCategories: data.applicableEmployeeCategories
+            ? data.applicableEmployeeCategories
+                .split(",")
+                .map((category) => category.trim())
+            : [],
         });
 
         created.push(holiday);
