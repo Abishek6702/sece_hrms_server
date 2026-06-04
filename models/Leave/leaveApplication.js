@@ -12,7 +12,18 @@ const approvalHistorySchema = new mongoose.Schema(
   {
     role: {
       type: String,
-      enum: ["hod", "dean", "principal", "hr", "admin", "supervisor","faculty","non-teaching"],
+      enum: [
+        "hod",
+        "dean",
+        "principal",
+        "hr",
+        "admin",
+        "supervisor",
+        "faculty",
+        "non-teaching",
+        "iqac",
+        "coe",
+      ],
     },
 
     approvedBy: {
@@ -47,10 +58,6 @@ const leaveApplicationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "LeaveType",
       required: true,
-    },
-    odCategory: {
-      type: String,
-      enum: ["Research", "Exam", "Official"],
     },
 
     fromDate: {
@@ -92,6 +99,8 @@ const leaveApplicationSchema = new mongoose.Schema(
         "admin",
         "supervisor",
         "completed",
+        "iqac",
+        "coe",
       ],
       default: "hod",
     },
@@ -119,4 +128,5 @@ leaveApplicationSchema.index({
 });
 
 module.exports =
-  mongoose.models.LeaveApplication || mongoose.model("LeaveApplication", leaveApplicationSchema);
+  mongoose.models.LeaveApplication ||
+  mongoose.model("LeaveApplication", leaveApplicationSchema);
