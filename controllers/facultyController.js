@@ -498,6 +498,8 @@ exports.searchFaculty = async (req, res) => {
     const result = faculties.map((faculty) => ({
       facultyId: faculty._id,
       empId: faculty.empId,
+      firstName: faculty.firstName,
+      lastName: faculty.lastName,
       name: `${faculty.firstName} ${faculty.lastName}`,
       designation: faculty.designation,
       department: faculty.department,
