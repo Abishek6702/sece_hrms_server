@@ -110,7 +110,6 @@ exports.resetSemester = async (req, res) => {
   }
 };
 
-
 exports.getMyLeaveDashboard = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -135,6 +134,48 @@ exports.getMyLeaveDashboard = async (req, res) => {
     res.status(200).json({
       success: true,
       leaveBalances,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+exports.updateLeaveBalance = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { allocatedDays } = req.body;
+
+    const leaveBalance = await LeaveBalance.findById(id);
+
+    if (!leaveBalance) {
+      return res.status(404).json({
+        success: false,
+        message: "Leave balance not found",
+      });
+    }
+
+    if (allocatedDays !== undefined) {
+      if (allocatedDays < leaveBalance.usedDays) {
+        return res.status(400).json({
+          success: false,
+          message: "Allocated days cannot be less than used days",
+        });
+      }
+      leaveBalance.allocatedDays = allocatedDays;
+
+      leaveBalance.remainingDays = allocatedDays - leaveBalance.usedDays;
+    }
+
+    await leaveBalance.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Leave balance updated successfully",
+      leaveBalance,
     });
   } catch (error) {
     res.status(500).json({

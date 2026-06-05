@@ -11,6 +11,7 @@ const {
   deleteProfileImage,
   uploadDocuments,
   deleteDocument,
+  searchFaculty,
   
 } = require("../controllers/facultyController");
 const protect = require("../middleware/protect");
@@ -30,6 +31,8 @@ router.post(
 router.post("/", protect, addIndividualFaculty);
 
 router.get("/", protect, getFaculties);
+
+router.get("/search", protect, searchFaculty);
 
 
 router.get("/:id", protect, getFacultyId);

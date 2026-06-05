@@ -469,3 +469,49 @@ exports.deleteDocument = async (req, res) => {
     });
   }
 };
+
+exports.searchFaculty = async (req, res) => {
+  try {
+    const { q = "" } = req.query;
+
+    const faculties = await Faculty.find({
+      $or: [
+        { firstName: { $regex: q, $options: "i" } },
+        { lastName: { $regex: q, $options: "i" } },
+        { empId: { $regex: q, $options: "i" } },
+        {
+          $expr: {
+            $regexMatch: {
+              input: { $concat: ["$firstName", " ", "$lastName"] },
+              regex: q,
+              options: "i",
+            },
+          },
+        },
+      ],
+    })
+      .select(
+        "_id empId firstName lastName designation department profileImage"
+      )
+      .limit(10);
+
+    const result = faculties.map((faculty) => ({
+      facultyId: faculty._id,
+      empId: faculty.empId,
+      name: `${faculty.firstName} ${faculty.lastName}`,
+      designation: faculty.designation,
+      department: faculty.department,
+      profileImage: faculty.profileImage?.url || null,
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
