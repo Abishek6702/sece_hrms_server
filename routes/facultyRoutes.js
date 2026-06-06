@@ -23,11 +23,10 @@ const router = express.Router();
 router.post(
   "/import-faculty",
   upload.single("faculties"),
-  protect,
   importExcelFaculty,
 );
 
-router.post("/", protect, addIndividualFaculty);
+router.post("/", addIndividualFaculty);
 
 router.get("/", protect, getFaculties);
 
