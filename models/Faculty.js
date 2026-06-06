@@ -221,6 +221,10 @@ const facultySchema = new mongoose.Schema(
 
       relievingLetter: [documentSchema],
 
+      panCard: [documentSchema],
+      
+      aadharCard: [documentSchema],
+
       otherDocuments: [documentSchema],
     },
     shiftId: {
@@ -240,4 +244,5 @@ const facultySchema = new mongoose.Schema(
   },
 );
 
-module.exports = mongoose.models.Faculty || mongoose.model('Faculty', facultySchema);
+module.exports =
+  mongoose.models.Faculty || mongoose.model("Faculty", facultySchema);

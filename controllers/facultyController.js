@@ -21,6 +21,8 @@ const allowedDocumentTypes = [
   "degreeCertificates",
   "experienceCertificates",
   "relievingLetter",
+  "panCard",
+  "aadharCard",
   "otherDocuments",
 ];
 
