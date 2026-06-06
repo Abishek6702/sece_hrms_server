@@ -16,15 +16,6 @@ const generatePunchId = require("../utils/generatePunchId");
 // ================= IMPORT EXCEL =================
 const XLSX = require("xlsx");
 
-const allowedDocumentTypes = [
-  "markSheets",
-  "degreeCertificates",
-  "experienceCertificates",
-  "relievingLetter",
-  "panCard",
-  "aadharCard",
-  "otherDocuments",
-];
 
 exports.importExcelFaculty = async (req, res) => {
   try {
@@ -396,11 +387,10 @@ exports.deleteProfileImage = async (req, res) => {
 exports.uploadDocuments = async (req, res) => {
   try {
     const { id } = req.params;
-    const { documentType } = req.body;
 
-    if (!allowedDocumentTypes.includes(documentType)) {
+    if (!req.files || Object.keys(req.files).length === 0) {
       return res.status(400).json({
-        message: "Invalid document type",
+        message: "No files uploaded",
       });
     }
 
@@ -412,28 +402,58 @@ exports.uploadDocuments = async (req, res) => {
       });
     }
 
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).json({
-        message: "No files uploaded",
-      });
+    // Single documents
+    const singleFields = [
+      "sslcMarkSheet",
+      "hscMarkSheet",
+      "ugDegreeCertificate",
+      "pgDegreeCertificate",
+      "phdDegreeCertificate",
+      "panCard",
+      "aadharCard",
+    ];
+
+    for (const field of singleFields) {
+      if (req.files[field]?.length) {
+        if (faculty.documents[field]?.publicId) {
+          await cloudinary.uploader.destroy(
+            faculty.documents[field].publicId
+          );
+        }
+    
+        faculty.documents[field] = {
+          url: req.files[field][0].path,
+          publicId: req.files[field][0].filename,
+        };
+      }
     }
 
-    const uploadedDocs = req.files.map((file) => ({
-      url: file.path,
-      publicId: file.filename,
-    }));
+    // Multiple documents
+    const multiFields = [
+      "experienceCertificates",
+      "relievingLetters",
+      "otherDocuments",
+    ];
 
-    faculty.documents[documentType].push(...uploadedDocs);
+    for (const field of multiFields) {
+      if (req.files[field]?.length) {
+        const uploadedDocs = req.files[field].map((file) => ({
+          url: file.path,
+          publicId: file.filename,
+        }));
+
+        faculty.documents[field].push(...uploadedDocs);
+      }
+    };
 
     await faculty.save();
 
     res.status(200).json({
       success: true,
       message: "Documents uploaded successfully",
-      documents: faculty.documents[documentType],
+      documents: faculty.documents,
     });
   } catch (error) {
-    console.error(error);
     res.status(500).json({
       message: error.message,
     });
@@ -453,11 +473,42 @@ exports.deleteDocument = async (req, res) => {
       });
     }
 
-    await cloudinary.uploader.destroy(publicId);
+    const singleFields = [
+      "sslcMarkSheet",
+      "hscMarkSheet",
+      "ugDegreeCertificate",
+      "pgDegreeCertificate",
+      "phdDegreeCertificate",
+      "panCard",
+      "aadharCard",
+    ];
 
-    faculty.documents[documentType] = faculty.documents[documentType].filter(
-      (doc) => doc.publicId !== publicId,
-    );
+    if (singleFields.includes(documentType)) {
+      const doc = faculty.documents[documentType];
+
+      if (!doc) {
+        return res.status(404).json({
+          message: "Document not found",
+        });
+      }
+
+      await cloudinary.uploader.destroy(doc.publicId);
+
+      faculty.documents[documentType] = null;
+    } else {
+      if (!faculty.documents[documentType]) {
+        return res.status(400).json({
+          message: "Invalid document type",
+        });
+      }
+      
+      await cloudinary.uploader.destroy(publicId);
+      
+      faculty.documents[documentType] =
+        faculty.documents[documentType].filter(
+          (doc) => doc.publicId !== publicId
+        );
+    }
 
     await faculty.save();
 

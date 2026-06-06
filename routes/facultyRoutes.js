@@ -12,7 +12,6 @@ const {
   uploadDocuments,
   deleteDocument,
   searchFaculty,
-  
 } = require("../controllers/facultyController");
 const protect = require("../middleware/protect");
 
@@ -34,7 +33,6 @@ router.get("/", protect, getFaculties);
 
 router.get("/search", protect, searchFaculty);
 
-
 router.get("/:id", protect, getFacultyId);
 
 router.delete("/:id", protect, deleteFaculty);
@@ -50,7 +48,19 @@ router.patch(
 router.patch(
   "/:id/documents",
   protect,
-  uploadCloudinary.array("files", 10),
+  uploadCloudinary.fields([
+    { name: "sslcMarkSheet", maxCount: 1 },
+    { name: "hscMarkSheet", maxCount: 1 },
+    { name: "ugDegreeCertificate", maxCount: 1 },
+    { name: "pgDegreeCertificate", maxCount: 1 },
+    { name: "phdDegreeCertificate", maxCount: 1 },
+    { name: "panCard", maxCount: 1 },
+    { name: "aadharCard", maxCount: 1 },
+
+    { name: "experienceCertificates", maxCount: 20 },
+    { name: "relievingLetters", maxCount: 20 },
+    { name: "otherDocuments", maxCount: 20 },
+  ]),
   uploadDocuments,
 );
 
