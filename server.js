@@ -13,6 +13,8 @@ const leaveBalanceRoutes = require("./routes/Leave/leaveBalanceRoutes");
 const leaveApplicationRoutes = require("./routes/Leave/leaveApplicationRoutes");
 const compOffRoutes = require("./routes/compOffRoutes");
 
+const esslRoutes = require("./routes/esslRoutes")
+
 dotenv.config();
 
 const app = express();
@@ -35,7 +37,7 @@ app.use(
 );
 
 connectDB();
-
+require("./cron/attendance");
 app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/shifts", shiftRoutes);
@@ -46,6 +48,7 @@ app.use("/api/leave-balance", leaveBalanceRoutes);
 app.use("/api/leave-application", leaveApplicationRoutes);
 
 app.use("/api/comp-off", compOffRoutes);
+app.use("/api/essl",esslRoutes);
 
 const PORT = process.env.PORT || 5000;
 
