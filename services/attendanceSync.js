@@ -34,6 +34,7 @@ async function processAttendancePunches(punches) {
         outTime: logDate,
         totalPunches: 1,
         workingMinutes: 0,
+        missedPunch: true,
         deviceIds: [punch.DeviceId],
       });
 
@@ -49,6 +50,9 @@ async function processAttendancePunches(punches) {
     }
 
     attendance.totalPunches += 1;
+    if (attendance.totalPunches >= 2) {
+      attendance.missedPunch = false;
+    }
 
     if (!attendance.deviceIds.includes(punch.DeviceId)) {
       attendance.deviceIds.push(punch.DeviceId);

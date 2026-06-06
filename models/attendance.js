@@ -41,6 +41,11 @@ const attendanceSchema = new mongoose.Schema(
       default: 0,
     },
 
+    missedPunch: {
+      type: Boolean,
+      default: false,
+    },
+
     deviceIds: [
       {
         type: Number,
@@ -54,7 +59,16 @@ const attendanceSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["Present", "Absent", "Half Day", "Leave", "Holiday"],
+      enum: [
+        "Present",
+        "Absent",
+        "Half Day",
+        "Leave",
+        "Holiday",
+        "First Half Leave",
+        "Second Half Leave",
+        "Missed Punch"
+      ],
       default: "Present",
     },
   },
