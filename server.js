@@ -12,6 +12,7 @@ const leaveTypeRoutes = require("./routes/Leave/leaveTypeRoutes");
 const leaveBalanceRoutes = require("./routes/Leave/leaveBalanceRoutes");
 const leaveApplicationRoutes = require("./routes/Leave/leaveApplicationRoutes");
 const compOffRoutes = require("./routes/compOffRoutes");
+const attendanceProcessRoutes = require("./routes/attendanceProcessRoutes")
 
 const esslRoutes = require("./routes/esslRoutes")
 
@@ -46,6 +47,7 @@ app.use("/api/holidays", holidayRoutes);
 app.use("/api/leave-type", leaveTypeRoutes);
 app.use("/api/leave-balance", leaveBalanceRoutes);
 app.use("/api/leave-application", leaveApplicationRoutes);
+app.use("/api/attendance",attendanceProcessRoutes)
 
 app.use("/api/comp-off", compOffRoutes);
 app.use("/api/essl",esslRoutes);

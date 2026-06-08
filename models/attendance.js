@@ -67,16 +67,34 @@ const attendanceSchema = new mongoose.Schema(
         "Holiday",
         "First Half Leave",
         "Second Half Leave",
-        "Missed Punch"
+        "Missed Punch",
       ],
       default: "Present",
+    },
+    lateCountApplied: {
+      type: Boolean,
+      default: false,
+    },
+
+    lateMinutes: {
+      type: Number,
+      default: 0,
+    },
+
+    lopDays: {
+      type: Number,
+      default: 0,
+    },
+
+    remarks: {
+      type: String,
+      trim: true,
     },
   },
   {
     timestamps: true,
   },
 );
-
 
 attendanceSchema.index(
   {
