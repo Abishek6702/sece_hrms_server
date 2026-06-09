@@ -17,6 +17,7 @@ const compOffRoutes = require("./routes/compOffRoutes");
 const attendanceProcessRoutes = require("./routes/attendanceProcessRoutes")
 
 const esslRoutes = require("./routes/esslRoutes")
+const attendanceRegularizationRoutes = require("./routes/attendanceRegularizationRoutes");
 
 dotenv.config();
 
@@ -57,6 +58,7 @@ app.use("/api/attendance",attendanceProcessRoutes)
 
 app.use("/api/comp-off", compOffRoutes);
 app.use("/api/essl",esslRoutes);
+app.use("/api/attendance-regularization", attendanceRegularizationRoutes);
 
 const PORT = process.env.PORT || 5000;
 
