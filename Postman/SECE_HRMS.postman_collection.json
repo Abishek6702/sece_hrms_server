@@ -852,6 +852,10 @@
       ]
     },
     {
+      "name": "Permission",
+      "item": [
+        {
+          "name": "Get All Permissions (Principal)",
       "name": "Leave Type",
       "item": [
         {
@@ -862,6 +866,7 @@
               "bearer": [
                 {
                   "key": "token",
+                  "value": "{{token}}",
                   "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWFhMDcyZmY0MzE1NWM4NmQ4YzBkOSIsImVtYWlsIjoiYWJpc2hlay5rQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQURNSU4iLCJyb2xlIjoicHJpbmNpcGFsIiwiaXNGaXJzdFRpbWVMb2dpbiI6dHJ1ZSwiZmFjdWx0eUlkIjoiNmExYWEwNzJmZjQzMTU1Yzg2ZDhjMGQ4IiwiaGFzQWNjZXNzIjp0cnVlLCJpYXQiOjE3ODA1NDU3MjIsImV4cCI6MTc4MDYzMjEyMn0.XM6RgJ5vrXIwr8Ymc4KQ6cnMnWvD4KTNVT_rH0agKC8",
                   "type": "string"
                 }
@@ -908,12 +913,16 @@
             "method": "GET",
             "header": [],
             "url": {
+              "raw": "{{base_url}}/api/permissions/principal/list",
               "raw": "{{base_url}}/api/leave-type/",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
+                "permissions",
+                "principal",
+                "list"
                 "leave-type",
                 ""
               ]
@@ -922,6 +931,7 @@
           "response": []
         },
         {
+          "name": "Apply Permission (Faculty)",
           "name": "get leave type by id",
           "request": {
             "auth": {
@@ -929,11 +939,23 @@
               "bearer": [
                 {
                   "key": "token",
+                  "value": "{{token}}",
                   "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWFhMDcyZmY0MzE1NWM4NmQ4YzBkOSIsImVtYWlsIjoiYWJpc2hlay5rQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQURNSU4iLCJyb2xlIjoicHJpbmNpcGFsIiwiaXNGaXJzdFRpbWVMb2dpbiI6dHJ1ZSwiZmFjdWx0eUlkIjoiNmExYWEwNzJmZjQzMTU1Yzg2ZDhjMGQ4IiwiaGFzQWNjZXNzIjp0cnVlLCJpYXQiOjE3ODAyODk5ODYsImV4cCI6MTc4MDM3NjM4Nn0.JMJ3AltiwWgVFtxxJCnpGLJjWEmKbWNLl8or6rBSRSw",
                   "type": "string"
                 }
               ]
             },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permissionDate\": \"2026-06-09\",\n  \"permissionType\": \"Medical\",\n  \"fromTime\": \"10:00\",\n  \"toTime\": \"11:00\",\n  \"totalMinutes\": 60,\n  \"reason\": \"Doctor appointment\"\n}",
             "method": "GET",
             "header": [],
             "url": {
@@ -975,6 +997,7 @@
               }
             },
             "url": {
+              "raw": "{{base_url}}/api/permissions",
               "raw": "{{base_url}}/api/leave-type/6a1d2a405e936737b33aed05",
               "host": [
                 "{{base_url}}"
@@ -1158,6 +1181,7 @@
               ],
               "path": [
                 "api",
+                "permissions"
                 "leave-balance",
                 "me"
               ]
@@ -1166,6 +1190,7 @@
           "response": []
         },
         {
+          "name": "Get My Permissions (Faculty)",
           "name": "my leave balnce",
           "request": {
             "auth": {
@@ -1173,6 +1198,7 @@
               "bearer": [
                 {
                   "key": "token",
+                  "value": "{{token}}",
                   "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWFhMDczZmY0MzE1NWM4NmQ4YzBlMSIsImVtYWlsIjoic2F0aGl5YS5wQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQ1NFIiwicm9sZSI6ImZhY3VsdHkiLCJpc0ZpcnN0VGltZUxvZ2luIjp0cnVlLCJmYWN1bHR5SWQiOiI2YTFhYTA3M2ZmNDMxNTVjODZkOGMwZTAiLCJoYXNBY2Nlc3MiOnRydWUsImlhdCI6MTc4MDQ4MDg5NywiZXhwIjoxNzgwNTY3Mjk3fQ.p4CIFxXpLxmkW80BygmzZt673u3xoDgARQ3zHrexK7U",
                   "type": "string"
                 }
@@ -1181,6 +1207,7 @@
             "method": "GET",
             "header": [],
             "url": {
+              "raw": "{{base_url}}/api/permissions/my",
               "raw": "{{base_url}}/api/leave-balance/dashboard/me",
               "host": [
                 "{{base_url}}"
@@ -1272,6 +1299,8 @@
               ],
               "path": [
                 "api",
+                "permissions",
+                "my"
                 "leave-application",
                 ""
               ]
@@ -1280,6 +1309,7 @@
           "response": []
         },
         {
+          "name": "Get Permission By Id",
           "name": "get all applications",
           "request": {
             "auth": {
@@ -1287,6 +1317,7 @@
               "bearer": [
                 {
                   "key": "token",
+                  "value": "{{token}}",
                   "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWFhMDcyZmY0MzE1NWM4NmQ4YzBkOSIsImVtYWlsIjoiYWJpc2hlay5rQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQURNSU4iLCJyb2xlIjoicHJpbmNpcGFsIiwiaXNGaXJzdFRpbWVMb2dpbiI6dHJ1ZSwiZmFjdWx0eUlkIjoiNmExYWEwNzJmZjQzMTU1Yzg2ZDhjMGQ4IiwiaGFzQWNjZXNzIjp0cnVlLCJpYXQiOjE3ODAzOTkzNjksImV4cCI6MTc4MDQ4NTc2OX0.TpXNBrhyXr_TgpauienuQ_7MpbL3SKGKPhSpFp3d3Xc",
                   "type": "string"
                 }
@@ -1295,12 +1326,15 @@
             "method": "GET",
             "header": [],
             "url": {
+              "raw": "{{base_url}}/api/permissions/:id",
               "raw": "{{base_url}}/api/leave-application/?department=CSE&currentApprovalLevel=hod",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
+                "permissions",
+                ":id"
                 "leave-application",
                 ""
               ],
@@ -1320,6 +1354,7 @@
           "response": []
         },
         {
+          "name": "Get Permissions For HOD",
           "name": "my leave applications",
           "request": {
             "auth": {
@@ -1327,6 +1362,7 @@
               "bearer": [
                 {
                   "key": "token",
+                  "value": "{{token}}",
                   "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWQyM2JjZDk0YmI2ZDg3ODk3YmY4ZSIsImVtYWlsIjoiYWJpc2hla2tyaXNobmF0QGdtYWlsLmNvbSIsImRlcGFydG1lbnQiOiJDUyIsInJvbGUiOiJmYWN1bHR5IiwiaXNGaXJzdFRpbWVMb2dpbiI6dHJ1ZSwiZmFjdWx0eUlkIjoiNmExZDIzYmNkOTRiYjZkODc4OTdiZjhkIiwiaGFzQWNjZXNzIjp0cnVlLCJpYXQiOjE3ODAzMDUxNDYsImV4cCI6MTc4MDM5MTU0Nn0.UnFa477Bo6LtfFPXxVUNmAXisfY4PUZM6VazabDU2yk",
                   "type": "string"
                 }
@@ -1335,12 +1371,16 @@
             "method": "GET",
             "header": [],
             "url": {
+              "raw": "{{base_url}}/api/permissions/hod/list",
               "raw": "{{base_url}}/api/leave-application/me",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
+                "permissions",
+                "hod",
+                "list"
                 "leave-application",
                 "me"
               ]
@@ -1349,6 +1389,7 @@
           "response": []
         },
         {
+          "name": "Cancel Permission (Faculty)",
           "name": "approve",
           "request": {
             "auth": {
@@ -1356,12 +1397,23 @@
               "bearer": [
                 {
                   "key": "token",
+                  "value": "{{token}}",
                   "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMjBmOGQwOGU2NWIxOTMyMWFkOWFkOSIsImVtYWlsIjoiaXFhY0BzZWNlLmFjLmluIiwiZGVwYXJ0bWVudCI6IkNTIiwicm9sZSI6ImlxYWMiLCJpc0ZpcnN0VGltZUxvZ2luIjp0cnVlLCJmYWN1bHR5SWQiOiI2YTIwZjhjZjhlNjViMTkzMjFhZDlhZDgiLCJoYXNBY2Nlc3MiOnRydWUsImlhdCI6MTc4MDU0NjQxNSwiZXhwIjoxNzgwNjMyODE1fQ.VsDDg2uQ0qO4vPUdrY4KOnVeZ87MGjAUkAI3uefnyDQ",
                   "type": "string"
                 }
               ]
             },
             "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
             "header": [],
             "body": {
               "mode": "raw",
@@ -1373,12 +1425,16 @@
               }
             },
             "url": {
+              "raw": "{{base_url}}/api/permissions/:id/cancel",
               "raw": "{{base_url}}/api/leave-application/6a20fa7c25ea4842e11c95d9/approve",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
+                "permissions",
+                ":id",
+                "cancel"
                 "leave-application",
                 "6a20fa7c25ea4842e11c95d9",
                 "approve"
@@ -1388,6 +1444,7 @@
           "response": []
         },
         {
+          "name": "Approve Permission (Principal)",
           "name": "New Request",
           "request": {
             "method": "GET",
@@ -1408,11 +1465,23 @@
               "bearer": [
                 {
                   "key": "token",
+                  "value": "{{token}}",
                   "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWU3YWJlZTAyZjg2ZDAwMzAxYjcwNSIsImVtYWlsIjoiYWsxQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQ1MiLCJyb2xlIjoiZmFjdWx0eSIsImlzRmlyc3RUaW1lTG9naW4iOnRydWUsImZhY3VsdHlJZCI6IjZhMWU3YWJlZTAyZjg2ZDAwMzAxYjcwNCIsImhhc0FjY2VzcyI6dHJ1ZSwiaWF0IjoxNzgwMzg2MTYxLCJleHAiOjE3ODA0NzI1NjF9.QKQR-k-nizEpsF4TFtIVMKej-4EiNsJmfVA3L9XXf7M",
                   "type": "string"
                 }
               ]
             },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"remarks\": \"Approved by principal\"\n}",
             "method": "POST",
             "header": [],
             "body": {
@@ -1425,12 +1494,16 @@
               }
             },
             "url": {
+              "raw": "{{base_url}}/api/permissions/:id/approve",
               "raw": "{{base_url}}/api/comp-off/",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
+                "permissions",
+                ":id",
+                "approve"
                 "comp-off",
                 ""
               ]
@@ -1497,6 +1570,7 @@
           "response": []
         },
         {
+          "name": "Reject Permission (Principal)",
           "name": "approve",
           "request": {
             "auth": {
@@ -1504,12 +1578,23 @@
               "bearer": [
                 {
                   "key": "token",
+                  "value": "{{token}}",
                   "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWFhMDcyZmY0MzE1NWM4NmQ4YzBkOSIsImVtYWlsIjoiYWJpc2hlay5rQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQURNSU4iLCJyb2xlIjoicHJpbmNpcGFsIiwiaXNGaXJzdFRpbWVMb2dpbiI6dHJ1ZSwiZmFjdWx0eUlkIjoiNmExYWEwNzJmZjQzMTU1Yzg2ZDhjMGQ4IiwiaGFzQWNjZXNzIjp0cnVlLCJpYXQiOjE3ODAzODY0ODksImV4cCI6MTc4MDQ3Mjg4OX0.W9pRKk1osz0ZE7Hsqpjh5OTo9E0QPDNZu3-dCEPxCEE",
                   "type": "string"
                 }
               ]
             },
             "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"remarks\": \"Rejected by principal\"\n}",
             "header": [],
             "body": {
               "mode": "raw",
@@ -1521,12 +1606,16 @@
               }
             },
             "url": {
+              "raw": "{{base_url}}/api/permissions/:id/reject",
               "raw": "{{base_url}}/api/comp-off/6a1e8d1e3123ce245a8c4a2f/approve",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
+                "permissions",
+                ":id",
+                "reject"
                 "comp-off",
                 "6a1e8d1e3123ce245a8c4a2f",
                 "approve"
@@ -1536,6 +1625,7 @@
           "response": []
         },
         {
+          "name": "Get Permission Card (This Month)",
           "name": "withdraw",
           "request": {
             "auth": {
@@ -1543,11 +1633,16 @@
               "bearer": [
                 {
                   "key": "token",
+                  "value": "{{token}}",
                   "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWU3YWJlZTAyZjg2ZDAwMzAxYjcwNSIsImVtYWlsIjoiYWsxQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQ1MiLCJyb2xlIjoiZmFjdWx0eSIsImlzRmlyc3RUaW1lTG9naW4iOnRydWUsImZhY3VsdHlJZCI6IjZhMWU3YWJlZTAyZjg2ZDAwMzAxYjcwNCIsImhhc0FjY2VzcyI6dHJ1ZSwiaWF0IjoxNzgwMzg2MTYxLCJleHAiOjE3ODA0NzI1NjF9.QKQR-k-nizEpsF4TFtIVMKej-4EiNsJmfVA3L9XXf7M",
                   "type": "string"
                 }
               ]
             },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/permissions/card/month",
             "method": "PATCH",
             "header": [],
             "body": {
@@ -1595,6 +1690,9 @@
               ],
               "path": [
                 "api",
+                "permissions",
+                "card",
+                "month"
                 "comp-off",
                 "6a1e8d1e3123ce245a8c4a2f",
                 "revoke-hod"
