@@ -10,7 +10,13 @@ const authRoutes = require("./routes/authRoutes");
 const holidayRoutes = require("./routes/holidayRoutes");
 const permissionRoutes = require("./routes/permissionRoutes");
 const myteamRoutes = require("./routes/myteamRoutes");
+const leaveTypeRoutes = require("./routes/Leave/leaveTypeRoutes");
+const leaveBalanceRoutes = require("./routes/Leave/leaveBalanceRoutes");
+const leaveApplicationRoutes = require("./routes/Leave/leaveApplicationRoutes");
+const compOffRoutes = require("./routes/compOffRoutes");
+const attendanceProcessRoutes = require("./routes/attendanceProcessRoutes")
 
+const esslRoutes = require("./routes/esslRoutes")
 
 dotenv.config();
 
@@ -34,6 +40,8 @@ app.use(
 );
 
 connectDB();
+require("./cron/attendance");
+require("./cron/attendanceProcessorCron");
 
 app.use(express.json());
 app.use("/api/auth", authRoutes);
@@ -42,9 +50,18 @@ app.use("/api/faculties", facultyRoutes);
 app.use("/api/holidays", holidayRoutes);
 app.use("/api/permissions", permissionRoutes);
 app.use("/api/myteam", myteamRoutes);
+app.use("/api/leave-type", leaveTypeRoutes);
+app.use("/api/leave-balance", leaveBalanceRoutes);
+app.use("/api/leave-application", leaveApplicationRoutes);
+app.use("/api/attendance",attendanceProcessRoutes)
+
+app.use("/api/comp-off", compOffRoutes);
+app.use("/api/essl",esslRoutes);
 
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+// await reprocessAttendance(attendance.attendanceDate);

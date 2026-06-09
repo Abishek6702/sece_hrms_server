@@ -213,14 +213,24 @@ const facultySchema = new mongoose.Schema(
     },
 
     documents: {
-      markSheets: [documentSchema],
-
-      degreeCertificates: [documentSchema],
-
+      sslcMarkSheet: documentSchema,
+    
+      hscMarkSheet: documentSchema,
+    
+      ugDegreeCertificate: documentSchema,
+    
+      pgDegreeCertificate: documentSchema,
+    
+      phdDegreeCertificate: documentSchema,
+    
+      panCard: documentSchema,
+    
+      aadharCard: documentSchema,
+    
       experienceCertificates: [documentSchema],
-
-      relievingLetter: [documentSchema],
-
+    
+      relievingLetters: [documentSchema],
+    
       otherDocuments: [documentSchema],
     },
     shiftId: {
@@ -240,4 +250,5 @@ const facultySchema = new mongoose.Schema(
   },
 );
 
-module.exports = mongoose.model("Faculty", facultySchema);
+module.exports =
+  mongoose.models.Faculty || mongoose.model("Faculty", facultySchema);

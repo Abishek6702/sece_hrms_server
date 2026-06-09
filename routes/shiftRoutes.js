@@ -12,7 +12,7 @@ const protect = require("../middleware/protect");
 
 const router = express.Router();
 
-router.post("/", protect, createShift);
+router.post("/", createShift);
 
 router.get("/", protect, getShifts);
 

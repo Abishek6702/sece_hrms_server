@@ -46,13 +46,20 @@
           "name": "Individaul Faculty add",
           "request": {
             "auth": {
-              "type": "noauth"
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWFhMDcyZmY0MzE1NWM4NmQ4YzBkOSIsImVtYWlsIjoiYWJpc2hlay5rQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQURNSU4iLCJyb2xlIjoicHJpbmNpcGFsIiwiaXNGaXJzdFRpbWVMb2dpbiI6dHJ1ZSwiZmFjdWx0eUlkIjoiNmExYWEwNzJmZjQzMTU1Yzg2ZDhjMGQ4IiwiaGFzQWNjZXNzIjp0cnVlLCJpYXQiOjE3ODA1NDU3MjIsImV4cCI6MTc4MDYzMjEyMn0.XM6RgJ5vrXIwr8Ymc4KQ6cnMnWvD4KTNVT_rH0agKC8",
+                  "type": "string"
+                }
+              ]
             },
             "method": "POST",
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\r\n  \"firstName\": \"Arun\",\r\n  \"lastName\": \"Kumar\",\r\n  \"email\": \"arun@gmail.com\",\r\n  \"organizationEmail\": \"arun@sece.ac.in\",\r\n  \"phone\": \"9876543210\",\r\n\r\n  \"gender\": \"Male\",\r\n  \"dob\": \"1995-01-01\",\r\n\r\n  \"department\": \"CS\",\r\n\r\n  \"designation\": \"Assistant Professor\",\r\n  \"jobTitle\": \"Faculty\",\r\n\r\n  \"employeeCategory\": \"Teaching\",\r\n  \"workType\": \"Permanent\",\r\n  \"timeType\": \"Full-Time\",\r\n\r\n  \"doj\": \"2024-06-01\",\r\n\r\n  \"shiftId\": \"6a1a820a41fd6c314c3eb1e2\",\r\n\r\n  \"role\": \"faculty\"\r\n}",
+              "raw": "{\r\n  \"firstName\": \"supervisor\",\r\n  \"lastName\": \"housekeeping\",\r\n  \"email\": \"supervisorh@gmail.com\",\r\n  \"organizationEmail\": \"supervisorh@sece.ac.in\",\r\n  \"phone\": \"8974843219\",\r\n\r\n  \"gender\": \"Male\",\r\n  \"dob\": \"1995-01-01\",\r\n\r\n  \"department\": \"CS\",\r\n\r\n  \"designation\": \"Assistant Professor\",\r\n  \"jobTitle\": \"Faculty\",\r\n\r\n  \"employeeCategory\": \"Teaching\",\r\n  \"workType\": \"Permanent\",\r\n  \"timeType\": \"Full-Time\",\r\n\r\n  \"doj\": \"2024-06-01\",\r\n\r\n  \"shiftId\": \"6a1a820a41fd6c314c3eb1e2\",\r\n\r\n  \"role\": \"supervisor-housekeeping\"\r\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -230,7 +237,14 @@
           "name": "doc_upload",
           "request": {
             "auth": {
-              "type": "noauth"
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWFhMDczZmY0MzE1NWM4NmQ4YzBlMSIsImVtYWlsIjoic2F0aGl5YS5wQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQ1NFIiwicm9sZSI6ImZhY3VsdHkiLCJpc0ZpcnN0VGltZUxvZ2luIjp0cnVlLCJmYWN1bHR5SWQiOiI2YTFhYTA3M2ZmNDMxNTVjODZkOGMwZTAiLCJoYXNBY2Nlc3MiOnRydWUsImlhdCI6MTc4MDcyNDExNiwiZXhwIjoxNzgwODEwNTE2fQ.vk2lWlWoN_47Ydn9XAKpjrUX41IQ4kSlyadPybL9CFc",
+                  "type": "string"
+                }
+              ]
             },
             "method": "PATCH",
             "header": [],
@@ -238,28 +252,82 @@
               "mode": "formdata",
               "formdata": [
                 {
-                  "key": "documentType",
-                  "value": "otherDocuments",
-                  "type": "text",
-                  "uuid": "aec45413-a7d2-4066-8da6-c0fa57fb534f"
+                  "key": "sslcMarkSheet",
+                  "type": "file",
+                  "uuid": "aec45413-a7d2-4066-8da6-c0fa57fb534f",
+                  "src": "/E:/hrms/server/files/test.pdf"
                 },
                 {
-                  "key": "files",
+                  "key": "hscMarkSheet",
                   "type": "file",
                   "uuid": "c4d097e2-8b04-4c4e-960a-bd12b17cb307",
                   "src": "/C:/Users/USER/Downloads/enquiries (3).pdf"
+                },
+                {
+                  "key": "ugDegreeCertificate",
+                  "type": "file",
+                  "uuid": "d8ba44df-1b34-4369-a998-83f0708368ab",
+                  "src": "/E:/hrms/server/files/test.pdf"
+                },
+                {
+                  "key": "pgDegreeCertificate",
+                  "type": "file",
+                  "uuid": "3f0bb6e6-a507-4937-a569-1a15080c6080",
+                  "src": "/E:/hrms/server/files/test.pdf"
+                },
+                {
+                  "key": "phdDegreeCertificate",
+                  "type": "file",
+                  "uuid": "66197c91-191f-447e-a138-5b2e1ad1cfda",
+                  "src": "/E:/hrms/server/files/test.pdf"
+                },
+                {
+                  "key": "panCard",
+                  "type": "file",
+                  "uuid": "bcd193a5-797b-4ebb-98c0-6fee953d4218",
+                  "src": "/E:/hrms/server/files/test.pdf"
+                },
+                {
+                  "key": "aadharCard",
+                  "type": "file",
+                  "uuid": "08d83171-004e-4b2a-b5a8-8ef9de9b2ad0",
+                  "src": "/E:/hrms/server/files/test.pdf"
+                },
+                {
+                  "key": "experienceCertificates",
+                  "type": "file",
+                  "uuid": "527aba70-c675-4c39-83e7-911218c4a59d",
+                  "src": "/E:/hrms/server/files/test.pdf"
+                },
+                {
+                  "key": "experienceCertificates",
+                  "type": "file",
+                  "uuid": "7dfef52e-b271-43c3-aab1-76bad9b68a9c",
+                  "src": "/E:/hrms/server/files/test.pdf"
+                },
+                {
+                  "key": "relievingLetters",
+                  "type": "file",
+                  "uuid": "02908c01-08bc-4db8-9f2f-1eac9f2745e9",
+                  "src": "/E:/hrms/server/files/test.pdf"
+                },
+                {
+                  "key": "relievingLetters",
+                  "type": "file",
+                  "uuid": "796ea665-c922-4148-b516-38720b42b2e6",
+                  "src": "/E:/hrms/server/files/test.pdf"
                 }
               ]
             },
             "url": {
-              "raw": "{{base_url}}/api/faculties/6a1aa072ff43155c86d8c0d8/documents",
+              "raw": "{{base_url}}/api/faculties/6a1aa073ff43155c86d8c0e0/documents",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
                 "faculties",
-                "6a1aa072ff43155c86d8c0d8",
+                "6a1aa073ff43155c86d8c0e0",
                 "documents"
               ]
             }
@@ -270,13 +338,20 @@
           "name": "doc delte",
           "request": {
             "auth": {
-              "type": "noauth"
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWFhMDczZmY0MzE1NWM4NmQ4YzBlMSIsImVtYWlsIjoic2F0aGl5YS5wQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQ1NFIiwicm9sZSI6ImZhY3VsdHkiLCJpc0ZpcnN0VGltZUxvZ2luIjp0cnVlLCJmYWN1bHR5SWQiOiI2YTFhYTA3M2ZmNDMxNTVjODZkOGMwZTAiLCJoYXNBY2Nlc3MiOnRydWUsImlhdCI6MTc4MDcyNDExNiwiZXhwIjoxNzgwODEwNTE2fQ.vk2lWlWoN_47Ydn9XAKpjrUX41IQ4kSlyadPybL9CFc",
+                  "type": "string"
+                }
+              ]
             },
             "method": "DELETE",
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\r\n  \"documentType\": \"otherDocuments\",\r\n  \"publicId\": \"faculty-doc/o4tcfcssxvrubacc9gqz\"\r\n}",
+              "raw": "{\r\n  \"documentType\": \"panCard\"\r\n//   \"publicId\": \"faculty-doc/hiffebvmtt6ztmolm3fy\"\r\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -284,14 +359,14 @@
               }
             },
             "url": {
-              "raw": "{{base_url}}/api/faculties/6a1aa072ff43155c86d8c0d8/documents",
+              "raw": "{{base_url}}/api/faculties/6a1aa073ff43155c86d8c0e0/documents",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
                 "faculties",
-                "6a1aa072ff43155c86d8c0d8",
+                "6a1aa073ff43155c86d8c0e0",
                 "documents"
               ]
             }
@@ -313,7 +388,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\r\n    \"email\":\"abishek.k@sece.ac.in\",\r\n    \"password\":\"Sece@123\"\r\n}",
+              "raw": "{\r\n    \"email\":\"coe@sece.ac.in\",\r\n    \"password\":\"Sece@123\"\r\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -781,6 +856,10 @@
       "item": [
         {
           "name": "Get All Permissions (Principal)",
+      "name": "Leave Type",
+      "item": [
+        {
+          "name": "New Request",
           "request": {
             "auth": {
               "type": "bearer",
@@ -788,6 +867,45 @@
                 {
                   "key": "token",
                   "value": "{{token}}",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWFhMDcyZmY0MzE1NWM4NmQ4YzBkOSIsImVtYWlsIjoiYWJpc2hlay5rQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQURNSU4iLCJyb2xlIjoicHJpbmNpcGFsIiwiaXNGaXJzdFRpbWVMb2dpbiI6dHJ1ZSwiZmFjdWx0eUlkIjoiNmExYWEwNzJmZjQzMTU1Yzg2ZDhjMGQ4IiwiaGFzQWNjZXNzIjp0cnVlLCJpYXQiOjE3ODA1NDU3MjIsImV4cCI6MTc4MDYzMjEyMn0.XM6RgJ5vrXIwr8Ymc4KQ6cnMnWvD4KTNVT_rH0agKC8",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"leaveName\": \"On Duty - Official\",\r\n  \"employeeCategories\": [\r\n    \"Teaching\"\r\n  ],\r\n  \"daysPerYear\": 2,\r\n  \"requiresApproval\": true,\r\n  \"isPaidLeave\": true,\r\n  \"carryForwardAllowed\": false,\r\n  \"allowHalfDay\": true,\r\n  \"description\": \"General purpose leave\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/leave-type/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "leave-type",
+                ""
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get leave type",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWFhMDcyZmY0MzE1NWM4NmQ4YzBkOSIsImVtYWlsIjoiYWJpc2hlay5rQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQURNSU4iLCJyb2xlIjoicHJpbmNpcGFsIiwiaXNGaXJzdFRpbWVMb2dpbiI6dHJ1ZSwiZmFjdWx0eUlkIjoiNmExYWEwNzJmZjQzMTU1Yzg2ZDhjMGQ4IiwiaGFzQWNjZXNzIjp0cnVlLCJpYXQiOjE3ODAzODMwNDMsImV4cCI6MTc4MDQ2OTQ0M30.HFLDdV30dIjqrgum3vCv6s46PE0aDAlp7M1goXbQ15o",
                   "type": "string"
                 }
               ]
@@ -796,6 +914,7 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/permissions/principal/list",
+              "raw": "{{base_url}}/api/leave-type/",
               "host": [
                 "{{base_url}}"
               ],
@@ -804,6 +923,8 @@
                 "permissions",
                 "principal",
                 "list"
+                "leave-type",
+                ""
               ]
             }
           },
@@ -811,6 +932,7 @@
         },
         {
           "name": "Apply Permission (Faculty)",
+          "name": "get leave type by id",
           "request": {
             "auth": {
               "type": "bearer",
@@ -818,6 +940,7 @@
                 {
                   "key": "token",
                   "value": "{{token}}",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWFhMDcyZmY0MzE1NWM4NmQ4YzBkOSIsImVtYWlsIjoiYWJpc2hlay5rQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQURNSU4iLCJyb2xlIjoicHJpbmNpcGFsIiwiaXNGaXJzdFRpbWVMb2dpbiI6dHJ1ZSwiZmFjdWx0eUlkIjoiNmExYWEwNzJmZjQzMTU1Yzg2ZDhjMGQ4IiwiaGFzQWNjZXNzIjp0cnVlLCJpYXQiOjE3ODAyODk5ODYsImV4cCI6MTc4MDM3NjM4Nn0.JMJ3AltiwWgVFtxxJCnpGLJjWEmKbWNLl8or6rBSRSw",
                   "type": "string"
                 }
               ]
@@ -833,6 +956,40 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"permissionDate\": \"2026-06-09\",\n  \"permissionType\": \"Medical\",\n  \"fromTime\": \"10:00\",\n  \"toTime\": \"11:00\",\n  \"totalMinutes\": 60,\n  \"reason\": \"Doctor appointment\"\n}",
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/leave-type/6a1d11d533ba4ce16a6fa31b",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "leave-type",
+                "6a1d11d533ba4ce16a6fa31b"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "edit leave type",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWFhMDcyZmY0MzE1NWM4NmQ4YzBkOSIsImVtYWlsIjoiYWJpc2hlay5rQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQURNSU4iLCJyb2xlIjoicHJpbmNpcGFsIiwiaXNGaXJzdFRpbWVMb2dpbiI6dHJ1ZSwiZmFjdWx0eUlkIjoiNmExYWEwNzJmZjQzMTU1Yzg2ZDhjMGQ4IiwiaGFzQWNjZXNzIjp0cnVlLCJpYXQiOjE3ODAyODk5ODYsImV4cCI6MTc4MDM3NjM4Nn0.JMJ3AltiwWgVFtxxJCnpGLJjWEmKbWNLl8or6rBSRSw",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"leaveName\": \"Casual Leave1\",\r\n    \"employeeCategories\": [\r\n        \"Teaching\"\r\n    ],\r\n    \"daysPerYear\": 14,\r\n    \"requiresApproval\": true,\r\n    \"isPaidLeave\": false,\r\n    \"carryForwardAllowed\": false,\r\n    \"allowHalfDay\": true,\r\n    \"description\": \"General purpose leave1\"\r\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -841,12 +998,192 @@
             },
             "url": {
               "raw": "{{base_url}}/api/permissions",
+              "raw": "{{base_url}}/api/leave-type/6a1d2a405e936737b33aed05",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "leave-type",
+                "6a1d2a405e936737b33aed05"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "New Request",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWFhMDcyZmY0MzE1NWM4NmQ4YzBkOSIsImVtYWlsIjoiYWJpc2hlay5rQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQURNSU4iLCJyb2xlIjoicHJpbmNpcGFsIiwiaXNGaXJzdFRpbWVMb2dpbiI6dHJ1ZSwiZmFjdWx0eUlkIjoiNmExYWEwNzJmZjQzMTU1Yzg2ZDhjMGQ4IiwiaGFzQWNjZXNzIjp0cnVlLCJpYXQiOjE3ODAyODk5ODYsImV4cCI6MTc4MDM3NjM4Nn0.JMJ3AltiwWgVFtxxJCnpGLJjWEmKbWNLl8or6rBSRSw",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/leave-type/6a1d2a405e936737b33aed05",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "leave-type",
+                "6a1d2a405e936737b33aed05"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "resetsemestaer leave",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWFhMDcyZmY0MzE1NWM4NmQ4YzBkOSIsImVtYWlsIjoiYWJpc2hlay5rQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQURNSU4iLCJyb2xlIjoicHJpbmNpcGFsIiwiaXNGaXJzdFRpbWVMb2dpbiI6dHJ1ZSwiZmFjdWx0eUlkIjoiNmExYWEwNzJmZjQzMTU1Yzg2ZDhjMGQ4IiwiaGFzQWNjZXNzIjp0cnVlLCJpYXQiOjE3ODAzODMwNDMsImV4cCI6MTc4MDQ2OTQ0M30.HFLDdV30dIjqrgum3vCv6s46PE0aDAlp7M1goXbQ15o",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/leave-balance/reset-semester",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "leave-balance",
+                "reset-semester"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "academicyear",
+          "request": {
+            "method": "GET",
+            "header": []
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Leave Balance",
+      "item": [
+        {
+          "name": "total leave balance",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWFhMDcyZmY0MzE1NWM4NmQ4YzBkOSIsImVtYWlsIjoiYWJpc2hlay5rQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQURNSU4iLCJyb2xlIjoicHJpbmNpcGFsIiwiaXNGaXJzdFRpbWVMb2dpbiI6dHJ1ZSwiZmFjdWx0eUlkIjoiNmExYWEwNzJmZjQzMTU1Yzg2ZDhjMGQ4IiwiaGFzQWNjZXNzIjp0cnVlLCJpYXQiOjE3ODAyODk5ODYsImV4cCI6MTc4MDM3NjM4Nn0.JMJ3AltiwWgVFtxxJCnpGLJjWEmKbWNLl8or6rBSRSw",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/leave-balance",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "leave-balance"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "faculty wise leave balance",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/leave-balance/faculty/6a1d23bcd94bb6d87897bf8d",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "leave-balance",
+                "faculty",
+                "6a1d23bcd94bb6d87897bf8d"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "curenct user balance",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWFhMDcyZmY0MzE1NWM4NmQ4YzBkOSIsImVtYWlsIjoiYWJpc2hlay5rQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQURNSU4iLCJyb2xlIjoicHJpbmNpcGFsIiwiaXNGaXJzdFRpbWVMb2dpbiI6dHJ1ZSwiZmFjdWx0eUlkIjoiNmExYWEwNzJmZjQzMTU1Yzg2ZDhjMGQ4IiwiaGFzQWNjZXNzIjp0cnVlLCJpYXQiOjE3ODAyODk5ODYsImV4cCI6MTc4MDM3NjM4Nn0.JMJ3AltiwWgVFtxxJCnpGLJjWEmKbWNLl8or6rBSRSw",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/leave-balance/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "leave-balance",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "current user balance",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWFhMDcyZmY0MzE1NWM4NmQ4YzBkOSIsImVtYWlsIjoiYWJpc2hlay5rQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQURNSU4iLCJyb2xlIjoicHJpbmNpcGFsIiwiaXNGaXJzdFRpbWVMb2dpbiI6dHJ1ZSwiZmFjdWx0eUlkIjoiNmExYWEwNzJmZjQzMTU1Yzg2ZDhjMGQ4IiwiaGFzQWNjZXNzIjp0cnVlLCJpYXQiOjE3ODAyODk5ODYsImV4cCI6MTc4MDM3NjM4Nn0.JMJ3AltiwWgVFtxxJCnpGLJjWEmKbWNLl8or6rBSRSw",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/leave-balance/me",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
                 "permissions"
+                "leave-balance",
+                "me"
               ]
             }
           },
@@ -854,6 +1191,7 @@
         },
         {
           "name": "Get My Permissions (Faculty)",
+          "name": "my leave balnce",
           "request": {
             "auth": {
               "type": "bearer",
@@ -861,6 +1199,7 @@
                 {
                   "key": "token",
                   "value": "{{token}}",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWFhMDczZmY0MzE1NWM4NmQ4YzBlMSIsImVtYWlsIjoic2F0aGl5YS5wQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQ1NFIiwicm9sZSI6ImZhY3VsdHkiLCJpc0ZpcnN0VGltZUxvZ2luIjp0cnVlLCJmYWN1bHR5SWQiOiI2YTFhYTA3M2ZmNDMxNTVjODZkOGMwZTAiLCJoYXNBY2Nlc3MiOnRydWUsImlhdCI6MTc4MDQ4MDg5NywiZXhwIjoxNzgwNTY3Mjk3fQ.p4CIFxXpLxmkW80BygmzZt673u3xoDgARQ3zHrexK7U",
                   "type": "string"
                 }
               ]
@@ -869,6 +1208,92 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/permissions/my",
+              "raw": "{{base_url}}/api/leave-balance/dashboard/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "leave-balance",
+                "dashboard",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "New Request",
+          "request": {
+            "method": "GET",
+            "header": []
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Leave Application",
+      "item": [
+        {
+          "name": "Post Leave",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWFhMDczZmY0MzE1NWM4NmQ4YzBlMSIsImVtYWlsIjoic2F0aGl5YS5wQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQ1NFIiwicm9sZSI6ImZhY3VsdHkiLCJpc0ZpcnN0VGltZUxvZ2luIjp0cnVlLCJmYWN1bHR5SWQiOiI2YTFhYTA3M2ZmNDMxNTVjODZkOGMwZTAiLCJoYXNBY2Nlc3MiOnRydWUsImlhdCI6MTc4MDU0NjA4NCwiZXhwIjoxNzgwNjMyNDg0fQ.dDMaqNi5enDyKpPYbm_fIECJw-rWPQnlW8ieO7wN2OA",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "leaveTypeId",
+                  "value": "6a20f9e825ea4842e11c95d7",
+                  "type": "text",
+                  "uuid": "8d7dcbb4-8f40-45f4-99ad-fc1b2e7a1dfb"
+                },
+                {
+                  "key": "fromDate",
+                  "value": "2026-06-10",
+                  "type": "text",
+                  "uuid": "dfaa3964-19d8-4979-a1bc-60d1db76f722"
+                },
+                {
+                  "key": "toDate",
+                  "value": "2026-06-10",
+                  "type": "text",
+                  "uuid": "69eb15e1-18db-40b1-85a2-e07ebb81272b"
+                },
+                {
+                  "key": "leaveSession",
+                  "value": "Full Day",
+                  "type": "text",
+                  "uuid": "53b443b4-a5af-4006-8253-18faa8da4bf3"
+                },
+                {
+                  "key": "reason",
+                  "value": "Test",
+                  "type": "text",
+                  "uuid": "65e7c3d7-6105-4ac6-b226-3544ef5ebf25"
+                },
+                {
+                  "key": "files",
+                  "type": "file",
+                  "uuid": "5e5e26ca-fb1e-48c6-83a9-f1a500426673",
+                  "src": "/C:/Users/Abishek K/OneDrive/Documents/STATUTORY FORM-Aravinth.pdf",
+                  "disabled": true
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/leave-application/",
               "host": [
                 "{{base_url}}"
               ],
@@ -876,6 +1301,8 @@
                 "api",
                 "permissions",
                 "my"
+                "leave-application",
+                ""
               ]
             }
           },
@@ -883,6 +1310,7 @@
         },
         {
           "name": "Get Permission By Id",
+          "name": "get all applications",
           "request": {
             "auth": {
               "type": "bearer",
@@ -890,6 +1318,7 @@
                 {
                   "key": "token",
                   "value": "{{token}}",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWFhMDcyZmY0MzE1NWM4NmQ4YzBkOSIsImVtYWlsIjoiYWJpc2hlay5rQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQURNSU4iLCJyb2xlIjoicHJpbmNpcGFsIiwiaXNGaXJzdFRpbWVMb2dpbiI6dHJ1ZSwiZmFjdWx0eUlkIjoiNmExYWEwNzJmZjQzMTU1Yzg2ZDhjMGQ4IiwiaGFzQWNjZXNzIjp0cnVlLCJpYXQiOjE3ODAzOTkzNjksImV4cCI6MTc4MDQ4NTc2OX0.TpXNBrhyXr_TgpauienuQ_7MpbL3SKGKPhSpFp3d3Xc",
                   "type": "string"
                 }
               ]
@@ -898,6 +1327,7 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/permissions/:id",
+              "raw": "{{base_url}}/api/leave-application/?department=CSE&currentApprovalLevel=hod",
               "host": [
                 "{{base_url}}"
               ],
@@ -905,6 +1335,19 @@
                 "api",
                 "permissions",
                 ":id"
+                "leave-application",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "department",
+                  "value": "CSE"
+                },
+                {
+                  "key": "currentApprovalLevel",
+                  "value": "hod",
+                  "type": "text"
+                }
               ]
             }
           },
@@ -912,6 +1355,7 @@
         },
         {
           "name": "Get Permissions For HOD",
+          "name": "my leave applications",
           "request": {
             "auth": {
               "type": "bearer",
@@ -919,6 +1363,7 @@
                 {
                   "key": "token",
                   "value": "{{token}}",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWQyM2JjZDk0YmI2ZDg3ODk3YmY4ZSIsImVtYWlsIjoiYWJpc2hla2tyaXNobmF0QGdtYWlsLmNvbSIsImRlcGFydG1lbnQiOiJDUyIsInJvbGUiOiJmYWN1bHR5IiwiaXNGaXJzdFRpbWVMb2dpbiI6dHJ1ZSwiZmFjdWx0eUlkIjoiNmExZDIzYmNkOTRiYjZkODc4OTdiZjhkIiwiaGFzQWNjZXNzIjp0cnVlLCJpYXQiOjE3ODAzMDUxNDYsImV4cCI6MTc4MDM5MTU0Nn0.UnFa477Bo6LtfFPXxVUNmAXisfY4PUZM6VazabDU2yk",
                   "type": "string"
                 }
               ]
@@ -927,6 +1372,7 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/permissions/hod/list",
+              "raw": "{{base_url}}/api/leave-application/me",
               "host": [
                 "{{base_url}}"
               ],
@@ -935,6 +1381,8 @@
                 "permissions",
                 "hod",
                 "list"
+                "leave-application",
+                "me"
               ]
             }
           },
@@ -942,6 +1390,7 @@
         },
         {
           "name": "Cancel Permission (Faculty)",
+          "name": "approve",
           "request": {
             "auth": {
               "type": "bearer",
@@ -949,6 +1398,7 @@
                 {
                   "key": "token",
                   "value": "{{token}}",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMjBmOGQwOGU2NWIxOTMyMWFkOWFkOSIsImVtYWlsIjoiaXFhY0BzZWNlLmFjLmluIiwiZGVwYXJ0bWVudCI6IkNTIiwicm9sZSI6ImlxYWMiLCJpc0ZpcnN0VGltZUxvZ2luIjp0cnVlLCJmYWN1bHR5SWQiOiI2YTIwZjhjZjhlNjViMTkzMjFhZDlhZDgiLCJoYXNBY2Nlc3MiOnRydWUsImlhdCI6MTc4MDU0NjQxNSwiZXhwIjoxNzgwNjMyODE1fQ.VsDDg2uQ0qO4vPUdrY4KOnVeZ87MGjAUkAI3uefnyDQ",
                   "type": "string"
                 }
               ]
@@ -964,6 +1414,10 @@
             "body": {
               "mode": "raw",
               "raw": "{}",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
               "options": {
                 "raw": {
                   "language": "json"
@@ -972,6 +1426,7 @@
             },
             "url": {
               "raw": "{{base_url}}/api/permissions/:id/cancel",
+              "raw": "{{base_url}}/api/leave-application/6a20fa7c25ea4842e11c95d9/approve",
               "host": [
                 "{{base_url}}"
               ],
@@ -980,6 +1435,9 @@
                 "permissions",
                 ":id",
                 "cancel"
+                "leave-application",
+                "6a20fa7c25ea4842e11c95d9",
+                "approve"
               ]
             }
           },
@@ -987,6 +1445,20 @@
         },
         {
           "name": "Approve Permission (Principal)",
+          "name": "New Request",
+          "request": {
+            "method": "GET",
+            "header": []
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "comboff request",
+      "item": [
+        {
+          "name": "post request",
           "request": {
             "auth": {
               "type": "bearer",
@@ -994,6 +1466,7 @@
                 {
                   "key": "token",
                   "value": "{{token}}",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWU3YWJlZTAyZjg2ZDAwMzAxYjcwNSIsImVtYWlsIjoiYWsxQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQ1MiLCJyb2xlIjoiZmFjdWx0eSIsImlzRmlyc3RUaW1lTG9naW4iOnRydWUsImZhY3VsdHlJZCI6IjZhMWU3YWJlZTAyZjg2ZDAwMzAxYjcwNCIsImhhc0FjY2VzcyI6dHJ1ZSwiaWF0IjoxNzgwMzg2MTYxLCJleHAiOjE3ODA0NzI1NjF9.QKQR-k-nizEpsF4TFtIVMKej-4EiNsJmfVA3L9XXf7M",
                   "type": "string"
                 }
               ]
@@ -1009,6 +1482,11 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"remarks\": \"Approved by principal\"\n}",
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"workedFromDate\": \"2026-06-03\",\r\n  \"workedToDate\": \"2026-06-03\",\r\n  \"compOffDays\": 1,\r\n  \"reason\": \"NAAC Work\"\r\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1017,6 +1495,7 @@
             },
             "url": {
               "raw": "{{base_url}}/api/permissions/:id/approve",
+              "raw": "{{base_url}}/api/comp-off/",
               "host": [
                 "{{base_url}}"
               ],
@@ -1025,6 +1504,66 @@
                 "permissions",
                 ":id",
                 "approve"
+                "comp-off",
+                ""
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get my request",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWU3YWJlZTAyZjg2ZDAwMzAxYjcwNSIsImVtYWlsIjoiYWsxQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQ1MiLCJyb2xlIjoiZmFjdWx0eSIsImlzRmlyc3RUaW1lTG9naW4iOnRydWUsImZhY3VsdHlJZCI6IjZhMWU3YWJlZTAyZjg2ZDAwMzAxYjcwNCIsImhhc0FjY2VzcyI6dHJ1ZSwiaWF0IjoxNzgwMzg2MTYxLCJleHAiOjE3ODA0NzI1NjF9.QKQR-k-nizEpsF4TFtIVMKej-4EiNsJmfVA3L9XXf7M",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/comp-off/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "comp-off",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "get by id",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWU3YWJlZTAyZjg2ZDAwMzAxYjcwNSIsImVtYWlsIjoiYWsxQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQ1MiLCJyb2xlIjoiZmFjdWx0eSIsImlzRmlyc3RUaW1lTG9naW4iOnRydWUsImZhY3VsdHlJZCI6IjZhMWU3YWJlZTAyZjg2ZDAwMzAxYjcwNCIsImhhc0FjY2VzcyI6dHJ1ZSwiaWF0IjoxNzgwMzg2MTYxLCJleHAiOjE3ODA0NzI1NjF9.QKQR-k-nizEpsF4TFtIVMKej-4EiNsJmfVA3L9XXf7M",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/comp-off/6a1e89d764138e2eadbbe013",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "comp-off",
+                "6a1e89d764138e2eadbbe013"
               ]
             }
           },
@@ -1032,6 +1571,7 @@
         },
         {
           "name": "Reject Permission (Principal)",
+          "name": "approve",
           "request": {
             "auth": {
               "type": "bearer",
@@ -1039,6 +1579,7 @@
                 {
                   "key": "token",
                   "value": "{{token}}",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWFhMDcyZmY0MzE1NWM4NmQ4YzBkOSIsImVtYWlsIjoiYWJpc2hlay5rQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQURNSU4iLCJyb2xlIjoicHJpbmNpcGFsIiwiaXNGaXJzdFRpbWVMb2dpbiI6dHJ1ZSwiZmFjdWx0eUlkIjoiNmExYWEwNzJmZjQzMTU1Yzg2ZDhjMGQ4IiwiaGFzQWNjZXNzIjp0cnVlLCJpYXQiOjE3ODAzODY0ODksImV4cCI6MTc4MDQ3Mjg4OX0.W9pRKk1osz0ZE7Hsqpjh5OTo9E0QPDNZu3-dCEPxCEE",
                   "type": "string"
                 }
               ]
@@ -1054,6 +1595,10 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"remarks\": \"Rejected by principal\"\n}",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1062,6 +1607,7 @@
             },
             "url": {
               "raw": "{{base_url}}/api/permissions/:id/reject",
+              "raw": "{{base_url}}/api/comp-off/6a1e8d1e3123ce245a8c4a2f/approve",
               "host": [
                 "{{base_url}}"
               ],
@@ -1070,6 +1616,9 @@
                 "permissions",
                 ":id",
                 "reject"
+                "comp-off",
+                "6a1e8d1e3123ce245a8c4a2f",
+                "approve"
               ]
             }
           },
@@ -1077,6 +1626,7 @@
         },
         {
           "name": "Get Permission Card (This Month)",
+          "name": "withdraw",
           "request": {
             "auth": {
               "type": "bearer",
@@ -1084,6 +1634,7 @@
                 {
                   "key": "token",
                   "value": "{{token}}",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWU3YWJlZTAyZjg2ZDAwMzAxYjcwNSIsImVtYWlsIjoiYWsxQHNlY2UuYWMuaW4iLCJkZXBhcnRtZW50IjoiQ1MiLCJyb2xlIjoiZmFjdWx0eSIsImlzRmlyc3RUaW1lTG9naW4iOnRydWUsImZhY3VsdHlJZCI6IjZhMWU3YWJlZTAyZjg2ZDAwMzAxYjcwNCIsImhhc0FjY2VzcyI6dHJ1ZSwiaWF0IjoxNzgwMzg2MTYxLCJleHAiOjE3ODA0NzI1NjF9.QKQR-k-nizEpsF4TFtIVMKej-4EiNsJmfVA3L9XXf7M",
                   "type": "string"
                 }
               ]
@@ -1092,6 +1643,48 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/permissions/card/month",
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"workedFromDate\": \"2026-06-01\",\r\n  \"workedToDate\": \"2026-06-02\",\r\n  \"compOffDays\": 2,\r\n  \"reason\": \"NAAC Work\"\r\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/comp-off/6a1e8cc43123ce245a8c4a2e/withdraw",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "comp-off",
+                "6a1e8cc43123ce245a8c4a2e",
+                "withdraw"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "hod revoke",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMWFhMDcyZmY0MzE1NWM4NmQ4YzBkZiIsImVtYWlsIjoiZGhhcnNoYW4ucG1Ac2VjZS5hYy5pbiIsImRlcGFydG1lbnQiOiJDU0UiLCJyb2xlIjoiaG9kIiwiaXNGaXJzdFRpbWVMb2dpbiI6dHJ1ZSwiZmFjdWx0eUlkIjoiNmExYWEwNzJmZjQzMTU1Yzg2ZDhjMGRlIiwiaGFzQWNjZXNzIjp0cnVlLCJpYXQiOjE3ODAzODY0MTksImV4cCI6MTc4MDQ3MjgxOX0.uF5AtDK8n10cGY41wOifPyKFDu1X_V-oHuMxiVtFB1g",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"workedFromDate\": \"2026-06-01\",\r\n  \"workedToDate\": \"2026-06-02\",\r\n  \"compOffDays\": 2,\r\n  \"reason\": \"NAAC Work\"\r\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/comp-off/6a1e8d1e3123ce245a8c4a2f/revoke-hod",
               "host": [
                 "{{base_url}}"
               ],
@@ -1100,6 +1693,9 @@
                 "permissions",
                 "card",
                 "month"
+                "comp-off",
+                "6a1e8d1e3123ce245a8c4a2f",
+                "revoke-hod"
               ]
             }
           },

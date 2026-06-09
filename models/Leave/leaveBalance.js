@@ -1,40 +1,55 @@
 const mongoose = require("mongoose");
 
-const leaveBalanceSchema = new mongoose.Schema(
-{
-    facultyId: {
+const leaveBalanceSchema =
+  new mongoose.Schema(
+    {
+      facultyId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Faculty",
         required: true,
-    },
+      },
 
-    academicYear: {
+      leaveTypeId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "LeaveType",
+        required: true,
+      },
+
+      academicYear: {
         type: String,
         required: true,
-    },
+      },
 
-    leaveType: {
-        type: String,
-        required: true,
-    },
-
-    availableDays: {
+      allocatedDays: {
         type: Number,
         default: 0,
-    },
+      },
 
-    usedDays: {
+      usedDays: {
         type: Number,
         default: 0,
-    },
+      },
 
-    creditedDays: {
+      remainingDays: {
         type: Number,
         default: 0,
+      },
     },
-},
-{
-    timestamps: true,
-});
+    {
+      timestamps: true,
+    }
+  );
 
-module.exports = mongoose.model("LeaveBalance", leaveBalanceSchema);
+leaveBalanceSchema.index(
+  {
+    facultyId: 1,
+    leaveTypeId: 1,
+    academicYear: 1,
+  },
+  {
+    unique: true,
+  }
+);
+
+module.exports =
+  mongoose.models.LeaveBalance || mongoose.model("LeaveBalance", leaveBalanceSchema);

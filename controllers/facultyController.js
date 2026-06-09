@@ -10,16 +10,12 @@ const cloudinary = require("cloudinary").v2;
 const sendMail = require("../utils/sendMail");
 const renderTemplate = require("../utils/renderTemplate");
 
+const createLeaveBalances = require("../services/createLeaveBalances");
+const generatePunchId = require("../utils/generatePunchId");
+
 // ================= IMPORT EXCEL =================
 const XLSX = require("xlsx");
 
-const allowedDocumentTypes = [
-  "markSheets",
-  "degreeCertificates",
-  "experienceCertificates",
-  "relievingLetter",
-  "otherDocuments",
-];
 
 exports.importExcelFaculty = async (req, res) => {
   try {
@@ -91,6 +87,8 @@ exports.importExcelFaculty = async (req, res) => {
         
         punchId: data.punchId,
 
+        punchId: data.punchId || (await generatePunchId()),
+
         employmentStatus: data.employmentStatus ?? true,
       };
 
@@ -114,6 +112,8 @@ exports.importExcelFaculty = async (req, res) => {
       }
 
       const faculty = await Faculty.create(facultyData);
+
+      await createLeaveBalances(faculty._id);
 
       const password = "Sece@123";
       const hashed = await bcrypt.hash(password, 10);
@@ -175,11 +175,14 @@ exports.addIndividualFaculty = async (req, res) => {
       req.body.department,
       req.body.role,
     );
-
+    const punchId = await generatePunchId();
     const faculty = await Faculty.create({
       ...req.body,
       empId,
+      punchId,
     });
+
+    await createLeaveBalances(faculty._id);
 
     const hashedPassword = await bcrypt.hash("Sece@123", 10);
 
@@ -384,11 +387,10 @@ exports.deleteProfileImage = async (req, res) => {
 exports.uploadDocuments = async (req, res) => {
   try {
     const { id } = req.params;
-    const { documentType } = req.body;
 
-    if (!allowedDocumentTypes.includes(documentType)) {
+    if (!req.files || Object.keys(req.files).length === 0) {
       return res.status(400).json({
-        message: "Invalid document type",
+        message: "No files uploaded",
       });
     }
 
@@ -400,28 +402,58 @@ exports.uploadDocuments = async (req, res) => {
       });
     }
 
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).json({
-        message: "No files uploaded",
-      });
+    // Single documents
+    const singleFields = [
+      "sslcMarkSheet",
+      "hscMarkSheet",
+      "ugDegreeCertificate",
+      "pgDegreeCertificate",
+      "phdDegreeCertificate",
+      "panCard",
+      "aadharCard",
+    ];
+
+    for (const field of singleFields) {
+      if (req.files[field]?.length) {
+        if (faculty.documents[field]?.publicId) {
+          await cloudinary.uploader.destroy(
+            faculty.documents[field].publicId
+          );
+        }
+    
+        faculty.documents[field] = {
+          url: req.files[field][0].path,
+          publicId: req.files[field][0].filename,
+        };
+      }
     }
 
-    const uploadedDocs = req.files.map((file) => ({
-      url: file.path,
-      publicId: file.filename,
-    }));
+    // Multiple documents
+    const multiFields = [
+      "experienceCertificates",
+      "relievingLetters",
+      "otherDocuments",
+    ];
 
-    faculty.documents[documentType].push(...uploadedDocs);
+    for (const field of multiFields) {
+      if (req.files[field]?.length) {
+        const uploadedDocs = req.files[field].map((file) => ({
+          url: file.path,
+          publicId: file.filename,
+        }));
+
+        faculty.documents[field].push(...uploadedDocs);
+      }
+    };
 
     await faculty.save();
 
     res.status(200).json({
       success: true,
       message: "Documents uploaded successfully",
-      documents: faculty.documents[documentType],
+      documents: faculty.documents,
     });
   } catch (error) {
-    console.error(error);
     res.status(500).json({
       message: error.message,
     });
@@ -441,11 +473,42 @@ exports.deleteDocument = async (req, res) => {
       });
     }
 
-    await cloudinary.uploader.destroy(publicId);
+    const singleFields = [
+      "sslcMarkSheet",
+      "hscMarkSheet",
+      "ugDegreeCertificate",
+      "pgDegreeCertificate",
+      "phdDegreeCertificate",
+      "panCard",
+      "aadharCard",
+    ];
 
-    faculty.documents[documentType] = faculty.documents[documentType].filter(
-      (doc) => doc.publicId !== publicId,
-    );
+    if (singleFields.includes(documentType)) {
+      const doc = faculty.documents[documentType];
+
+      if (!doc) {
+        return res.status(404).json({
+          message: "Document not found",
+        });
+      }
+
+      await cloudinary.uploader.destroy(doc.publicId);
+
+      faculty.documents[documentType] = null;
+    } else {
+      if (!faculty.documents[documentType]) {
+        return res.status(400).json({
+          message: "Invalid document type",
+        });
+      }
+      
+      await cloudinary.uploader.destroy(publicId);
+      
+      faculty.documents[documentType] =
+        faculty.documents[documentType].filter(
+          (doc) => doc.publicId !== publicId
+        );
+    }
 
     await faculty.save();
 
@@ -455,6 +518,54 @@ exports.deleteDocument = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+exports.searchFaculty = async (req, res) => {
+  try {
+    const { q = "" } = req.query;
+
+    const faculties = await Faculty.find({
+      $or: [
+        { firstName: { $regex: q, $options: "i" } },
+        { lastName: { $regex: q, $options: "i" } },
+        { empId: { $regex: q, $options: "i" } },
+        {
+          $expr: {
+            $regexMatch: {
+              input: { $concat: ["$firstName", " ", "$lastName"] },
+              regex: q,
+              options: "i",
+            },
+          },
+        },
+      ],
+    })
+      .select(
+        "_id empId firstName lastName designation department profileImage"
+      )
+      .limit(10);
+
+    const result = faculties.map((faculty) => ({
+      facultyId: faculty._id,
+      empId: faculty.empId,
+      firstName: faculty.firstName,
+      lastName: faculty.lastName,
+      name: `${faculty.firstName} ${faculty.lastName}`,
+      designation: faculty.designation,
+      department: faculty.department,
+      profileImage: faculty.profileImage?.url || null,
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
       message: error.message,
     });
   }

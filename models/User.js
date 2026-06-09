@@ -63,6 +63,11 @@ const userSchema = new mongoose.Schema(
         "driver",
         "housekeeping",
         "dean",
+        "supervisor-driver",
+        "supervisor-housekeeping",
+        "iqac",
+        "coe",
+        "hr",
       ],
       default: "faculty",
     },
@@ -73,7 +78,7 @@ const userSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 module.exports = mongoose.model("User", userSchema);

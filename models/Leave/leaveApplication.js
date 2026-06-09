@@ -1,89 +1,132 @@
 const mongoose = require("mongoose");
 
 const documentSchema = new mongoose.Schema(
-{
+  {
     url: String,
     publicId: String,
-},
-{
-    _id: false,
-});
+  },
+  { _id: false },
+);
 
-const leaveSchema = new mongoose.Schema(
-{
-    facultyId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Faculty",
-        required: true,
-    },
-
-    leaveType: {
-        type: String,
-        enum: [
-            "CL",
-            "ML",
-            "Maternity",
-            "Paternity",
-            "Vacation",
-            "Marriage",
-            "CompOff",
-            "OnDuty",
-            "Sabbatical",
-            "LOP",
-        ],
-        required: true,
-    },
-
-    fromDate: {
-        type: Date,
-        required: true,
-    },
-
-    toDate: {
-        type: Date,
-        required: true,
-    },
-
-    totalDays: {
-        type: Number,
-        required: true,
-    },
-
-    session: {
-        type: String,
-        enum: ["Full Day", "FN", "AN"],
-        default: "Full Day",
-    },
-
-    reason: {
-        type: String,
-        required: true,
-    },
-
-    attachment: documentSchema,
-
-    status: {
-        type: String,
-        enum: [
-            "Pending",
-            "Approved",
-            "Rejected",
-            "Cancelled",
-        ],
-        default: "Pending",
+const approvalHistorySchema = new mongoose.Schema(
+  {
+    role: {
+      type: String,
+      enum: [
+        "hod",
+        "dean",
+        "principal",
+        "hr",
+        "admin",
+        "supervisor",
+        "faculty",
+        "non-teaching",
+        "iqac",
+        "coe",
+      ],
     },
 
     approvedBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Faculty",
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
     },
 
-    approvedAt: Date,
+    action: {
+      type: String,
+      enum: ["Submitted", "Approved", "Rejected", "Cancelled"],
+    },
 
     remarks: String,
-},
-{
+
+    actionDate: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false },
+);
+
+const leaveApplicationSchema = new mongoose.Schema(
+  {
+    facultyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Faculty",
+      required: true,
+    },
+
+    leaveTypeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "LeaveType",
+      required: true,
+    },
+
+    fromDate: {
+      type: Date,
+      required: true,
+    },
+
+    toDate: {
+      type: Date,
+      required: true,
+    },
+
+    leaveSession: {
+      type: String,
+      enum: ["Full Day", "First Half", "Second Half"],
+      default: "Full Day",
+    },
+
+    totalDays: {
+      type: Number,
+      required: true,
+    },
+
+    reason: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    supportingDocuments: [documentSchema],
+
+    currentApprovalLevel: {
+      type: String,
+      enum: [
+        "hod",
+        "dean",
+        "principal",
+        "hr",
+        "admin",
+        "supervisor",
+        "completed",
+        "iqac",
+        "coe",
+      ],
+      default: "hod",
+    },
+
+    status: {
+      type: String,
+      enum: ["Pending", "Approved", "Rejected", "Cancelled"],
+      default: "Pending",
+    },
+
+    approvalHistory: [approvalHistorySchema],
+  },
+  {
     timestamps: true,
+  },
+);
+leaveApplicationSchema.index({
+  facultyId: 1,
+  status: 1,
 });
 
-module.exports = mongoose.model("Leave", leaveSchema);
+leaveApplicationSchema.index({
+  currentApprovalLevel: 1,
+  status: 1,
+});
+
+module.exports =
+  mongoose.models.LeaveApplication ||
+  mongoose.model("LeaveApplication", leaveApplicationSchema);
