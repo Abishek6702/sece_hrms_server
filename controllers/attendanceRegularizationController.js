@@ -1,0 +1,326 @@
+const AttendanceRegularization = require("../models/AttendanceRegularization");
+const User = require("../models/User");
+const Faculty = require("../models/Faculty");
+
+const requireRole = (req, role) => {
+  const roles = Array.isArray(role) ? role : [role];
+  if (!req.user || !roles.includes(req.user.role)) {
+    const err = new Error("Forbidden");
+    err.status = 403;
+    throw err;
+  }
+};
+
+const getRequestActionLabel = (request) => {
+  if (request.status === "Pending") {
+    if (request.currentApprovalLevel === "hod") return "Pending HOD approval";
+    if (request.currentApprovalLevel === "principal") return "Pending Principal approval";
+    return "Pending";
+  }
+
+  if (request.status === "Approved") return "Approved";
+  if (request.status === "Rejected") return "Rejected";
+  if (request.status === "Cancelled") return "Cancelled";
+  return request.status || "Unknown";
+};
+
+exports.createAttendanceRegularization = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(401).json({ success: false, message: "User not found" });
+    }
+
+    const facultyId = user.facultyId || (await Faculty.findOne({ user: user._id }))?._id;
+    if (!facultyId) {
+      return res.status(400).json({ success: false, message: "Faculty information missing" });
+    }
+
+    const { attendanceDate, requestedInTime, requestedOutTime, reason } = req.body;
+
+    const request = await AttendanceRegularization.create({
+      facultyId,
+      attendanceDate,
+      requestedInTime: requestedInTime || null,
+      requestedOutTime: requestedOutTime || null,
+      reason,
+      approvalHistory: [
+        {
+          role: "faculty",
+          approvedBy: user._id,
+          action: "Submitted",
+          remarks: reason || "",
+        },
+      ],
+    });
+
+    res.status(201).json({ success: true, message: "Request created", request });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getMyRequests = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(401).json({ success: false, message: "User not found" });
+    }
+
+    const requests = await AttendanceRegularization.find({ facultyId: user.facultyId })
+      .populate("facultyId", "firstName lastName department empId")
+      .sort({ createdAt: -1 });
+
+    const requestsWithAction = requests.map((request) => {
+      const obj = request.toObject ? request.toObject() : { ...request };
+      obj.action = getRequestActionLabel(obj);
+      return obj;
+    });
+
+    res.status(200).json({ success: true, count: requestsWithAction.length, requests: requestsWithAction });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getRequests = async (req, res) => {
+  try {
+    const query = {};
+    if (req.query.currentApprovalLevel) {
+      query.currentApprovalLevel = req.query.currentApprovalLevel;
+    }
+    if (req.query.status) {
+      query.status = req.query.status;
+    }
+
+    const requests = await AttendanceRegularization.find(query)
+      .populate("facultyId", "firstName lastName department empId")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({ success: true, count: requests.length, requests });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getRequestsForHod = async (req, res) => {
+  try {
+    requireRole(req, "hod");
+
+    const requests = await AttendanceRegularization.find({
+      currentApprovalLevel: "hod",
+      status: "Pending",
+    })
+      .populate("facultyId", "firstName lastName department empId")
+      .sort({ createdAt: -1 });
+
+    const filtered = requests.filter((request) => request.facultyId?.department === req.user.department);
+
+    res.status(200).json({ success: true, count: filtered.length, requests: filtered });
+  } catch (error) {
+    const status = error.status || 500;
+    res.status(status).json({ success: false, message: error.message });
+  }
+};
+
+exports.getRequestsForPrincipal = async (req, res) => {
+  try {
+    requireRole(req, "principal");
+
+    const requests = await AttendanceRegularization.find({
+      currentApprovalLevel: "principal",
+      status: "Pending",
+    })
+      .populate("facultyId", "firstName lastName department empId")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({ success: true, count: requests.length, requests });
+  } catch (error) {
+    const status = error.status || 500;
+    res.status(status).json({ success: false, message: error.message });
+  }
+};
+
+exports.getRequestById = async (req, res) => {
+  try {
+    const request = await AttendanceRegularization.findById(req.params.id)
+      .populate("facultyId", "firstName lastName department empId")
+      .populate("approvedBy", "firstName lastName email");
+
+    if (!request) return res.status(404).json({ success: false, message: "Request not found" });
+
+    res.status(200).json({ success: true, request });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.updateRequest = async (req, res) => {
+  try {
+    const request = await AttendanceRegularization.findById(req.params.id);
+
+    if (!request) return res.status(404).json({ success: false, message: "Request not found" });
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(401).json({ success: false, message: "User not found" });
+    }
+
+    if (!request.facultyId.toString() || !user.facultyId || request.facultyId.toString() !== user.facultyId.toString()) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+
+    if (request.status !== "Pending" || request.currentApprovalLevel !== "hod") {
+      return res.status(400).json({
+        success: false,
+        message: "Only pending requests that are still with HOD can be updated",
+      });
+    }
+
+    const { requestedInTime, requestedOutTime, reason } = req.body;
+    if (requestedInTime !== undefined) request.requestedInTime = requestedInTime;
+    if (requestedOutTime !== undefined) request.requestedOutTime = requestedOutTime;
+    if (reason !== undefined) request.reason = reason;
+
+    await request.save();
+
+    res.status(200).json({ success: true, message: "Request updated", request });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.approveRequest = async (req, res) => {
+  try {
+    requireRole(req, ["hod", "principal"]);
+    const request = await AttendanceRegularization.findById(req.params.id);
+
+    if (!request) return res.status(404).json({ success: false, message: "Request not found" });
+    if (request.status !== "Pending") return res.status(400).json({ success: false, message: "Request already processed" });
+
+    const remarks = req.body.approvalRemarks || "Approved";
+    const user = await User.findById(req.user.id);
+
+    if (req.user.role === "hod") {
+      if (request.currentApprovalLevel !== "hod") {
+        return res.status(403).json({ success: false, message: "Request is not pending HOD approval" });
+      }
+
+      request.currentApprovalLevel = "principal";
+      request.approvalRemarks = remarks;
+      request.approvalHistory.push({
+        role: "hod",
+        approvedBy: user._id,
+        action: "Approved",
+        remarks,
+      });
+
+      await request.save();
+      return res.status(200).json({ success: true, message: "Request approved by HOD and forwarded to Principal", request });
+    }
+
+    if (req.user.role === "principal") {
+      if (request.currentApprovalLevel !== "principal") {
+        return res.status(403).json({ success: false, message: "Request is not pending Principal approval" });
+      }
+
+      request.currentApprovalLevel = "completed";
+      request.status = "Approved";
+      request.approvedBy = req.user.id;
+      request.processedAt = new Date();
+      request.approvalRemarks = remarks;
+      request.approvalHistory.push({
+        role: "principal",
+        approvedBy: user._id,
+        action: "Approved",
+        remarks,
+      });
+
+      await request.save();
+      return res.status(200).json({ success: true, message: "Request approved by Principal", request });
+    }
+
+    res.status(403).json({ success: false, message: "You are not authorized to approve this request" });
+  } catch (error) {
+    const status = error.status || 500;
+    res.status(status).json({ success: false, message: error.message });
+  }
+};
+
+exports.rejectRequest = async (req, res) => {
+  try {
+    requireRole(req, ["hod", "principal"]);
+    const request = await AttendanceRegularization.findById(req.params.id);
+
+    if (!request) return res.status(404).json({ success: false, message: "Request not found" });
+    if (request.status !== "Pending") return res.status(400).json({ success: false, message: "Request already processed" });
+
+    const remarks = req.body.approvalRemarks || "Rejected";
+    const user = await User.findById(req.user.id);
+
+    if (req.user.role === "hod" && request.currentApprovalLevel !== "hod") {
+      return res.status(403).json({ success: false, message: "Request is not pending HOD approval" });
+    }
+    if (req.user.role === "principal" && request.currentApprovalLevel !== "principal") {
+      return res.status(403).json({ success: false, message: "Request is not pending Principal approval" });
+    }
+
+    request.currentApprovalLevel = "completed";
+    request.status = "Rejected";
+    request.approvedBy = req.user.id;
+    request.processedAt = new Date();
+    request.approvalRemarks = remarks;
+    request.approvalHistory.push({
+      role: req.user.role,
+      approvedBy: user._id,
+      action: "Rejected",
+      remarks,
+    });
+
+    await request.save();
+    res.status(200).json({ success: true, message: "Request rejected", request });
+  } catch (error) {
+    const status = error.status || 500;
+    res.status(status).json({ success: false, message: error.message });
+  }
+};
+
+exports.cancelRequest = async (req, res) => {
+  try {
+    const request = await AttendanceRegularization.findById(req.params.id);
+
+    if (!request) return res.status(404).json({ success: false, message: "Request not found" });
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(401).json({ success: false, message: "User not found" });
+    }
+
+    if (!request.facultyId.toString() || !user.facultyId || request.facultyId.toString() !== user.facultyId.toString()) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+
+    if (request.status !== "Pending") {
+      return res.status(400).json({ success: false, message: "Only pending requests can be cancelled" });
+    }
+    if (request.currentApprovalLevel !== "hod") {
+      return res.status(400).json({ success: false, message: "Cannot withdraw after HOD approval" });
+    }
+
+    request.status = "Cancelled";
+    request.currentApprovalLevel = "completed";
+    request.processedAt = new Date();
+    request.approvalHistory.push({
+      role: "faculty",
+      approvedBy: user._id,
+      action: "Cancelled",
+      remarks: req.body.approvalRemarks || "Withdrawn by faculty",
+    });
+
+    await request.save();
+
+    res.status(200).json({ success: true, message: "Request cancelled", request });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

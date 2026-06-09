@@ -1,0 +1,316 @@
+{
+  "info": {
+    "_postman_id": "attendance-regularization-collection",
+    "name": "Attendance Regularization",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Apply Attendance Regularization (Faculty)",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"attendanceDate\": \"2026-06-09\",\n  \"requestedInTime\": \"2026-06-09T09:00:00.000Z\",\n  \"requestedOutTime\": \"2026-06-09T17:00:00.000Z\",\n  \"reason\": \"Forgot to punch\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/attendance-regularization",
+          "host": ["{{base_url}}"],
+          "path": ["api", "attendance-regularization"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get My Attendance Regularization Requests (Faculty)",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/api/attendance-regularization/my",
+          "host": ["{{base_url}}"],
+          "path": ["api", "attendance-regularization", "my"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get All Attendance Regularization Requests",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/api/attendance-regularization",
+          "host": ["{{base_url}}"],
+          "path": ["api", "attendance-regularization"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Attendance Regularization Requests with Filter",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/api/attendance-regularization?currentApprovalLevel=hod&status=Pending",
+          "host": ["{{base_url}}"],
+          "path": ["api", "attendance-regularization"],
+          "query": [
+            {
+              "key": "currentApprovalLevel",
+              "value": "hod"
+            },
+            {
+              "key": "status",
+              "value": "Pending"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Attendance Regularization Request By Id",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/api/attendance-regularization/:id",
+          "host": ["{{base_url}}"],
+          "path": ["api", "attendance-regularization", ":id"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Update Attendance Regularization Request (Faculty)",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestedInTime\": \"2026-06-09T10:00:00.000Z\",\n  \"reason\": \"Adjusted time\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/attendance-regularization/:id",
+          "host": ["{{base_url}}"],
+          "path": ["api", "attendance-regularization", ":id"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Approve Attendance Regularization Request",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"approvalRemarks\": \"Approved\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/attendance-regularization/:id/approve",
+          "host": ["{{base_url}}"],
+          "path": ["api", "attendance-regularization", ":id", "approve"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Reject Attendance Regularization Request",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"approvalRemarks\": \"Rejected due to invalid time\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/attendance-regularization/:id/reject",
+          "host": ["{{base_url}}"],
+          "path": ["api", "attendance-regularization", ":id", "reject"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Cancel Attendance Regularization Request (Faculty)",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "PATCH",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/attendance-regularization/:id/cancel",
+          "host": ["{{base_url}}"],
+          "path": ["api", "attendance-regularization", ":id", "cancel"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Attendance Regularization Requests For HOD",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/api/attendance-regularization/hod/list",
+          "host": ["{{base_url}}"],
+          "path": ["api", "attendance-regularization", "hod", "list"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Attendance Regularization Requests For Principal",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/api/attendance-regularization/principal/list",
+          "host": ["{{base_url}}"],
+          "path": ["api", "attendance-regularization", "principal", "list"]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ]
+}
