@@ -3,6 +3,7 @@ const Holiday = require("../models/holiday");
 const Faculty = require("../models/Faculty");
 const LeaveApplication = require("../models/Leave/leaveApplication");
 const AttendanceLateCounter = require("../models/attendanceLateCounter");
+const Permission = require("../models/permission.js");
 
 async function processAttendance(attendanceDate) {
   const date = new Date(attendanceDate);
@@ -77,7 +78,18 @@ async function processAttendance(attendanceDate) {
 
       continue;
     }
+    // =================================
+    // PERMISSION CHECK
+    // =================================
 
+    const permission = await Permission.findOne({
+      facultyId: faculty._id,
+      status: "Approved",
+      permissionDate: {
+        $gte: date,
+        $lt: new Date(date.getTime() + 24 * 60 * 60 * 1000),
+      },
+    });
     // ABSENT
 
     if (!attendance) {
@@ -127,7 +139,9 @@ async function processAttendance(attendanceDate) {
 
     const shiftStartTime = new Date(date);
 
-    shiftStartTime.setHours(startHour, startMinute, 0, 0);
+    shiftStartTime.setUTCHours(startHour, startMinute, 0, 0);
+
+    shiftStartTime.setMinutes(shiftStartTime.getMinutes() - 330);
 
     const normalGraceEnd = new Date(shiftStartTime);
 
@@ -137,16 +151,78 @@ async function processAttendance(attendanceDate) {
 
     lateGraceEnd.setMinutes(lateGraceEnd.getMinutes() + 10);
 
+    const requiredMinutes = shift.workingHours * 60;
+
+    const hasCompletedWorkingHours =
+      attendance.workingMinutes >= requiredMinutes;
+
     const punchInTime = attendance.inTime;
+
+    if (!punchInTime) {
+      attendance.status = "Absent";
+      attendance.lopDays = 1;
+      attendance.remarks = "No In Time Found";
+
+      await attendance.save();
+      continue;
+    }
+
+    let effectiveReportingTime = normalGraceEnd;
+
+    let effectiveLateWindowEnd = lateGraceEnd;
+
+    if (permission) {
+      const [hour, minute] = permission.toTime.split(":").map(Number);
+
+      effectiveReportingTime = new Date(date);
+
+      effectiveReportingTime.setUTCHours(hour, minute, 0, 0);
+      effectiveReportingTime.setMinutes(
+        effectiveReportingTime.getMinutes() - 330,
+      );
+
+      effectiveLateWindowEnd = new Date(effectiveReportingTime);
+
+      effectiveLateWindowEnd.setMinutes(
+        effectiveLateWindowEnd.getMinutes() + 10,
+      );
+
+      console.log(`${faculty.empId} Permission Applied`);
+    }
 
     // =================================
     // PRESENT
     // =================================
 
-    if (punchInTime <= normalGraceEnd) {
-      attendance.status = "Present";
+    const punchMinutes =
+      punchInTime.getUTCHours() * 60 + punchInTime.getUTCMinutes();
 
-      attendance.remarks = "";
+    const reportingMinutes =
+      effectiveReportingTime.getUTCHours() * 60 +
+      effectiveReportingTime.getUTCMinutes();
+
+    const lateWindowMinutes =
+      effectiveLateWindowEnd.getUTCHours() * 60 +
+      effectiveLateWindowEnd.getUTCMinutes();
+
+    if (punchMinutes <= reportingMinutes) {
+      if (hasCompletedWorkingHours) {
+        attendance.status = "Present";
+
+        attendance.lopDays = 0;
+
+        attendance.remarks = "";
+
+        await attendance.save();
+
+        continue;
+      }
+
+      attendance.status = "Second Half Leave";
+
+      attendance.lopDays = 0.5;
+
+      attendance.remarks = "Second Half Absent - Insufficient Working Hours";
 
       await attendance.save();
 
@@ -157,10 +233,9 @@ async function processAttendance(attendanceDate) {
     // LATE WINDOW
     // =================================
 
-    if (punchInTime <= lateGraceEnd) {
-      const month = date.getMonth() + 1;
-
-      const year = date.getFullYear();
+    if (punchMinutes <= lateWindowMinutes) {
+      const month = date.getUTCMonth() + 1;
+const year = date.getUTCFullYear();
 
       let lateCounter = await AttendanceLateCounter.findOne({
         facultyId: faculty._id,
@@ -183,12 +258,27 @@ async function processAttendance(attendanceDate) {
         await lateCounter.save();
 
         attendance.lateCountApplied = true;
+        await attendance.save();
       }
 
       if (lateCounter.lateCount <= 3) {
-        attendance.status = "Present";
+        if (hasCompletedWorkingHours) {
+          attendance.status = "Present";
 
-        attendance.remarks = `Late Entry ${lateCounter.lateCount}/3`;
+          attendance.lopDays = 0;
+
+          attendance.remarks = `Late Entry ${lateCounter.lateCount}/3`;
+
+          await attendance.save();
+
+          continue;
+        }
+
+        attendance.status = "Second Half Leave";
+
+        attendance.lopDays = 0.5;
+
+        attendance.remarks = `Late Entry ${lateCounter.lateCount}/3 - Insufficient Working Hours`;
 
         await attendance.save();
 

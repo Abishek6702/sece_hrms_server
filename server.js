@@ -39,6 +39,8 @@ app.use(
 
 connectDB();
 require("./cron/attendance");
+require("./cron/attendanceProcessorCron");
+
 app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/shifts", shiftRoutes);

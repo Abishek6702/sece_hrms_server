@@ -3,7 +3,7 @@ const cron = require("node-cron");
 const { processAttendance } = require("../services/attendanceProcessor");
 
 cron.schedule(
-  "0 22 * * *",
+  "30 23 * * *",
   async () => {
     try {
       const today = new Date();

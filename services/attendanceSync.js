@@ -14,6 +14,32 @@ async function processAttendancePunches(punches) {
 
     const logDate = new Date(punch.LogDate);
 
+    // SQL stores IST local time.
+    // Convert IST local time to actual UTC before saving.
+    logDate.setMinutes(logDate.getMinutes() - 330);
+    // console.log("AFTER IST FIX", {
+    //   raw: punch.LogDate,
+    //   stored: logDate.toISOString(),
+    // });
+
+    // if (String(punch.UserId) === "1033") {
+    //   console.log("1033 SQL PUNCH", {
+    //     raw: punch.LogDate,
+    //     parsed: logDate,
+    //     iso: logDate.toISOString(),
+    //     utcHour: logDate.getUTCHours(),
+    //     localHour: logDate.getHours(),
+    //   });
+    // }
+    // console.log("ESSL RAW", punch.LogDate);
+
+    // console.log("ESSL PARSED", {
+    //   logDate,
+    //   iso: logDate.toISOString(),
+    //   utcHour: logDate.getUTCHours(),
+    //   localHour: logDate.getHours(),
+    // });
+
     const attendanceDate = new Date(
       logDate.getFullYear(),
       logDate.getMonth(),
