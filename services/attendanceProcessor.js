@@ -54,20 +54,30 @@ async function processAttendance(attendanceDate) {
     }).populate("leaveTypeId");
 
     if (leaveApplication) {
+      let leaveStatus = "Leave";
+
+      if (leaveApplication.leaveSession === "First Half") {
+        leaveStatus = "First Half Leave";
+      }
+
+      if (leaveApplication.leaveSession === "Second Half") {
+        leaveStatus = "Second Half Leave";
+      }
+
       if (!attendance) {
         attendance = await Attendance.create({
           facultyId: faculty._id,
           punchId: faculty.punchId,
           attendanceDate: date,
 
-          status: "Leave",
+          status: leaveStatus,
 
           lopDays: 0,
 
           remarks: leaveApplication.leaveTypeId?.leaveName || "Leave",
         });
       } else {
-        attendance.status = "Leave";
+        attendance.status = leaveStatus;
 
         attendance.lopDays = 0;
 
@@ -235,7 +245,7 @@ async function processAttendance(attendanceDate) {
 
     if (punchMinutes <= lateWindowMinutes) {
       const month = date.getUTCMonth() + 1;
-const year = date.getUTCFullYear();
+      const year = date.getUTCFullYear();
 
       let lateCounter = await AttendanceLateCounter.findOne({
         facultyId: faculty._id,
