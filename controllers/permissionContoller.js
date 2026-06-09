@@ -1,4 +1,4 @@
-const Permission = require("../models/Leave/permission");
+const Permission = require("../models/permission");
 const Faculty = require("../models/Faculty");
 
 // Helper to enforce role(s)
