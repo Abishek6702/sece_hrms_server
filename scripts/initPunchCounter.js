@@ -6,56 +6,40 @@ const Faculty = require("../models/Faculty");
 const Counter = require("../models/counter");
 
 const run = async () => {
-  await mongoose.connect(
-    process.env.MONGO_URI,
-  );
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
 
-  const faculties =
-    await Faculty.find({
+    const faculties = await Faculty.find({
       punchId: {
         $exists: true,
         $ne: null,
       },
     });
 
-  let maxPunch = 0;
+    let maxPunch = 0;
 
-  for (const faculty of faculties) {
-    if (!faculty.punchId) {
-      continue;
+    for (const faculty of faculties) {
+      const number = Number(faculty.punchId);
+
+      if (!isNaN(number) && number > maxPunch) {
+        maxPunch = number;
+      }
     }
 
-    const number =
-      parseInt(
-        faculty.punchId.replace(
-          "P",
-          "",
-        ),
-        10,
-      ) || 0;
+    await Counter.findOneAndUpdate(
+      { name: "punchId" },
+      { value: maxPunch },
+      { upsert: true, new: true }
+    );
 
-    if (number > maxPunch) {
-      maxPunch = number;
-    }
+    console.log(`Counter initialized to ${maxPunch}`);
+
+    await mongoose.disconnect();
+    process.exit(0);
+  } catch (err) {
+    console.error("Error:", err);
+    process.exit(1);
   }
-
-  await Counter.findOneAndUpdate(
-    {
-      name: "punchId",
-    },
-    {
-      value: maxPunch,
-    },
-    {
-      upsert: true,
-    },
-  );
-
-  console.log(
-    `Counter initialized to ${maxPunch}`,
-  );
-
-  process.exit();
 };
 
 run();

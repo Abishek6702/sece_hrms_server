@@ -1,66 +1,109 @@
 const mongoose = require("mongoose");
 
 const attendanceSchema = new mongoose.Schema(
-{
+  {
     facultyId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Faculty",
-        required: true,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Faculty",
+      required: true,
+      index: true,
+    },
+
+    punchId: {
+      type: String,
+      required: true,
+      index: true,
     },
 
     attendanceDate: {
-        type: Date,
-        required: true,
+      type: Date,
+      required: true,
+      index: true,
     },
 
-    checkIn: Date,
+    inTime: {
+      type: Date,
+      default: null,
+    },
 
-    checkOut: Date,
+    outTime: {
+      type: Date,
+      default: null,
+    },
 
-    workingHours: {
+    workingMinutes: {
+      type: Number,
+      default: 0,
+    },
+
+    totalPunches: {
+      type: Number,
+      default: 0,
+    },
+
+    missedPunch: {
+      type: Boolean,
+      default: false,
+    },
+
+    deviceIds: [
+      {
         type: Number,
-        default: 0,
+      },
+    ],
+
+    source: {
+      type: String,
+      default: "ESSL",
     },
 
     status: {
-        type: String,
-        enum: [
-            "Present",
-            "Absent",
-            "Half Day",
-            "Leave",
-            "On Duty",
-            "Holiday",
-        ],
-        default: "Present",
+      type: String,
+      enum: [
+        "Present",
+        "Absent",
+        "Half Day",
+        "Leave",
+        "Holiday",
+        "First Half Leave",
+        "Second Half Leave",
+        "Missed Punch",
+      ],
+      default: "Present",
+    },
+    lateCountApplied: {
+      type: Boolean,
+      default: false,
     },
 
-    leaveId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Leave",
+    lateMinutes: {
+      type: Number,
+      default: 0,
     },
 
-    permissionId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Permission",
+    lopDays: {
+      type: Number,
+      default: 0,
     },
 
-    remarks: String,
-},
-{
+    remarks: {
+      type: String,
+      trim: true,
+    },
+  },
+  {
     timestamps: true,
-});
+  },
+);
 
 attendanceSchema.index(
-{
+  {
     facultyId: 1,
     attendanceDate: 1,
-},
-{
+  },
+  {
     unique: true,
-});
-
-module.exports = mongoose.model(
-    "Attendance",
-    attendanceSchema
+  },
 );
+
+module.exports = mongoose.model("Attendance", attendanceSchema);
