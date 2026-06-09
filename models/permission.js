@@ -60,4 +60,11 @@ const permissionSchema = new mongoose.Schema(
   }
 );
 
+// Indexes
+permissionSchema.index({
+  facultyId: 1,
+  permissionDate: 1,
+  status: 1,
+});
+
 module.exports = mongoose.model("Permission", permissionSchema);

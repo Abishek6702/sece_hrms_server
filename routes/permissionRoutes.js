@@ -7,6 +7,9 @@ const permissionCtrl = require("../controllers/permissionContoller");
 // Faculty apply
 router.post("/", protect, permissionCtrl.applyPermission);
 
+// Faculty: get permission card for current month (dashboard)
+router.get("/card/month", protect, permissionCtrl.getPermissionCard);
+
 // Faculty list own
 router.get("/my", protect, permissionCtrl.getMyPermissions);
 
@@ -16,7 +19,10 @@ router.get("/:id", protect, permissionCtrl.getPermissionById);
 // HOD: list by department
 router.get("/hod/list", protect, permissionCtrl.getPermissionsForHod);
 
-// HOD: approve / reject
+// Principal: list all permissions
+router.get("/principal/list", protect, permissionCtrl.getPermissionsForPrincipal);
+
+// HOD / Principal: approve / reject
 router.patch("/:id/approve", protect, permissionCtrl.approvePermission);
 router.patch("/:id/reject", protect, permissionCtrl.rejectPermission);
 
