@@ -60,5 +60,4 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
-
 // await reprocessAttendance(attendance.attendanceDate);
