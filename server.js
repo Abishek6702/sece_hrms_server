@@ -18,6 +18,7 @@ const attendanceProcessRoutes = require("./routes/attendanceProcessRoutes")
 const attendanceRoutes = require("./routes/attendanceRoutes")
 const esslRoutes = require("./routes/esslRoutes")
 const attendanceRegularizationRoutes = require("./routes/attendanceRegularizationRoutes");
+const attendanceOverrideRoutes = require("./routes/attendanceOverrideRoutes");
 
 dotenv.config();
 
@@ -59,6 +60,8 @@ app.use("/api/attendance",attendanceProcessRoutes)
 app.use("/api/comp-off", compOffRoutes);
 app.use("/api/essl",esslRoutes);
 app.use("/api/attendance-regularization", attendanceRegularizationRoutes);
+
+app.use("/api/attendance-override", attendanceOverrideRoutes);
 
 app.use("/api/attendance",attendanceRoutes)
 
