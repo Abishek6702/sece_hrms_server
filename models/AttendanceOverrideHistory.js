@@ -9,76 +9,78 @@ const attendanceOverrideHistorySchema = new mongoose.Schema(
       index: true,
     },
 
+    attendanceId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Attendance",
+      required: true,
+    },
+
     attendanceDate: {
       type: Date,
       required: true,
       index: true,
     },
 
-    session1: {
+    previousStatus: {
       type: String,
+      required: true,
+    },
+
+    newStatus: {
+      type: String,
+      required: true,
+    },
+
+    reason: {
+      type: String,
+      required: true,
       trim: true,
     },
 
-    session2: {
-      type: String,
-      trim: true,
-    },
-
-    previousSession1: {
-      type: String,
-      trim: true,
-    },
-
-    previousSession2: {
-      type: String,
-      trim: true,
-    },
-
-    status: {
-      type: String,
-      enum: [
-        "Present",
-        "Absent",
-        "Half Day",
-        "Leave",
-        "Holiday",
-        "First Half Leave",
-        "Second Half Leave",
-        "Missed Punch",
-      ],
+    previousInTime: {
+      type: Date,
       default: null,
     },
 
-    overriddenBy: {
+    previousOutTime: {
+      type: Date,
+      default: null,
+    },
+
+    newInTime: {
+      type: Date,
+      default: null,
+    },
+
+    newOutTime: {
+      type: Date,
+      default: null,
+    },
+
+    changedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      required: true,
     },
 
-    overriddenOn: {
-      type: Date,
-      default: Date.now,
-    },
-
-    remarks: {
+    changedByRole: {
       type: String,
-      trim: true,
+      default: "hr",
     },
   },
   {
     timestamps: true,
-  },
+  }
 );
 
-attendanceOverrideHistorySchema.index(
-  {
-    facultyId: 1,
-    attendanceDate: 1,
-  },
-  { unique: false },
-);
+attendanceOverrideHistorySchema.index({
+  facultyId: 1,
+  attendanceDate: 1,
+});
 
-module.exports = mongoose.model(
-  "AttendanceOverrideHistory",
-  attendanceOverrideHistorySchema,
-);
+module.exports =
+  mongoose.models.AttendanceOverrideHistory ||
+  mongoose.model(
+    "AttendanceOverrideHistory",
+    attendanceOverrideHistorySchema
+  );

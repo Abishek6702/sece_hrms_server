@@ -1,0 +1,116 @@
+{
+  "info": {
+    "name": "Attendance Override History",
+    "_postman_id": "attendance-override-history-collection",
+    "description": "Collection for Attendance Override endpoints (HR-only). Use `{{baseUrl}}` and `{{token}}` environment variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Get Attendance By Date",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/attendance-override/date/:date",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","attendance-override","date",":date"],
+          "variable": [
+            { "key": "date", "value": "2026-06-11", "description": "Date (YYYY-MM-DD)" }
+          ]
+        },
+        "description": "Fetch attendance records for a specific date. HR only."
+      }
+    },
+    {
+      "name": "Get Attendance By Employee",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/attendance-override/employee/:employeeId?startDate=2026-06-01&endDate=2026-06-30",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","attendance-override","employee",":employeeId"],
+          "variable": [
+            { "key": "employeeId", "value": "<employeeId>" }
+          ],
+          "query": [
+            { "key": "startDate", "value": "2026-06-01" },
+            { "key": "endDate", "value": "2026-06-30" }
+          ]
+        },
+        "description": "Fetch attendance for an employee. Optional query `startDate` and `endDate`."
+      }
+    },
+    {
+      "name": "Update Attendance Override (Single)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" },
+          { "key": "Content-Type", "value": "application/json", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"inTime\": \"2026-06-11T09:00:00.000Z\",\n  \"outTime\": \"2026-06-11T17:00:00.000Z\",\n  \"status\": \"Present\",\n  \"remarks\": \"Corrected times\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/attendance-override/employee/:employeeId/date/:date",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","attendance-override","employee",":employeeId","date",":date"],
+          "variable": [
+            { "key": "employeeId", "value": "<employeeId>" },
+            { "key": "date", "value": "2026-06-11" }
+          ]
+        },
+        "description": "Update attendance for a single employee on a given date. If `status` is 'Absent', provide `remarks`."
+      }
+    },
+    {
+      "name": "Bulk Update Attendance Override",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" },
+          { "key": "Content-Type", "value": "application/json", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"records\": [\n    {\n      \"employeeId\": \"<employeeId1>\",\n      \"date\": \"2026-06-11\",\n      \"inTime\": \"2026-06-11T09:00:00.000Z\",\n      \"outTime\": \"2026-06-11T17:00:00.000Z\",\n      \"status\": \"Present\",\n      \"remarks\": \"Bulk corrected\"\n    }\n  ]\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/attendance-override/bulk-update",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","attendance-override","bulk-update"]
+        },
+        "description": "Bulk update multiple attendance records. Each record requires `employeeId` and `date`. If `status` is 'Absent', include `remarks`."
+      }
+    },
+    {
+      "name": "Get Attendance Override History",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/attendance-override/history?fromDate=2026-06-01&toDate=2026-06-30&employeeId=<employeeId>",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","attendance-override","history"],
+          "query": [
+            { "key": "fromDate", "value": "2026-06-01" },
+            { "key": "toDate", "value": "2026-06-30" },
+            { "key": "employeeId", "value": "<employeeId>" }
+          ]
+        },
+        "description": "Retrieve override history with optional `fromDate`, `toDate`, and `employeeId` filters."
+      }
+    }
+  ]
+}
