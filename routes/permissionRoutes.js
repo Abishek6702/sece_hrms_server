@@ -24,8 +24,8 @@ router.get("/principal/list", protect, permissionCtrl.getPermissionsForPrincipal
 
 // HOD / Principal: approve / reject
 router.patch("/:id/approve", protect, permissionCtrl.approvePermission);
-router.patch("/:id/reject", protect, permissionCtrl.rejectPermission);
-
+router.patch("/:id/reject", protect, permissionCtrl.rejectPermission);router.post('/:id/approve', protect, permissionCtrl.approvePermission);
+router.post('/:id/reject', protect, permissionCtrl.rejectPermission);
 // Faculty: cancel
 router.patch("/:id/cancel", protect, permissionCtrl.cancelPermission);
 
