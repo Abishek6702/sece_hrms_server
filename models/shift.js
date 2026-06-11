@@ -23,7 +23,7 @@ const shiftSchema = new mongoose.Schema(
         default: 0,
     },
 
-    workingHours: {
+    workingMinutes: {
         type: Number,
         required: true,
     },

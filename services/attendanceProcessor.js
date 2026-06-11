@@ -161,7 +161,7 @@ async function processAttendance(attendanceDate) {
 
     lateGraceEnd.setMinutes(lateGraceEnd.getMinutes() + 10);
 
-    const requiredMinutes = shift.workingHours * 60;
+    const requiredMinutes = shift.workingMinutes;
 
     const hasCompletedWorkingHours =
       attendance.workingMinutes >= requiredMinutes;
