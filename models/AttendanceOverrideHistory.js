@@ -6,7 +6,6 @@ const attendanceOverrideHistorySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Faculty",
       required: true,
-      index: true,
     },
 
     attendanceId: {
@@ -18,7 +17,6 @@ const attendanceOverrideHistorySchema = new mongoose.Schema(
     attendanceDate: {
       type: Date,
       required: true,
-      index: true,
     },
 
     previousStatus: {
@@ -34,7 +32,6 @@ const attendanceOverrideHistorySchema = new mongoose.Schema(
     reason: {
       type: String,
       required: true,
-      trim: true,
     },
 
     previousInTime: {
@@ -67,16 +64,17 @@ const attendanceOverrideHistorySchema = new mongoose.Schema(
       type: String,
       default: "hr",
     },
+
+    bulkOperationId: {
+      type: String,
+      default: null,
+      index: true,
+    },
   },
   {
     timestamps: true,
   }
 );
-
-attendanceOverrideHistorySchema.index({
-  facultyId: 1,
-  attendanceDate: 1,
-});
 
 module.exports =
   mongoose.models.AttendanceOverrideHistory ||
