@@ -3,32 +3,39 @@ const Attendance = require("../models/attendance");
 const AttendanceOverrideHistory = require("../models/AttendanceOverrideHistory");
 
 const STATUS_CODE_MAP = {
-  "Present": "P:P",
-  "Absent": "A:A",
+  Present: "P:P",
+  Absent: "A:A",
   "First Half Leave": "A:P",
   "Second Half Leave": "P:A",
-  "Leave": "L:L",
-  "Holiday": "H:H",
+  Leave: "L:L",
+  Holiday: "H:H",
   "Missed Punch": "M:M",
   "Half Day": "A:P",
 };
 
 exports.getAttendanceByDate = async (req, res) => {
   try {
-    if (req.user.role !== "hr") {
+    if (req.user.role !== "principal") {
       return res.status(403).json({
         success: false,
-        message: "Only HR can access this API",
+        message: "Only Principal can access this API",
       });
     }
 
     const { date } = req.params;
 
-    const startDate = new Date(date);
-    startDate.setHours(0, 0, 0, 0);
+    let startDate, endDate;
+    // If date is YYYY-MM-DD treat it as UTC day to avoid timezone shifts
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      startDate = new Date(`${date}T00:00:00.000Z`);
+      endDate = new Date(`${date}T23:59:59.999Z`);
+    } else {
+      startDate = new Date(date);
+      startDate.setHours(0, 0, 0, 0);
 
-    const endDate = new Date(date);
-    endDate.setHours(23, 59, 59, 999);
+      endDate = new Date(date);
+      endDate.setHours(23, 59, 59, 999);
+    }
 
     const attendanceList = await Attendance.find({
       attendanceDate: {
@@ -39,10 +46,76 @@ exports.getAttendanceByDate = async (req, res) => {
       .populate("facultyId", "firstName lastName empId department")
       .sort({ createdAt: 1 });
 
-    const data = attendanceList.map((a) => {
-      const obj = a.toObject ? a.toObject() : a;
-      obj.statusCode = STATUS_CODE_MAP[obj.status] || null;
-      return obj;
+    const data = attendanceList.map((attendance) => {
+      const employeeName = attendance.facultyId
+        ? [attendance.facultyId.firstName, attendance.facultyId.lastName]
+            .filter(Boolean)
+            .join(" ")
+        : "";
+      const employeeNo = attendance.facultyId?.empId || "";
+      const employeeId = attendance.facultyId?._id || null;
+
+      let session1 = "";
+      let session2 = "";
+
+      switch (attendance.status) {
+        case "Present":
+          session1 = "P";
+          session2 = "P";
+          break;
+
+        case "Absent":
+          session1 = "A";
+          session2 = "A";
+          break;
+
+        case "Half Day":
+          session1 = "A";
+          session2 = "P";
+          break;
+
+        case "First Half Leave":
+          session1 = "L";
+          session2 = "P";
+          break;
+
+        case "Second Half Leave":
+          session1 = "P";
+          session2 = "L";
+          break;
+
+        case "Leave":
+          session1 = "L";
+          session2 = "L";
+          break;
+
+        case "Holiday":
+          session1 = "H";
+          session2 = "H";
+          break;
+
+        default:
+          session1 = "";
+          session2 = "";
+      }
+
+      return {
+         facultyId: attendance.facultyId?._id,
+        employeeName,
+        employeeNo,
+        department: attendance.facultyId?.department,
+
+        date: attendance.attendanceDate,
+        shiftCode: attendance.shiftCode || "S2",
+
+        status: `${session1}:${session2}`,
+
+        firstIn: attendance.inTime,
+        lastOut: attendance.outTime,
+
+        session1,
+        session2,
+      };
     });
 
     res.status(200).json({
@@ -60,10 +133,10 @@ exports.getAttendanceByDate = async (req, res) => {
 
 exports.getAttendanceByEmployee = async (req, res) => {
   try {
-    if (req.user.role !== "hr") {
+    if (req.user.role !== "principal") {
       return res.status(403).json({
         success: false,
-        message: "Only HR can access this API",
+        message: "Only Principal can access this API",
       });
     }
 
@@ -85,10 +158,76 @@ exports.getAttendanceByEmployee = async (req, res) => {
       .populate("facultyId", "firstName lastName empId department")
       .sort({ attendanceDate: 1 });
 
-    const data = attendanceList.map((a) => {
-      const obj = a.toObject ? a.toObject() : a;
-      obj.statusCode = STATUS_CODE_MAP[obj.status] || null;
-      return obj;
+    const data = attendanceList.map((attendance) => {
+      const employeeName = attendance.facultyId
+        ? [attendance.facultyId.firstName, attendance.facultyId.lastName]
+            .filter(Boolean)
+            .join(" ")
+        : "";
+      const employeeNo = attendance.facultyId?.empId || "";
+
+      let session1 = "";
+      let session2 = "";
+
+      switch (attendance.status) {
+        case "Present":
+          session1 = "P";
+          session2 = "P";
+          break;
+
+        case "Absent":
+          session1 = "A";
+          session2 = "A";
+          break;
+
+        case "Half Day":
+          session1 = "A";
+          session2 = "P";
+          break;
+
+        case "First Half Leave":
+          session1 = "L";
+          session2 = "P";
+          break;
+
+        case "Second Half Leave":
+          session1 = "P";
+          session2 = "L";
+          break;
+
+        case "Leave":
+          session1 = "L";
+          session2 = "L";
+          break;
+
+        case "Holiday":
+          session1 = "H";
+          session2 = "H";
+          break;
+
+        default:
+          session1 = "";
+          session2 = "";
+      }
+
+      return {
+        _id: attendance._id,
+        employeeId: attendance.facultyId?._id || null,
+        employeeName,
+        employeeNo,
+        department: attendance.facultyId?.department,
+
+        date: attendance.attendanceDate,
+        shiftCode: attendance.shiftCode || "S2",
+
+        status: `${session1}:${session2}`,
+
+        firstIn: attendance.inTime,
+        lastOut: attendance.outTime,
+
+        session1,
+        session2,
+      };
     });
 
     res.status(200).json({
@@ -103,25 +242,42 @@ exports.getAttendanceByEmployee = async (req, res) => {
     });
   }
 };
+
 exports.updateAttendanceOverride = async (req, res) => {
   try {
-    // Only HR can access
-    if (req.user.role !== "hr") {
+    // Only Principal can access
+    if (req.user.role !== "principal") {
       return res.status(403).json({
         success: false,
-        message: "Only HR can access this API",
+        message: "Only Principal can access this API",
       });
     }
 
     const { employeeId, date } = req.params;
-    const { inTime, outTime, status, remarks } = req.body;
+    const { firstIn, lastOut, session1, session2, remarks } = req.body;
 
-    // Date range
-    const startDate = new Date(date);
-    startDate.setHours(0, 0, 0, 0);
+    const SESSION_STATUS_MAP = {
+      "P:P": "Present",
+      "A:A": "Absent",
+      "A:P": "Half Day",
+      "L:P": "First Half Leave",
+      "P:L": "Second Half Leave",
+      "L:L": "Leave",
+      "H:H": "Holiday",
+    };
 
-    const endDate = new Date(date);
-    endDate.setHours(23, 59, 59, 999);
+    // Date range: normalize YYYY-MM-DD to UTC day boundaries to match stored UTC dates
+    let startDate, endDate;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      startDate = new Date(`${date}T00:00:00.000Z`);
+      endDate = new Date(`${date}T23:59:59.999Z`);
+    } else {
+      startDate = new Date(date);
+      startDate.setHours(0, 0, 0, 0);
+
+      endDate = new Date(date);
+      endDate.setHours(23, 59, 59, 999);
+    }
 
     // Find attendance record
     const attendance = await Attendance.findOne({
@@ -139,11 +295,19 @@ exports.updateAttendanceOverride = async (req, res) => {
       });
     }
 
+    // Determine new status from sessions
+    const newStatus =
+      SESSION_STATUS_MAP[`${session1}:${session2}`] || attendance.status;
+
     // Require reason when marking Absent
-    if (status === "Absent" && (!remarks || remarks.trim() === "")) {
+    if (
+      newStatus === "Absent" &&
+      (!remarks || remarks.trim() === "")
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Reason is required when changing attendance status to Absent",
+        message:
+          "Reason is required when changing attendance status to Absent",
       });
     }
 
@@ -153,16 +317,20 @@ exports.updateAttendanceOverride = async (req, res) => {
     const previousOutTime = attendance.outTime;
 
     // Update attendance
-    if (inTime !== undefined) {
-      attendance.inTime = inTime;
+    if (firstIn !== undefined) {
+      attendance.inTime = firstIn;
     }
 
-    if (outTime !== undefined) {
-      attendance.outTime = outTime;
+    if (lastOut !== undefined) {
+      attendance.outTime = lastOut;
     }
 
-    if (status !== undefined) {
-      attendance.status = status;
+    if (session1 !== undefined && session2 !== undefined) {
+      const statusKey = `${session1}:${session2}`;
+
+      if (SESSION_STATUS_MAP[statusKey]) {
+        attendance.status = SESSION_STATUS_MAP[statusKey];
+      }
     }
 
     if (remarks !== undefined) {
@@ -172,18 +340,23 @@ exports.updateAttendanceOverride = async (req, res) => {
     // Recalculate working minutes
     if (attendance.inTime && attendance.outTime) {
       attendance.workingMinutes = Math.floor(
-        (new Date(attendance.outTime) - new Date(attendance.inTime)) / 60000,
+        (new Date(attendance.outTime) -
+          new Date(attendance.inTime)) /
+          60000
       );
     }
 
     await attendance.save();
 
-    // ensure faculty details are populated on the saved document
-    await attendance.populate("facultyId", "firstName lastName empId department");
+    // Populate faculty details
+    await attendance.populate(
+      "facultyId",
+      "firstName lastName empId department"
+    );
 
     // Save override history
     await AttendanceOverrideHistory.create({
-      facultyId: attendance.facultyId,
+      facultyId: attendance.facultyId._id,
       attendanceId: attendance._id,
       attendanceDate: attendance.attendanceDate,
 
@@ -202,13 +375,90 @@ exports.updateAttendanceOverride = async (req, res) => {
       changedByRole: req.user.role,
     });
 
-    const result = attendance.toObject ? attendance.toObject() : attendance;
-    result.statusCode = STATUS_CODE_MAP[result.status] || null;
+    const result = attendance.toObject();
+
+    const employeeName = attendance.facultyId
+      ? [
+          attendance.facultyId.firstName,
+          attendance.facultyId.lastName,
+        ]
+          .filter(Boolean)
+          .join(" ")
+      : "";
+
+    const employeeNo = attendance.facultyId?.empId || "";
+    const department = attendance.facultyId?.department || "";
+
+    let responseSession1 = "";
+    let responseSession2 = "";
+
+    switch (attendance.status) {
+      case "Present":
+        responseSession1 = "P";
+        responseSession2 = "P";
+        break;
+
+      case "Absent":
+        responseSession1 = "A";
+        responseSession2 = "A";
+        break;
+
+      case "Half Day":
+        responseSession1 = "A";
+        responseSession2 = "P";
+        break;
+
+      case "First Half Leave":
+        responseSession1 = "L";
+        responseSession2 = "P";
+        break;
+
+      case "Second Half Leave":
+        responseSession1 = "P";
+        responseSession2 = "L";
+        break;
+
+      case "Leave":
+        responseSession1 = "L";
+        responseSession2 = "L";
+        break;
+
+      case "Holiday":
+        responseSession1 = "H";
+        responseSession2 = "H";
+        break;
+
+      default:
+        responseSession1 = "";
+        responseSession2 = "";
+    }
+
+    const response = {
+      _id: attendance._id,
+
+      employeeId: attendance.facultyId?._id || null,
+
+      employeeName,
+      employeeNo,
+      department,
+
+      date: attendance.attendanceDate,
+      shiftCode: attendance.shiftCode || "S2",
+
+      status: `${responseSession1}:${responseSession2}`,
+      statusCode: STATUS_CODE_MAP[result.status] || null,
+
+      firstIn: attendance.inTime,
+      lastOut: attendance.outTime,
+
+      session1: responseSession1,
+      session2: responseSession2,
+    };
 
     res.status(200).json({
       success: true,
       message: "Attendance updated successfully",
-      data: result,
+      data: response,
     });
   } catch (error) {
     console.error("Attendance Override Error:", error);
@@ -219,17 +469,36 @@ exports.updateAttendanceOverride = async (req, res) => {
     });
   }
 };
+
 exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
   try {
-    if (req.user.role !== "hr") {
+    if (req.user.role !== "principal") {
       return res.status(403).json({
         success: false,
-        message: "Only HR can access this API",
+        message: "Only Principal can access this API",
       });
     }
 
-    const { employeeId, fromDate, toDate, inTime, outTime, status, remarks } =
-      req.body;
+    const {
+      employeeId,
+      fromDate,
+      toDate,
+      firstIn,
+      lastOut,
+      session1,
+      session2,
+      remarks,
+    } = req.body;
+
+    const SESSION_STATUS_MAP = {
+      "P:P": "Present",
+      "A:A": "Absent",
+      "A:P": "Half Day",
+      "L:P": "First Half Leave",
+      "P:L": "Second Half Leave",
+      "L:L": "Leave",
+      "H:H": "Holiday",
+    };
 
     const bulkOperationId = new mongoose.Types.ObjectId().toString();
 
@@ -255,18 +524,43 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
       const previousInTime = attendance.inTime;
       const previousOutTime = attendance.outTime;
 
-      if (inTime !== undefined) attendance.inTime = inTime;
-      if (outTime !== undefined) attendance.outTime = outTime;
-      if (status !== undefined) attendance.status = status;
-      if (remarks !== undefined) attendance.remarks = remarks;
+      // Update values
+      if (firstIn !== undefined) {
+        attendance.inTime = firstIn;
+      }
+
+      if (lastOut !== undefined) {
+        attendance.outTime = lastOut;
+      }
+
+      if (session1 !== undefined && session2 !== undefined) {
+        const statusKey = `${session1}:${session2}`;
+
+        if (SESSION_STATUS_MAP[statusKey]) {
+          attendance.status = SESSION_STATUS_MAP[statusKey];
+        }
+      }
+
+      if (remarks !== undefined) {
+        attendance.remarks = remarks;
+      }
+
+      // Recalculate working minutes
+      if (attendance.inTime && attendance.outTime) {
+        attendance.workingMinutes = Math.floor(
+          (new Date(attendance.outTime) - new Date(attendance.inTime)) / 60000
+        );
+      }
 
       await attendance.save();
 
-      // ensure faculty details are populated on the saved document
-      await attendance.populate("facultyId", "firstName lastName empId department");
+      await attendance.populate(
+        "facultyId",
+        "firstName lastName empId department"
+      );
 
       await AttendanceOverrideHistory.create({
-        facultyId: attendance.facultyId,
+        facultyId: attendance.facultyId._id,
         attendanceId: attendance._id,
         attendanceDate: attendance.attendanceDate,
 
@@ -284,13 +578,71 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
         changedBy: req.user._id,
         changedByRole: req.user.role,
 
-        // IMPORTANT
         bulkOperationId,
       });
 
-      const obj = attendance.toObject ? attendance.toObject() : attendance;
-      obj.statusCode = STATUS_CODE_MAP[obj.status] || null;
-      updatedRecords.push(obj);
+      const employeeName = attendance.facultyId
+        ? [attendance.facultyId.firstName, attendance.facultyId.lastName]
+            .filter(Boolean)
+            .join(" ")
+        : "";
+
+      const employeeNo = attendance.facultyId?.empId || "";
+      const department = attendance.facultyId?.department || "";
+
+      let responseSession1 = "";
+      let responseSession2 = "";
+
+      switch (attendance.status) {
+        case "Present":
+          responseSession1 = "P";
+          responseSession2 = "P";
+          break;
+        case "Absent":
+          responseSession1 = "A";
+          responseSession2 = "A";
+          break;
+        case "Half Day":
+          responseSession1 = "A";
+          responseSession2 = "P";
+          break;
+        case "First Half Leave":
+          responseSession1 = "L";
+          responseSession2 = "P";
+          break;
+        case "Second Half Leave":
+          responseSession1 = "P";
+          responseSession2 = "L";
+          break;
+        case "Leave":
+          responseSession1 = "L";
+          responseSession2 = "L";
+          break;
+        case "Holiday":
+          responseSession1 = "H";
+          responseSession2 = "H";
+          break;
+      }
+
+      updatedRecords.push({
+        _id: attendance._id,
+        employeeId: attendance.facultyId._id,
+        employeeName,
+        employeeNo,
+        department,
+
+        date: attendance.attendanceDate,
+        shiftCode: attendance.shiftCode || "S2",
+
+        status: `${responseSession1}:${responseSession2}`,
+        statusCode: STATUS_CODE_MAP[attendance.status] || null,
+
+        firstIn: attendance.inTime,
+        lastOut: attendance.outTime,
+
+        session1: responseSession1,
+        session2: responseSession2,
+      });
     }
 
     res.status(200).json({
@@ -300,6 +652,8 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
       data: updatedRecords,
     });
   } catch (error) {
+    console.error("Bulk Update Error:", error);
+
     res.status(500).json({
       success: false,
       message: error.message,
@@ -308,18 +662,15 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
 };
 exports.getAttendanceOverrideHistory = async (req, res) => {
   try {
-    if (req.user.role !== "hr") {
+    if (req.user.role !== "principal") {
       return res.status(403).json({
         success: false,
-        message: "Only HR can access this API",
+        message: "Only Principal can access this API",
       });
     }
 
     const history = await AttendanceOverrideHistory.find()
-      .populate(
-        "facultyId",
-        "firstName lastName empId department"
-      )
+      .populate("facultyId", "firstName lastName empId department")
       .sort({ attendanceDate: 1 });
 
     const grouped = {};
@@ -332,7 +683,8 @@ exports.getAttendanceOverrideHistory = async (req, res) => {
       if (!grouped[key]) {
         grouped[key] = {
           employeeName:
-            item.facultyId && (item.facultyId.firstName || item.facultyId.lastName)
+            item.facultyId &&
+            (item.facultyId.firstName || item.facultyId.lastName)
               ? `${item.facultyId.firstName || ""} ${item.facultyId.lastName || ""}`.trim()
               : "",
           employeeId: item.facultyId?.empId || "",

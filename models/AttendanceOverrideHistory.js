@@ -62,7 +62,7 @@ const attendanceOverrideHistorySchema = new mongoose.Schema(
 
     changedByRole: {
       type: String,
-      default: "hr",
+      default: "principal",
     },
 
     bulkOperationId: {

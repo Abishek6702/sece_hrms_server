@@ -72,7 +72,7 @@
       }
     },
     {
-      "name": "Bulk Update Attendance Override",
+      "name": "Bulk Update Attendance Override (Date Range)",
       "request": {
         "method": "PUT",
         "header": [
@@ -81,15 +81,15 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"records\": [\n    {\n      \"employeeId\": \"<employeeId1>\",\n      \"date\": \"2026-06-11\",\n      \"inTime\": \"2026-06-11T09:00:00.000Z\",\n      \"outTime\": \"2026-06-11T17:00:00.000Z\",\n      \"status\": \"Present\",\n      \"remarks\": \"Bulk corrected\"\n    }\n  ]\n}",
+          "raw": "{\n  \"employeeId\": \"<employeeId>\",\n  \"fromDate\": \"2026-06-01\",\n  \"toDate\": \"2026-06-30\",\n  \"inTime\": \"2026-06-11T09:00:00.000Z\",\n  \"outTime\": \"2026-06-11T17:00:00.000Z\",\n  \"status\": \"Present\",\n  \"remarks\": \"Bulk corrected\"\n}",
           "options": { "raw": { "language": "json" } }
         },
         "url": {
-          "raw": "{{baseUrl}}/api/attendance-override/bulk-update",
+          "raw": "{{baseUrl}}/api/attendance-override/date-range",
           "host": ["{{baseUrl}}"],
-          "path": ["api","attendance-override","bulk-update"]
+          "path": ["api","attendance-override","date-range"]
         },
-        "description": "Bulk update multiple attendance records. Each record requires `employeeId` and `date`. If `status` is 'Absent', include `remarks`."
+        "description": "Bulk update attendance records by date range. Provide `employeeId`, `fromDate`, `toDate`, and the attendance changes. If `status` is 'Absent', include `remarks`."
       }
     },
     {
