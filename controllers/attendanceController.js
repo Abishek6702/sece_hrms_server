@@ -241,3 +241,105 @@ exports.getFacultyAttendanceHistory = async (req, res) => {
     });
   }
 };
+
+exports.getAttendanceWeekSummary = async (req, res) => {
+  try {
+    const { facultyId,dayName  } = req.query;
+
+    if (!facultyId) {
+      return res.status(400).json({
+        success: false,
+        message: "facultyId is required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(facultyId)) {
+        return res.status(400).json({
+        success: false,
+        message: "Invalid facultyId",
+      });
+    }
+
+    const today = new Date();
+
+    const currentDay = today.getDay(); // 0=Sun,1=Mon
+
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
+    monday.setHours(0, 0, 0, 0);
+
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+
+    const attendances = await Attendance.find({
+      facultyId,
+      attendanceDate: {
+        $gte: monday,
+        $lte: sunday,
+      },
+    }).sort({ attendanceDate: 1 });
+
+    const attendanceMap = {};
+
+    attendances.forEach((item) => {
+      const attendanceDate = item.inTime || item.attendanceDate;
+    
+      const key = `${attendanceDate.getFullYear()}-${String(
+        attendanceDate.getMonth() + 1
+      ).padStart(2, "0")}-${String(attendanceDate.getDate()).padStart(2, "0")}`;
+    
+      attendanceMap[key] = item;
+    });
+
+    const weekDays = [];
+
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(monday);
+      date.setDate(monday.getDate() + i);
+    
+      const key = `${date.getFullYear()}-${String(
+        date.getMonth() + 1
+      ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    
+      const attendance = attendanceMap[key];
+    
+      weekDays.push({
+        dayName: date.toLocaleDateString("en-US", {
+          weekday: "short",
+        }),
+    
+        date: key,
+    
+        isToday:
+          date.toDateString() === new Date().toDateString(),
+    
+        status: attendance?.status || "-",
+    
+        inTime: attendance?.inTime || null,
+    
+        outTime: attendance?.outTime || null,
+      });
+    }
+    let filteredDays = weekDays;
+
+    if (dayName) {
+      filteredDays = weekDays.filter(
+        (day) => day.dayName.toLowerCase() === dayName.toLowerCase()
+      );
+    }
+    return res.status(200).json({
+      success: true,
+      weekStart: monday,
+      weekEnd: sunday,
+      days: filteredDays,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch week summary",
+    });
+  }
+};
