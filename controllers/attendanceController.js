@@ -5,6 +5,7 @@ async function getAttendanceMuster(req, res) {
   try {
     const month = Number(req.query.month);
     const year = Number(req.query.year);
+    const { department, employeeCategory, search } = req.query;
 
     if (!month || !year) {
       return res.status(400).json({
@@ -15,17 +16,54 @@ async function getAttendanceMuster(req, res) {
 
     const startDate = new Date(Date.UTC(year, month - 1, 1));
     startDate.setMinutes(startDate.getMinutes() - 330);
-    
+
     const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59));
     endDate.setMinutes(endDate.getMinutes() - 330);
 
     const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
-
-    const faculties = await Faculty.find({
+    const facultyFilter = {
       employmentStatus: true,
-    }).select("empId firstName middleName lastName designation campus");
+    };
+
+    if (department) {
+      facultyFilter.department = department;
+    }
+
+    if (employeeCategory) {
+      facultyFilter.employeeCategory = employeeCategory;
+    }
+
+    if (search) {
+      facultyFilter.$or = [
+        { empId: { $regex: search, $options: "i" } },
+        { firstName: { $regex: search, $options: "i" } },
+        { lastName: { $regex: search, $options: "i" } },
+        {
+          $expr: {
+            $regexMatch: {
+              input: {
+                $concat: [
+                  { $ifNull: ["$firstName", ""] },
+                  " ",
+                  { $ifNull: ["$lastName", ""] },
+                ],
+              },
+              regex: search,
+              options: "i",
+            },
+          },
+        },
+      ];
+    }
+
+    const faculties = await Faculty.find(facultyFilter).select(
+      "empId firstName lastName designation  department employeeCategory",
+    );
+
+    const facultyIds = faculties.map((faculty) => faculty._id);
 
     const attendances = await Attendance.find({
+      facultyId: { $in: facultyIds },
       attendanceDate: {
         $gte: startDate,
         $lte: endDate,
@@ -42,8 +80,8 @@ async function getAttendanceMuster(req, res) {
       }
 
       const day = attendance.inTime
-      ? attendance.inTime.getUTCDate()
-      : attendance.attendanceDate.getUTCDate();
+        ? attendance.inTime.getUTCDate()
+        : attendance.attendanceDate.getUTCDate();
 
       let value = "-";
 
@@ -106,7 +144,8 @@ async function getAttendanceMuster(req, res) {
           .filter(Boolean)
           .join(" "),
         designation: faculty.designation,
-        campus: faculty.campus,
+        department: faculty.department,
+        employeeCategory:faculty.employeeCategory,
         attendance: attendanceDays,
       };
     });
