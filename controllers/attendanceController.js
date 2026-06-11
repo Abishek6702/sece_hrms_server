@@ -1,11 +1,14 @@
+const mongoose = require("mongoose");
+
 const Attendance = require("../models/attendance");
+
 const Faculty = require("../models/Faculty");
 
-async function getAttendanceMuster(req, res) {
+exports.getAttendanceMuster = async (req, res) => {
   try {
     const month = Number(req.query.month);
     const year = Number(req.query.year);
-    const { department, employeeCategory, search } = req.query;
+    const { department, employeeCategory, search, facultyId } = req.query;
 
     if (!month || !year) {
       return res.status(400).json({
@@ -33,6 +36,17 @@ async function getAttendanceMuster(req, res) {
       facultyFilter.employeeCategory = employeeCategory;
     }
 
+    if (facultyId) {
+      if (!mongoose.Types.ObjectId.isValid(facultyId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid facultyId",
+        });
+      }
+
+      facultyFilter._id = facultyId;
+    }
+
     if (search) {
       facultyFilter.$or = [
         { empId: { $regex: search, $options: "i" } },
@@ -57,7 +71,7 @@ async function getAttendanceMuster(req, res) {
     }
 
     const faculties = await Faculty.find(facultyFilter).select(
-      "empId firstName lastName designation  department employeeCategory",
+      "empId firstName middleName  lastName designation  department employeeCategory ",
     );
 
     const facultyIds = faculties.map((faculty) => faculty._id);
@@ -145,7 +159,7 @@ async function getAttendanceMuster(req, res) {
           .join(" "),
         designation: faculty.designation,
         department: faculty.department,
-        employeeCategory:faculty.employeeCategory,
+        employeeCategory: faculty.employeeCategory,
         attendance: attendanceDays,
       };
     });
@@ -165,8 +179,65 @@ async function getAttendanceMuster(req, res) {
       message: "Failed to fetch attendance muster",
     });
   }
-}
+};
 
-module.exports = {
-  getAttendanceMuster,
+exports.getFacultyAttendanceHistory = async (req, res) => {
+  try {
+    const { facultyId, page = 1 } = req.query;
+
+    if (!facultyId) {
+      return res.status(400).json({
+        success: false,
+        message: "facultyId is required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(facultyId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid facultyId",
+      });
+    }
+
+    const limit = 7;
+    const skip = (Number(page) - 1) * limit;
+
+    const totalRecords = await Attendance.countDocuments({
+      facultyId,
+    });
+
+    const attendances = await Attendance.find({
+      facultyId,
+    })
+      .sort({ attendanceDate: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+    const records = attendances.map((attendance) => ({
+
+      attendanceId: attendance._id,
+      date: attendance.attendanceDate,
+      checkIn: attendance.inTime,
+      checkOut: attendance.outTime,
+      workingHours: attendance.workingMinutes,
+      status: attendance.status,
+      regularizationStatus: attendance.regularizationStatus,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      currentPage: Number(page),
+      totalPages: Math.ceil(totalRecords / limit),
+      totalRecords,
+      pageSize: limit,
+      records,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch attendance history",
+    });
+  }
 };
