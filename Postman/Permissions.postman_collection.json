@@ -1,0 +1,181 @@
+{
+  "info": {
+    "name": "Permissions",
+    "_postman_id": "permissions-collection",
+    "description": "Collection for permission management endpoints. Use `{{baseUrl}}` and `{{token}}` environment variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Apply Permission",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" },
+          { "key": "Content-Type", "value": "application/json", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"permissionDate\": \"2026-06-20\",\n  \"permissionType\": \"Personal\",\n  \"fromTime\": \"10:00\",\n  \"toTime\": \"12:00\",\n  \"totalMinutes\": 120,\n  \"reason\": \"Medical appointment\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/permissions",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "permissions"]
+        },
+        "description": "Submit a new permission request."
+      }
+    },
+    {
+      "name": "Get My Permissions",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/permissions/my",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "permissions", "my"]
+        },
+        "description": "Fetch permissions submitted by the current faculty member."
+      }
+    },
+    {
+      "name": "Get Permission By ID",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/permissions/:id",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "permissions", ":id"],
+          "variable": [
+            { "key": "id", "value": "<permissionId>" }
+          ]
+        },
+        "description": "View details for a single permission request."
+      }
+    },
+    {
+      "name": "Get Permission Card (Month)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/permissions/card/month",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "permissions", "card", "month"]
+        },
+        "description": "Fetch dashboard summary of permission hours for the current month."
+      }
+    },
+    {
+      "name": "Get HOD Permission List",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/permissions/hod/list",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "permissions", "hod", "list"]
+        },
+        "description": "HOD view of permission requests for their department."
+      }
+    },
+    {
+      "name": "Get Principal Permission List",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/permissions/principal/list",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "permissions", "principal", "list"]
+        },
+        "description": "Principal view of all permission requests."
+      }
+    },
+    {
+      "name": "Approve Permission",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" },
+          { "key": "Content-Type", "value": "application/json", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"remarks\": \"Approved for department requirement\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/permissions/:id/approve",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "permissions", ":id", "approve"],
+          "variable": [
+            { "key": "id", "value": "<permissionId>" }
+          ]
+        },
+        "description": "Approve a permission request as HOD or principal."
+      }
+    },
+    {
+      "name": "Reject Permission",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" },
+          { "key": "Content-Type", "value": "application/json", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"remarks\": \"Not approved due to workload\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/permissions/:id/reject",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "permissions", ":id", "reject"],
+          "variable": [
+            { "key": "id", "value": "<permissionId>" }
+          ]
+        },
+        "description": "Reject a permission request as HOD or principal."
+      }
+    },
+    {
+      "name": "Cancel Permission",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" },
+          { "key": "Content-Type", "value": "application/json", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/permissions/:id/cancel",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "permissions", ":id", "cancel"],
+          "variable": [
+            { "key": "id", "value": "<permissionId>" }
+          ]
+        },
+        "description": "Cancel a pending permission request as the submitting faculty member."
+      }
+    }
+  ]
+}

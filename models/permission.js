@@ -51,20 +51,57 @@ const permissionSchema = new mongoose.Schema(
       ref: "Faculty",
     },
 
-    approvedAt: Date,
+    approvedAt: {
+      type: Date,
+    },
 
-    remarks: String,
+    remarks: {
+      type: String,
+    },
+
+    approvalHistory: [
+      {
+        role: {
+          type: String,
+          enum: ["faculty", "hod", "principal", "dean"],
+          required: true,
+        },
+
+        approvedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Faculty",
+          required: true,
+        },
+
+        action: {
+          type: String,
+          enum: ["Submitted", "Approved", "Rejected"],
+          required: true,
+        },
+
+        remarks: {
+          type: String,
+          default: "",
+        },
+
+        actionDate: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   {
     timestamps: true,
   }
 );
 
-// Indexes
 permissionSchema.index({
   facultyId: 1,
   permissionDate: 1,
   status: 1,
 });
 
-module.exports = mongoose.model("Permission", permissionSchema);
+module.exports =
+  mongoose.models.Permission ||
+  mongoose.model("Permission", permissionSchema);
