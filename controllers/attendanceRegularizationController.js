@@ -36,7 +36,7 @@ exports.createAttendanceRegularization = async (req, res) => {
       return res.status(400).json({ success: false, message: "Faculty information missing" });
     }
 
-    const { attendanceDate, requestedInTime, requestedOutTime, reason } = req.body;
+    const { attendanceDate, requestedInTime, requestedOutTime, reason } = req.body || {};
 
     const request = await AttendanceRegularization.create({
       facultyId,
@@ -46,7 +46,7 @@ exports.createAttendanceRegularization = async (req, res) => {
       reason,
       approvalHistory: [
         {
-          role: "faculty",
+          role: req.user.role || "faculty",
           approvedBy: user._id,
           action: "Submitted",
           remarks: reason || "",
@@ -69,6 +69,7 @@ exports.getMyRequests = async (req, res) => {
 
     const requests = await AttendanceRegularization.find({ facultyId: user.facultyId })
       .populate("facultyId", "firstName lastName department empId")
+      .populate("approvalHistory.approvedBy", "_id")
       .sort({ createdAt: -1 });
 
     const requestsWithAction = requests.map((request) => {
@@ -95,6 +96,7 @@ exports.getRequests = async (req, res) => {
 
     const requests = await AttendanceRegularization.find(query)
       .populate("facultyId", "firstName lastName department empId")
+      .populate("approvalHistory.approvedBy", "_id")
       .sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, count: requests.length, requests });
@@ -112,6 +114,7 @@ exports.getRequestsForHod = async (req, res) => {
       status: "Pending",
     })
       .populate("facultyId", "firstName lastName department empId")
+      .populate("approvalHistory.approvedBy", "_id")
       .sort({ createdAt: -1 });
 
     const filtered = requests.filter((request) => request.facultyId?.department === req.user.department);
@@ -132,6 +135,7 @@ exports.getRequestsForPrincipal = async (req, res) => {
       status: "Pending",
     })
       .populate("facultyId", "firstName lastName department empId")
+      .populate("approvalHistory.approvedBy", "_id")
       .sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, count: requests.length, requests });
@@ -145,7 +149,8 @@ exports.getRequestById = async (req, res) => {
   try {
     const request = await AttendanceRegularization.findById(req.params.id)
       .populate("facultyId", "firstName lastName department empId")
-      .populate("approvedBy", "firstName lastName email");
+      .populate("approvedBy", "firstName lastName email")
+      .populate("approvalHistory.approvedBy", "_id");
 
     if (!request) return res.status(404).json({ success: false, message: "Request not found" });
 
@@ -177,7 +182,7 @@ exports.updateRequest = async (req, res) => {
       });
     }
 
-    const { requestedInTime, requestedOutTime, reason } = req.body;
+    const { requestedInTime, requestedOutTime, reason } = req.body || {};
     if (requestedInTime !== undefined) request.requestedInTime = requestedInTime;
     if (requestedOutTime !== undefined) request.requestedOutTime = requestedOutTime;
     if (reason !== undefined) request.reason = reason;
@@ -198,7 +203,7 @@ exports.approveRequest = async (req, res) => {
     if (!request) return res.status(404).json({ success: false, message: "Request not found" });
     if (request.status !== "Pending") return res.status(400).json({ success: false, message: "Request already processed" });
 
-    const remarks = req.body.approvalRemarks || "Approved";
+    const remarks = req.body?.approvalRemarks || "Approved";
     const user = await User.findById(req.user.id);
 
     if (req.user.role === "hod") {
@@ -255,7 +260,11 @@ exports.rejectRequest = async (req, res) => {
     if (!request) return res.status(404).json({ success: false, message: "Request not found" });
     if (request.status !== "Pending") return res.status(400).json({ success: false, message: "Request already processed" });
 
-    const remarks = req.body.approvalRemarks || "Rejected";
+    const remarks = req.body?.approvalRemarks;
+    if (!remarks || remarks.trim() === "") {
+      return res.status(400).json({ success: false, message: "Remarks are required when rejecting a request" });
+    }
+
     const user = await User.findById(req.user.id);
 
     if (req.user.role === "hod" && request.currentApprovalLevel !== "hod") {
@@ -314,7 +323,7 @@ exports.cancelRequest = async (req, res) => {
       role: "faculty",
       approvedBy: user._id,
       action: "Cancelled",
-      remarks: req.body.approvalRemarks || "Withdrawn by faculty",
+      remarks: req.body?.approvalRemarks || "Withdrawn by faculty",
     });
 
     await request.save();
