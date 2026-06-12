@@ -349,3 +349,97 @@ exports.getAttendanceWeekSummary = async (req, res) => {
     });
   }
 };
+
+exports.getMyAttendanceSummary = async (req, res) => {
+  try {
+    const month = Number(req.query.month);
+    const year = Number(req.query.year);
+
+    if (!month || !year) {
+      return res.status(400).json({
+        success: false,
+        message: "Month and year are required",
+      });
+    }
+
+    const facultyId = req.user.facultyId;
+
+    const startDate = new Date(Date.UTC(year, month - 1, 1));
+    startDate.setMinutes(startDate.getMinutes() - 330);
+
+    const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59));
+    endDate.setMinutes(endDate.getMinutes() - 330);
+
+    const totalDays = new Date(Date.UTC(year, month, 0)).getUTCDate();
+
+    const attendances = await Attendance.find({
+      facultyId,
+      attendanceDate: {
+        $gte: startDate,
+        $lte: endDate,
+      },
+    });
+
+    let holidays = 0;
+    let presentDays = 0;
+    let absentDays = 0;
+
+    attendances.forEach((attendance) => {
+      switch (attendance.status) {
+        case "Present":
+          presentDays += 1;
+          break;
+
+        case "Absent":
+          absentDays += 1;
+          break;
+
+        case "Leave":
+          absentDays += 1;
+          break;
+
+        case "First Half Leave":
+          presentDays += 0.5;
+          absentDays += 0.5;
+          break;
+
+        case "Second Half Leave":
+          presentDays += 0.5;
+          absentDays += 0.5;
+          break;
+
+        case "Missed Punch":
+          presentDays += 1;
+          break;
+
+        case "Holiday":
+          holidays += 1;
+          break;
+      }
+    });
+
+    const workingDays = totalDays - holidays;
+
+    const attendancePercentage =
+      workingDays > 0
+        ? Number(((presentDays / workingDays) * 100).toFixed(2))
+        : 0;
+
+    return res.status(200).json({
+      success: true,
+      month,
+      year,
+      workingDays,
+      presentDays,
+      absentDays,
+      attendancePercentage,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch attendance summary",
+    });
+  }
+};
