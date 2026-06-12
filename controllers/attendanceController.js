@@ -419,11 +419,28 @@ exports.getMyAttendanceSummary = async (req, res) => {
     });
 
     const workingDays = totalDays - holidays;
+    const today = new Date();
 
+    let workingDaysTillDate = workingDays;
+    
+    if (
+      today.getUTCFullYear() === year &&
+      today.getUTCMonth() + 1 === month
+    ) {
+      workingDaysTillDate = 0;
+    
+      attendances.forEach((attendance) => {
+        if (attendance.status !== "Holiday") {
+          workingDaysTillDate++;
+        }
+      });
+    }
     const attendancePercentage =
-      workingDays > 0
-        ? Number(((presentDays / workingDays) * 100).toFixed(2))
-        : 0;
+  workingDaysTillDate > 0
+    ? Number(
+        ((presentDays / workingDaysTillDate) * 100).toFixed(2),
+      )
+    : 0;
 
     return res.status(200).json({
       success: true,
