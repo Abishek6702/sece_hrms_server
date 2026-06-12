@@ -1,5 +1,6 @@
 const express = require("express");
 const protect = require("../middleware/protect");
+const upload = require("../middleware/upload");
 
 const {
   createAttendanceRegularization,
@@ -16,7 +17,7 @@ const {
 
 const router = express.Router();
 
-router.post("/", protect, createAttendanceRegularization);
+router.post("/", protect, upload.single("attachment"), createAttendanceRegularization);
 
 router.get("/my", protect, getMyRequests);
 router.get("/me", protect, getMyRequests);
