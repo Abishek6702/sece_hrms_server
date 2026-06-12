@@ -4,6 +4,8 @@ const Attendance = require("../models/attendance");
 
 const Faculty = require("../models/Faculty");
 
+const Holiday = require("../models/holiday");
+
 exports.getAttendanceMuster = async (req, res) => {
   try {
     const month = Number(req.query.month);
@@ -366,12 +368,20 @@ exports.getMyAttendanceSummary = async (req, res) => {
 
     const startDate = new Date(Date.UTC(year, month - 1, 1));
     startDate.setMinutes(startDate.getMinutes() - 330);
-
+    
     const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59));
     endDate.setMinutes(endDate.getMinutes() - 330);
-
     const totalDays = new Date(Date.UTC(year, month, 0)).getUTCDate();
-
+    const faculty = await Faculty.findById(facultyId);
+    
+    const holidays = await Holiday.countDocuments({
+      isActive: true,
+      applicableEmployeeCategories: faculty.employeeCategory,
+      holidayDate: {
+        $gte: startDate,
+        $lte: endDate,
+      },
+    });
     const attendances = await Attendance.find({
       facultyId,
       attendanceDate: {
@@ -380,7 +390,6 @@ exports.getMyAttendanceSummary = async (req, res) => {
       },
     });
 
-    let holidays = 0;
     let presentDays = 0;
     let absentDays = 0;
 
@@ -411,10 +420,6 @@ exports.getMyAttendanceSummary = async (req, res) => {
         case "Missed Punch":
           presentDays += 1;
           break;
-
-        case "Holiday":
-          holidays += 1;
-          break;
       }
     });
 
@@ -422,25 +427,25 @@ exports.getMyAttendanceSummary = async (req, res) => {
     const today = new Date();
 
     let workingDaysTillDate = workingDays;
-    
-    if (
-      today.getUTCFullYear() === year &&
-      today.getUTCMonth() + 1 === month
-    ) {
-      workingDaysTillDate = 0;
-    
-      attendances.forEach((attendance) => {
-        if (attendance.status !== "Holiday") {
-          workingDaysTillDate++;
-        }
+
+    if (today.getUTCFullYear() === year && today.getUTCMonth() + 1 === month) {
+      const daysPassed = today.getUTCDate();
+
+      const holidaysTillDate = await Holiday.countDocuments({
+        isActive: true,
+        applicableEmployeeCategories: faculty.employeeCategory,
+        holidayDate: {
+          $gte: startDate,
+          $lte: today,
+        },
       });
+
+      workingDaysTillDate = daysPassed - holidaysTillDate;
     }
     const attendancePercentage =
-  workingDaysTillDate > 0
-    ? Number(
-        ((presentDays / workingDaysTillDate) * 100).toFixed(2),
-      )
-    : 0;
+      workingDaysTillDate > 0
+        ? Number(((presentDays / workingDaysTillDate) * 100).toFixed(2))
+        : 0;
 
     return res.status(200).json({
       success: true,
