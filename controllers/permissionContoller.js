@@ -11,7 +11,7 @@ const requireRole = (req, role) => {
   }
 };
 
-// Dean: apply for permission
+// Faculty: apply for permission
 exports.applyPermission = async (req, res) => {
   try {
     const {
@@ -40,7 +40,7 @@ exports.applyPermission = async (req, res) => {
 
       approvalHistory: [
         {
-          role: "dean",
+          role: req.user.role || "faculty",
           approvedBy: req.user.facultyId,
           action: "Submitted",
           remarks: "Permission Applied",
@@ -96,13 +96,13 @@ exports.getPermissionsForHod = async (req, res) => {
   try {
     requireRole(req, "hod");
 
-    // fetch permissions populated with faculty details and filter by department
-    const all = await Permission.find()
+    // fetch pending permissions for HOD department only
+    const dept = req.user.department;
+    const permissions = await Permission.find({ status: "Pending" })
       .populate("facultyId", "firstName lastName department empId")
       .sort({ createdAt: -1 });
 
-    const dept = req.user.department;
-    const filtered = all.filter(
+    const filtered = permissions.filter(
       (p) => p.facultyId && p.facultyId.department === dept,
     );
 
@@ -116,15 +116,15 @@ exports.getPermissionsForHod = async (req, res) => {
   }
 };
 
-// Principal: list all permissions
+// Principal: list pending permissions only
 exports.getPermissionsForPrincipal = async (req, res) => {
   try {
     requireRole(req, "principal");
 
-    const all = await Permission.find()
+    const permissions = await Permission.find({ status: "Pending" })
       .populate("facultyId", "firstName lastName department empId")
       .sort({ createdAt: -1 });
-    return res.json({ success: true, data: all });
+    return res.json({ success: true, data: permissions });
   } catch (error) {
     console.error("getPermissionsForPrincipal error:", error);
     const status = error.status || 500;
@@ -156,7 +156,7 @@ exports.getPermissionById = async (req, res) => {
 // Principal: approve permission
 exports.approvePermission = async (req, res) => {
   try {
-    requireRole(req, "principal");
+    requireRole(req, ["hod", "principal"]);
     const { id } = req.params;
     const { remarks } = req.body;
 
@@ -172,7 +172,7 @@ exports.approvePermission = async (req, res) => {
     perm.remarks = remarks || "Approved";
 
     perm.approvalHistory.push({
-      role: "principal",
+      role: req.user.role || "principal",
       approvedBy: req.user.facultyId,
       action: "Approved",
       remarks: remarks || "Approved",
@@ -194,7 +194,7 @@ exports.approvePermission = async (req, res) => {
 // Principal: reject permission
 exports.rejectPermission = async (req, res) => {
   try {
-    requireRole(req, "principal");
+    requireRole(req, ["hod", "principal"]);
     const { id } = req.params;
     const { remarks } = req.body;
 
@@ -204,13 +204,21 @@ exports.rejectPermission = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Permission not found" });
 
+    // Require a reason when rejecting a permission
+    if (!remarks || remarks.trim() === "") {
+      return res.status(400).json({
+        success: false,
+        message: "Reason is required when rejecting permission",
+      });
+    }
+
     perm.status = "Rejected";
     perm.approvedBy = req.user.facultyId;
     perm.approvedAt = new Date();
     perm.remarks = remarks || "Rejected";
 
     perm.approvalHistory.push({
-      role: "principal",
+      role: req.user.role || "principal",
       approvedBy: req.user.facultyId,
       action: "Rejected",
       remarks: remarks || "Rejected",
