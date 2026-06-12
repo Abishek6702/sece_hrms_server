@@ -108,6 +108,21 @@ exports.getAttendanceByDate = async (req, res) => {
           session2 = "H";
           break;
 
+        case "On Duty":
+          session1 = "OD";
+          session2 = "OD";
+          break;
+
+        case "First Half OD":
+          session1 = "OD";
+          session2 = "P";
+          break;
+
+        case "Second Half OD":
+          session1 = "P";
+          session2 = "OD";
+          break;
+
         default:
           session1 = "";
           session2 = "";
@@ -217,6 +232,21 @@ exports.getAttendanceByEmployee = async (req, res) => {
         case "Holiday":
           session1 = "H";
           session2 = "H";
+          break;
+
+        case "On Duty":
+          session1 = "OD";
+          session2 = "OD";
+          break;
+
+        case "First Half OD":
+          session1 = "OD";
+          session2 = "P";
+          break;
+
+        case "Second Half OD":
+          session1 = "P";
+          session2 = "OD";
           break;
 
         default:
@@ -448,6 +478,18 @@ exports.updateAttendanceOverride = async (req, res) => {
       default:
         responseSession1 = "";
         responseSession2 = "";
+        case "On Duty":
+          responseSession1 = "OD";
+          responseSession2 = "OD";
+          break;
+        case "First Half OD":
+          responseSession1 = "OD";
+          responseSession2 = "P";
+          break;
+        case "Second Half OD":
+          responseSession1 = "P";
+          responseSession2 = "OD";
+          break;
     }
 
     const response = {
@@ -470,8 +512,7 @@ exports.updateAttendanceOverride = async (req, res) => {
 
       session1: responseSession1,
       session2: responseSession2,
-    };
-
+    }
     res.status(200).json({
       success: true,
       message: "Attendance updated successfully",
