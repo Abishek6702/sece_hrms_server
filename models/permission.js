@@ -1,3 +1,4 @@
+
 const mongoose = require("mongoose");
 
 const permissionSchema = new mongoose.Schema(
@@ -46,17 +47,27 @@ const permissionSchema = new mongoose.Schema(
       default: "Pending",
     },
 
+    // Current approval stage
+    currentApprovalLevel: {
+      type: String,
+      enum: ["hod", "principal", "dean"],
+      default: "hod",
+    },
+
     approvedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Faculty",
+      default: null,
     },
 
     approvedAt: {
       type: Date,
+      default: null,
     },
 
     remarks: {
       type: String,
+      default: "",
     },
 
     approvalHistory: [
@@ -105,3 +116,4 @@ permissionSchema.index({
 module.exports =
   mongoose.models.Permission ||
   mongoose.model("Permission", permissionSchema);
+
