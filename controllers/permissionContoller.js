@@ -121,16 +121,26 @@ exports.getPermissionsForPrincipal = async (req, res) => {
   try {
     requireRole(req, "principal");
 
-    const permissions = await Permission.find({ status: "Pending" })
+    const permissions = await Permission.find({
+      status: "Pending",
+      currentApprovalLevel: "principal",
+    })
       .populate("facultyId", "firstName lastName department empId")
       .sort({ createdAt: -1 });
-    return res.json({ success: true, data: permissions });
+
+    console.log("Permissions:", permissions);
+
+    return res.json({
+      success: true,
+      count: permissions.length,
+      data: permissions,
+    });
   } catch (error) {
-    console.error("getPermissionsForPrincipal error:", error);
-    const status = error.status || 500;
-    return res
-      .status(status)
-      .json({ success: false, message: error.message || "Server error" });
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
@@ -153,43 +163,71 @@ exports.getPermissionById = async (req, res) => {
   }
 };
 
-// Principal: approve permission
+// Principal &hod: approve permission
+
 exports.approvePermission = async (req, res) => {
   try {
     requireRole(req, ["hod", "principal"]);
+
     const { id } = req.params;
     const { remarks } = req.body;
 
     const perm = await Permission.findById(id);
-    if (!perm)
-      return res
-        .status(404)
-        .json({ success: false, message: "Permission not found" });
 
-    perm.status = "Approved";
-    perm.approvedBy = req.user.facultyId;
-    perm.approvedAt = new Date();
-    perm.remarks = remarks || "Approved";
+    if (!perm) {
+      return res.status(404).json({
+        success: false,
+        message: "Permission not found",
+      });
+    }
 
-    perm.approvalHistory.push({
-      role: req.user.role || "principal",
-      approvedBy: req.user.facultyId,
-      action: "Approved",
-      remarks: remarks || "Approved",
-      actionDate: new Date(),
-    });
+    // HOD approval
+    if (req.user.role === "hod") {
+      perm.currentApprovalLevel = "principal";
+      perm.remarks = remarks || "Forwarded to Principal";
+
+      perm.approvalHistory.push({
+        role: "hod",
+        approvedBy: req.user.facultyId,
+        action: "Approved",
+        remarks: remarks || "Approved by HOD",
+        actionDate: new Date(),
+      });
+    }
+
+    // Principal approval
+    else if (req.user.role === "principal") {
+      perm.status = "Approved";
+      perm.approvedBy = req.user.facultyId;
+      perm.approvedAt = new Date();
+      perm.remarks = remarks || "Approved";
+
+      perm.approvalHistory.push({
+        role: "principal",
+        approvedBy: req.user.facultyId,
+        action: "Approved",
+        remarks: remarks || "Approved by Principal",
+        actionDate: new Date(),
+      });
+    }
 
     await perm.save();
 
-    return res.json({ success: true, data: perm });
+    return res.json({
+      success: true,
+      data: perm,
+    });
   } catch (error) {
     console.error("approvePermission error:", error);
-    const status = error.status || 500;
-    return res
-      .status(status)
-      .json({ success: false, message: error.message || "Server error" });
+
+    return res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Server error",
+    });
   }
 };
+
+
 
 // Principal: reject permission
 exports.rejectPermission = async (req, res) => {
