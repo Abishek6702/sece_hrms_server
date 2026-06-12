@@ -24,11 +24,95 @@ exports.applyPermission = async (req, res) => {
     } = req.body;
 
     if (!req.user || !req.user.facultyId) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Faculty information missing." });
+      return res.status(400).json({
+        success: false,
+        message: "Faculty information missing.",
+      });
     }
 
+    // Validate required fields
+    if (
+      !permissionDate ||
+      !permissionType ||
+      !fromTime ||
+      !toTime ||
+      !totalMinutes ||
+      !reason
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required.",
+      });
+    }
+
+    // =====================================
+    // Prevent duplicate permission on same date
+    // =====================================
+    const existingPermission = await Permission.findOne({
+      facultyId: req.user.facultyId,
+      permissionDate: {
+        $gte: new Date(`${permissionDate}T00:00:00.000Z`),
+        $lt: new Date(`${permissionDate}T23:59:59.999Z`),
+      },
+      status: {
+        $in: ["Pending", "Approved"],
+      },
+    });
+
+    if (existingPermission) {
+      return res.status(400).json({
+        success: false,
+        message: "Permission request already exists for this date.",
+      });
+    }
+
+    // =====================================
+    // Monthly limit: 2 hours (120 minutes)
+    // Count only principal-approved permissions
+    // =====================================
+    const requestDate = new Date(permissionDate);
+
+    const startOfMonth = new Date(
+      requestDate.getFullYear(),
+      requestDate.getMonth(),
+      1
+    );
+
+    const endOfMonth = new Date(
+      requestDate.getFullYear(),
+      requestDate.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999
+    );
+
+    const approvedPermissions = await Permission.find({
+      facultyId: req.user.facultyId,
+      status: "Approved",
+      permissionDate: {
+        $gte: startOfMonth,
+        $lte: endOfMonth,
+      },
+    });
+
+    const totalMinutesUsed = approvedPermissions.reduce(
+      (sum, permission) => sum + (permission.totalMinutes || 0),
+      0
+    );
+
+    if (totalMinutesUsed + Number(totalMinutes) > 120) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Monthly permission limit exceeded. Only 2 hours (120 minutes) are allowed per month.",
+      });
+    }
+
+    // =====================================
+    // Create permission request
+    // =====================================
     const permission = await Permission.create({
       facultyId: req.user.facultyId,
       permissionDate,
@@ -37,6 +121,9 @@ exports.applyPermission = async (req, res) => {
       toTime,
       totalMinutes,
       reason,
+
+      status: "Pending",
+      currentApprovalLevel: "hod",
 
       approvalHistory: [
         {
@@ -49,12 +136,26 @@ exports.applyPermission = async (req, res) => {
       ],
     });
 
-    return res.status(201).json({ success: true, data: permission });
+    return res.status(201).json({
+      success: true,
+      message: "Permission applied successfully.",
+      data: permission,
+    });
   } catch (error) {
     console.error("applyPermission error:", error);
-    return res.status(500).json({ success: false, message: error.message });
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
+
+
+
+
+
+
 
 // Faculty: list own permissions
 exports.getMyPermissions = async (req, res) => {
@@ -92,29 +193,45 @@ exports.getMyPermissions = async (req, res) => {
 };
 
 // HOD: list permissions for department
+
 exports.getPermissionsForHod = async (req, res) => {
   try {
     requireRole(req, "hod");
 
-    // fetch pending permissions for HOD department only
     const dept = req.user.department;
-    const permissions = await Permission.find({ status: "Pending" })
-      .populate("facultyId", "firstName lastName department empId")
+
+    const permissions = await Permission.find({
+      status: "Pending",
+      currentApprovalLevel: "hod",
+    })
+      .populate(
+        "facultyId",
+        "firstName lastName department empId"
+      )
       .sort({ createdAt: -1 });
 
     const filtered = permissions.filter(
-      (p) => p.facultyId && p.facultyId.department === dept,
+      (p) =>
+        p.facultyId &&
+        p.facultyId.department === dept
     );
 
-    return res.json({ success: true, data: filtered });
+    return res.status(200).json({
+      success: true,
+      count: filtered.length,
+      data: filtered,
+    });
   } catch (error) {
     console.error("getPermissionsForHod error:", error);
-    const status = error.status || 500;
-    return res
-      .status(status)
-      .json({ success: false, message: error.message || "Server error" });
+
+    return res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Server error",
+    });
   }
 };
+
+
 
 // Principal: list pending permissions only
 exports.getPermissionsForPrincipal = async (req, res) => {
