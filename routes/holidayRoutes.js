@@ -7,6 +7,7 @@ const {
   updateHoliday,
   deleteHoliday,
   importHolidayExcel,
+  getEmployeeHolidays
 } = require("../controllers/holidayController.js");
 
 const upload = require("../middleware/upload");
@@ -14,16 +15,18 @@ const protect = require("../middleware/protect");
 
 const router = express.Router();
 
-router.post("/", addHoliday);
+router.post("/", protect, addHoliday);
 
-router.get("/", getHolidays);
+router.get("/", protect, getHolidays);
 
-router.post("/import", upload.single("holidays"), importHolidayExcel);
+router.post("/import", protect, upload.single("holidays"), importHolidayExcel);
 
-router.get("/:id", getHolidayById);
+router.get("/calendar", protect, getEmployeeHolidays);
 
-router.put("/:id", updateHoliday);
+router.get("/:id", protect, getHolidayById);
 
-router.delete("/:id", deleteHoliday);
+router.put("/:id", protect, updateHoliday);
+
+router.delete("/:id", protect, deleteHoliday);
 
 module.exports = router;

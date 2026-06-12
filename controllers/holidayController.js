@@ -219,3 +219,36 @@ exports.deleteHoliday = async (req, res) => {
     });
   }
 };
+
+exports.getEmployeeHolidays = async (req, res) => {
+  try {
+    const { month, year } = req.query;
+
+    const employeeCategory = req.user.employeeCategory;
+
+    const startDate = new Date(year, month - 1, 1);
+
+    const endDate = new Date(year, month, 0, 23, 59, 59);
+
+    const holidays = await Holiday.find({
+      isActive: true,
+      holidayDate: {
+        $gte: startDate,
+        $lte: endDate,
+      },
+      applicableEmployeeCategories: employeeCategory,
+    }).sort({ holidayDate: 1 });
+
+    res.status(200).json({
+      success: true,
+      data: holidays,
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch holidays",
+    });
+  }
+};
