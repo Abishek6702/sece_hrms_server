@@ -93,9 +93,16 @@ exports.getAttendanceMuster = async (req, res) => {
         attendanceMap[facultyId] = {};
       }
 
-      const day = attendance.inTime
-        ? attendance.inTime.getUTCDate()
-        : attendance.attendanceDate.getUTCDate();
+      let day;
+
+      if (attendance.inTime) {
+        day = attendance.inTime.getUTCDate();
+      } else {
+        const istDate = new Date(attendance.attendanceDate);
+        istDate.setMinutes(istDate.getMinutes() + 330);
+
+        day = istDate.getUTCDate();
+      }
 
       let value = "-";
 
@@ -142,7 +149,7 @@ exports.getAttendanceMuster = async (req, res) => {
 
         const facultyAttendance = attendanceMap[faculty._id.toString()] || {};
 
-        if (facultyAttendance[day]) {
+        if (facultyAttendance[day] !== undefined) {
           attendanceDays[day] = facultyAttendance[day];
         } else if (currentDate.getUTCDay() === 0) {
           attendanceDays[day] = "OFF";
@@ -214,7 +221,6 @@ exports.getFacultyAttendanceHistory = async (req, res) => {
       .limit(limit)
       .lean();
     const records = attendances.map((attendance) => ({
-
       attendanceId: attendance._id,
       date: attendance.attendanceDate,
       checkIn: attendance.inTime,
@@ -244,7 +250,7 @@ exports.getFacultyAttendanceHistory = async (req, res) => {
 
 exports.getAttendanceWeekSummary = async (req, res) => {
   try {
-    const { facultyId,dayName  } = req.query;
+    const { facultyId, dayName } = req.query;
 
     if (!facultyId) {
       return res.status(400).json({
@@ -254,7 +260,7 @@ exports.getAttendanceWeekSummary = async (req, res) => {
     }
 
     if (!mongoose.Types.ObjectId.isValid(facultyId)) {
-        return res.status(400).json({
+      return res.status(400).json({
         success: false,
         message: "Invalid facultyId",
       });
@@ -284,11 +290,11 @@ exports.getAttendanceWeekSummary = async (req, res) => {
 
     attendances.forEach((item) => {
       const attendanceDate = item.inTime || item.attendanceDate;
-    
+
       const key = `${attendanceDate.getFullYear()}-${String(
-        attendanceDate.getMonth() + 1
+        attendanceDate.getMonth() + 1,
       ).padStart(2, "0")}-${String(attendanceDate.getDate()).padStart(2, "0")}`;
-    
+
       attendanceMap[key] = item;
     });
 
@@ -297,27 +303,27 @@ exports.getAttendanceWeekSummary = async (req, res) => {
     for (let i = 0; i < 7; i++) {
       const date = new Date(monday);
       date.setDate(monday.getDate() + i);
-    
-      const key = `${date.getFullYear()}-${String(
-        date.getMonth() + 1
-      ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-    
+
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+        2,
+        "0",
+      )}-${String(date.getDate()).padStart(2, "0")}`;
+
       const attendance = attendanceMap[key];
-    
+
       weekDays.push({
         dayName: date.toLocaleDateString("en-US", {
           weekday: "short",
         }),
-    
+
         date: key,
-    
-        isToday:
-          date.toDateString() === new Date().toDateString(),
-    
+
+        isToday: date.toDateString() === new Date().toDateString(),
+
         status: attendance?.status || "-",
-    
+
         inTime: attendance?.inTime || null,
-    
+
         outTime: attendance?.outTime || null,
       });
     }
@@ -325,7 +331,7 @@ exports.getAttendanceWeekSummary = async (req, res) => {
 
     if (dayName) {
       filteredDays = weekDays.filter(
-        (day) => day.dayName.toLowerCase() === dayName.toLowerCase()
+        (day) => day.dayName.toLowerCase() === dayName.toLowerCase(),
       );
     }
     return res.status(200).json({
