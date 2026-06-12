@@ -7,6 +7,6 @@ const router = express.Router();
 
 router.get("/muster", protect, getAttendanceMuster);
 router.get("/faculty-attendance",protect, getFacultyAttendanceHistory);
-router.get("/week-summary", getAttendanceWeekSummary);
+router.get("/week-summary",protect, getAttendanceWeekSummary);
 
 module.exports = router;
