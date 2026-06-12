@@ -6,8 +6,9 @@
   },
   "item": [
     {
-      "name": "Apply Attendance Regularization (Faculty)",
+      "name": "Apply Attendance Regularization",
       "request": {
+        "description": "Create a new attendance regularization request for the authenticated faculty user.",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -18,17 +19,38 @@
             }
           ]
         },
+
         "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json",
-            "type": "text"
-          }
-        ],
+        "header": [],
         "body": {
-          "mode": "raw",
-          "raw": "{\n  \"attendanceDate\": \"2026-06-09\",\n  \"requestedInTime\": \"2026-06-09T09:00:00.000Z\",\n  \"requestedOutTime\": \"2026-06-09T17:00:00.000Z\",\n  \"reason\": \"Forgot to punch\"\n}"
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "attendanceDate",
+              "value": "2026-06-09",
+              "type": "text"
+            },
+            {
+              "key": "requestedInTime",
+              "value": "2026-06-09T09:00:00.000Z",
+              "type": "text"
+            },
+            {
+              "key": "requestedOutTime",
+              "value": "2026-06-09T17:00:00.000Z",
+              "type": "text"
+            },
+            {
+              "key": "reason",
+              "value": "Forgot to punch",
+              "type": "text"
+            },
+            {
+              "key": "attachment",
+              "type": "file",
+              "src": "path/to/attachment.pdf"
+            }
+          ]
         },
         "url": {
           "raw": "{{base_url}}/api/attendance-regularization",

@@ -24,41 +24,177 @@ const getRequestActionLabel = (request) => {
   return request.status || "Unknown";
 };
 
+
+
 exports.createAttendanceRegularization = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
+
     if (!user) {
-      return res.status(401).json({ success: false, message: "User not found" });
+      return res.status(401).json({
+        success: false,
+        message: "User not found",
+      });
     }
 
-    const facultyId = user.facultyId || (await Faculty.findOne({ user: user._id }))?._id;
+    const faculty =
+      user.facultyId
+        ? { _id: user.facultyId }
+        : await Faculty.findOne({ user: user._id });
+
+    const facultyId = faculty?._id;
+
     if (!facultyId) {
-      return res.status(400).json({ success: false, message: "Faculty information missing" });
+      return res.status(400).json({
+        success: false,
+        message: "Faculty information missing",
+      });
     }
 
-    const { attendanceDate, requestedInTime, requestedOutTime, reason } = req.body || {};
+    const {
+      attendanceDate,
+      requestedInTime,
+      requestedOutTime,
+      reason,
+    } = req.body;
 
+    if (!attendanceDate) {
+      return res.status(400).json({
+        success: false,
+        message: "Attendance date is required",
+      });
+    }
+
+    // ==========================
+    // Prevent duplicate request for same date
+    // ==========================
+    const existingRequest = await AttendanceRegularization.findOne({
+      facultyId,
+      attendanceDate: {
+        $gte: new Date(`${attendanceDate}T00:00:00.000Z`),
+        $lt: new Date(`${attendanceDate}T23:59:59.999Z`),
+      },
+      status: {
+        $in: ["Pending", "Approved"],
+      },
+    });
+
+    if (existingRequest) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Attendance regularization request already exists for this date",
+      });
+    }
+
+    // ==========================
+    // Monthly limit check (3 requests)
+    // ==========================
+    const requestDate = new Date(attendanceDate);
+
+    const startOfMonth = new Date(
+      requestDate.getFullYear(),
+      requestDate.getMonth(),
+      1
+    );
+
+    const endOfMonth = new Date(
+      requestDate.getFullYear(),
+      requestDate.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999
+    );
+
+    const monthlyCount =
+      await AttendanceRegularization.countDocuments({
+        facultyId,
+        attendanceDate: {
+          $gte: startOfMonth,
+          $lte: endOfMonth,
+        },
+        status: {
+          $in: ["Pending", "Approved"],
+        },
+      });
+
+    if (monthlyCount >= 3) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Only 3 attendance regularization requests are allowed per month",
+      });
+    }
+
+    // ==========================
+    // Determine approval flow
+    // Faculty -> HOD -> Principal
+    // Dean -> Principal
+    // ==========================
+    let approvalLevel = "hod";
+
+    if (req.user.role === "dean") {
+      approvalLevel = "principal";
+    }
+
+    // ==========================
+    // Optional attachment
+    // ==========================
+    let attachment = {};
+
+    if (req.file) {
+      attachment = {
+        url: req.file.path,
+        publicId: req.file.filename,
+      };
+    }
+
+    // ==========================
+    // Create request
+    // ==========================
     const request = await AttendanceRegularization.create({
       facultyId,
       attendanceDate,
       requestedInTime: requestedInTime || null,
       requestedOutTime: requestedOutTime || null,
       reason,
+
+      attachment,
+
+      status: "Pending",
+      currentApprovalLevel: approvalLevel,
+
       approvalHistory: [
         {
           role: req.user.role || "faculty",
           approvedBy: user._id,
           action: "Submitted",
           remarks: reason || "",
+          actionDate: new Date(),
         },
       ],
     });
 
-    res.status(201).json({ success: true, message: "Request created", request });
+    return res.status(201).json({
+      success: true,
+      message: "Attendance regularization request created successfully",
+      request,
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error("createAttendanceRegularization error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
+
+
+
+
 
 exports.getMyRequests = async (req, res) => {
   try {
@@ -182,7 +318,7 @@ exports.updateRequest = async (req, res) => {
       });
     }
 
-    const { requestedInTime, requestedOutTime, reason } = req.body || {};
+    const { requestedInTime, requestedOutTime, reason } = req.body;
     if (requestedInTime !== undefined) request.requestedInTime = requestedInTime;
     if (requestedOutTime !== undefined) request.requestedOutTime = requestedOutTime;
     if (reason !== undefined) request.reason = reason;
@@ -203,7 +339,7 @@ exports.approveRequest = async (req, res) => {
     if (!request) return res.status(404).json({ success: false, message: "Request not found" });
     if (request.status !== "Pending") return res.status(400).json({ success: false, message: "Request already processed" });
 
-    const remarks = req.body?.approvalRemarks || "Approved";
+    const remarks = req.body.approvalRemarks || "Approved";
     const user = await User.findById(req.user.id);
 
     if (req.user.role === "hod") {
@@ -260,7 +396,7 @@ exports.rejectRequest = async (req, res) => {
     if (!request) return res.status(404).json({ success: false, message: "Request not found" });
     if (request.status !== "Pending") return res.status(400).json({ success: false, message: "Request already processed" });
 
-    const remarks = req.body?.approvalRemarks;
+    const remarks = req.body.approvalRemarks;
     if (!remarks || remarks.trim() === "") {
       return res.status(400).json({ success: false, message: "Remarks are required when rejecting a request" });
     }
@@ -323,7 +459,7 @@ exports.cancelRequest = async (req, res) => {
       role: "faculty",
       approvedBy: user._id,
       action: "Cancelled",
-      remarks: req.body?.approvalRemarks || "Withdrawn by faculty",
+      remarks: req.body.approvalRemarks || "Withdrawn by faculty",
     });
 
     await request.save();

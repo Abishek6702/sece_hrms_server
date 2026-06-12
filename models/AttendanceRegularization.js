@@ -5,14 +5,14 @@ const documentSchema = new mongoose.Schema(
     url: String,
     publicId: String,
   },
-  { _id: false }
+  { _id: false },
 );
 
 const approvalHistorySchema = new mongoose.Schema(
   {
     role: {
       type: String,
-      enum: ["faculty", "hod", "principal"],
+      enum: ["faculty", "hod", "principal", "dean"],
     },
     approvedBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -28,7 +28,7 @@ const approvalHistorySchema = new mongoose.Schema(
       default: Date.now,
     },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const attendanceRegularizationSchema = new mongoose.Schema(
@@ -60,6 +60,17 @@ const attendanceRegularizationSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+    },
+
+    attachment: {
+      url: {
+        type: String,
+        default: "",
+      },
+      publicId: {
+        type: String,
+        default: "",
+      },
     },
 
     status: {
@@ -105,4 +116,3 @@ attendanceRegularizationSchema.index({
 module.exports =
   mongoose.models.AttendanceRegularization ||
   mongoose.model("AttendanceRegularization", attendanceRegularizationSchema);
-
