@@ -15,10 +15,10 @@ const STATUS_CODE_MAP = {
 
 exports.getAttendanceByDate = async (req, res) => {
   try {
-    if (req.user.role !== "principal") {
+    if (req.user.role !== "hr") {
       return res.status(403).json({
         success: false,
-        message: "Only Principal can access this API",
+        message: "Only HR can access this API",
       });
     }
 
@@ -133,10 +133,10 @@ exports.getAttendanceByDate = async (req, res) => {
 
 exports.getAttendanceByEmployee = async (req, res) => {
   try {
-    if (req.user.role !== "principal") {
+    if (req.user.role !== "hr") {
       return res.status(403).json({
         success: false,
-        message: "Only Principal can access this API",
+        message: "Only HR can access this API",
       });
     }
 
@@ -245,11 +245,11 @@ exports.getAttendanceByEmployee = async (req, res) => {
 
 exports.updateAttendanceOverride = async (req, res) => {
   try {
-    // Only Principal can access
-    if (req.user.role !== "principal") {
+    // Only HR can access
+    if (req.user.role !== "hr") {
       return res.status(403).json({
         success: false,
-        message: "Only Principal can access this API",
+        message: "Only HR can access this API",
       });
     }
 
@@ -472,10 +472,10 @@ exports.updateAttendanceOverride = async (req, res) => {
 
 exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
   try {
-    if (req.user.role !== "principal") {
+    if (req.user.role !== "hr") {
       return res.status(403).json({
         success: false,
-        message: "Only Principal can access this API",
+        message: "Only HR can access this API",
       });
     }
 
@@ -662,10 +662,10 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
 };
 exports.getAttendanceOverrideHistory = async (req, res) => {
   try {
-    if (req.user.role !== "principal") {
+    if (req.user.role !== "hr") {
       return res.status(403).json({
         success: false,
-        message: "Only Principal can access this API",
+        message: "Only HR can access this API",
       });
     }
 
