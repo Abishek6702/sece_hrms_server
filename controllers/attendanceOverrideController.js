@@ -2,16 +2,30 @@ const mongoose = require("mongoose");
 const Attendance = require("../models/attendance");
 const AttendanceOverrideHistory = require("../models/AttendanceOverrideHistory");
 
+
 const STATUS_CODE_MAP = {
   Present: "P:P",
   Absent: "A:A",
+
+  "Half Day": "A:P",
+
   "First Half Leave": "A:P",
   "Second Half Leave": "P:A",
+
   Leave: "L:L",
   Holiday: "H:H",
+
   "Missed Punch": "M:M",
-  "Half Day": "A:P",
+
+   //On Duty
+  "On Duty": "OD:OD",
+
+   //Optional half-day OD statuses
+  "First Half OD": "OD:P",
+  "Second Half OD": "P:OD",
 };
+
+
 
 exports.getAttendanceByDate = async (req, res) => {
   try {
@@ -264,6 +278,9 @@ exports.updateAttendanceOverride = async (req, res) => {
       "P:L": "Second Half Leave",
       "L:L": "Leave",
       "H:H": "Holiday",
+      "OD:OD": "On Duty",
+      "OD:P": "First Half OD",
+      "P:OD": "Second Half OD",
     };
 
     // Date range: normalize YYYY-MM-DD to UTC day boundaries to match stored UTC dates
@@ -498,6 +515,9 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
       "P:L": "Second Half Leave",
       "L:L": "Leave",
       "H:H": "Holiday",
+      "OD:OD": "On Duty",
+      "OD:P": "First Half OD",
+      "P:OD": "Second Half OD",
     };
 
     const bulkOperationId = new mongoose.Types.ObjectId().toString();
