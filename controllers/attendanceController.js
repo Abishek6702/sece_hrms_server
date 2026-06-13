@@ -189,7 +189,12 @@ exports.getAttendanceMuster = async (req, res) => {
     });
   }
 };
+const formatISTDate = (date) => {
+  const istDate = new Date(date);
+  istDate.setMinutes(istDate.getMinutes() + 330);
 
+  return istDate.toISOString().split("T")[0];
+};
 exports.getFacultyAttendanceHistory = async (req, res) => {
   try {
     const { facultyId, page = 1 } = req.query;
@@ -208,36 +213,100 @@ exports.getFacultyAttendanceHistory = async (req, res) => {
       });
     }
 
+    const faculty = await Faculty.findById(facultyId);
+
+    if (!faculty) {
+      return res.status(404).json({
+        success: false,
+        message: "Faculty not found",
+      });
+    }
+
     const limit = 7;
-    const skip = (Number(page) - 1) * limit;
+    const currentPage = Number(page);
+    const skip = (currentPage - 1) * limit;
 
-    const totalRecords = await Attendance.countDocuments({
-      facultyId,
-    });
+    const records = [];
 
-    const attendances = await Attendance.find({
-      facultyId,
-    })
-      .sort({ attendanceDate: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
-    const records = attendances.map((attendance) => ({
-      attendanceId: attendance._id,
-      date: attendance.attendanceDate,
-      checkIn: attendance.inTime,
-      checkOut: attendance.outTime,
-      workingHours: attendance.workingMinutes,
-      status: attendance.status,
-      regularizationStatus: attendance.regularizationStatus,
-    }));
+    for (let i = skip; i < skip + limit; i++) {
+      const date = new Date();
+
+      date.setHours(0, 0, 0, 0);
+      date.setDate(date.getDate() - i);
+
+      const nextDate = new Date(date);
+      nextDate.setDate(nextDate.getDate() + 1);
+
+      const attendance = await Attendance.findOne({
+        facultyId,
+        attendanceDate: {
+          $gte: date,
+          $lt: nextDate,
+        },
+      }).lean();
+
+      if (attendance) {
+        records.push({
+          attendanceId: attendance._id,
+          date: formatISTDate(attendance.attendanceDate),
+          checkIn: attendance.inTime,
+          checkOut: attendance.outTime,
+          workingHours: attendance.workingMinutes,
+          status: attendance.status,
+          regularizationStatus: attendance.regularizationStatus,
+        });
+
+        continue;
+      }
+
+      const holiday = await Holiday.findOne({
+        isActive: true,
+        applicableEmployeeCategories: faculty.employeeCategory,
+        holidayDate: {
+          $gte: date,
+          $lt: nextDate,
+        },
+      }).lean();
+
+      if (holiday) {
+        records.push({
+          date: formatISTDate(date),
+          checkIn: null,
+          checkOut: null,
+          workingHours: 0,
+          status: "Holiday",
+          holidayName: holiday.holidayName,
+        });
+
+        continue;
+      }
+
+      if (date.getDay() === 0) {
+        records.push({
+          date: formatISTDate(date),
+          checkIn: null,
+          checkOut: null,
+          workingHours: 0,
+          status: "OFF",
+        });
+
+        continue;
+      }
+
+      records.push({
+        date: formatISTDate(date),
+        checkIn: null,
+        checkOut: null,
+        workingHours: 0,
+        status: "-",
+      });
+    }
 
     return res.status(200).json({
       success: true,
-      currentPage: Number(page),
-      totalPages: Math.ceil(totalRecords / limit),
-      totalRecords,
+      currentPage,
       pageSize: limit,
+      totalPages: Math.ceil(365 / limit), // optional
       records,
     });
   } catch (error) {
