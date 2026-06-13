@@ -1,4 +1,3 @@
-
 const mongoose = require("mongoose");
 
 const permissionSchema = new mongoose.Schema(
@@ -104,9 +103,21 @@ const permissionSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
 
+// Virtual field for total hours
+permissionSchema.virtual("totalHours").get(function () {
+  const hours = this.totalMinutes / 60;
+
+  return hours === 1
+    ? "1 hour"
+    : `${hours} hours`;
+});
+
+// Index
 permissionSchema.index({
   facultyId: 1,
   permissionDate: 1,
@@ -116,4 +127,3 @@ permissionSchema.index({
 module.exports =
   mongoose.models.Permission ||
   mongoose.model("Permission", permissionSchema);
-
