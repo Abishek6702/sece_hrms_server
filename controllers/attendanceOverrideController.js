@@ -133,6 +133,7 @@ exports.getAttendanceByDate = async (req, res) => {
         employeeName,
         employeeNo,
         department: attendance.facultyId?.department,
+        employeeCategory: attendance.facultyId?.employeeCategory,
 
         date: attendance.attendanceDate,
         shiftCode: attendance.shiftCode || "S2",

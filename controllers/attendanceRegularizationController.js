@@ -199,24 +199,38 @@ exports.createAttendanceRegularization = async (req, res) => {
 exports.getMyRequests = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
+
     if (!user) {
-      return res.status(401).json({ success: false, message: "User not found" });
+      return res.status(401).json({
+        success: false,
+        message: "User not found",
+      });
     }
 
-    const requests = await AttendanceRegularization.find({ facultyId: user.facultyId })
+    const requests = await AttendanceRegularization.find({
+      facultyId: user.facultyId,
+      status: { $ne: "Cancelled" }, // Exclude cancelled requests
+    })
       .populate("facultyId", "firstName lastName department empId")
       .populate("approvalHistory.approvedBy", "_id")
       .sort({ createdAt: -1 });
 
     const requestsWithAction = requests.map((request) => {
-      const obj = request.toObject ? request.toObject() : { ...request };
+      const obj = request.toObject();
       obj.action = getRequestActionLabel(obj);
       return obj;
     });
 
-    res.status(200).json({ success: true, count: requestsWithAction.length, requests: requestsWithAction });
+    res.status(200).json({
+      success: true,
+      count: requestsWithAction.length,
+      requests: requestsWithAction,
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
@@ -266,18 +280,39 @@ exports.getRequestsForPrincipal = async (req, res) => {
   try {
     requireRole(req, "principal");
 
-    const requests = await AttendanceRegularization.find({
-      currentApprovalLevel: "principal",
-      status: "Pending",
-    })
+    const { department, status } = req.query;
+
+    let query = {};
+
+    // Filter by status if provided
+    if (status) {
+      query.status = status; // Pending, Approved, Rejected
+    }
+
+    const requests = await AttendanceRegularization.find(query)
       .populate("facultyId", "firstName lastName department empId")
       .populate("approvalHistory.approvedBy", "_id")
       .sort({ createdAt: -1 });
 
-    res.status(200).json({ success: true, count: requests.length, requests });
+    // Filter by department if provided
+    const filteredRequests = department
+      ? requests.filter(
+          (request) => request.facultyId?.department === department
+        )
+      : requests;
+
+    res.status(200).json({
+      success: true,
+      count: filteredRequests.length,
+      requests: filteredRequests,
+    });
   } catch (error) {
-    const status = error.status || 500;
-    res.status(status).json({ success: false, message: error.message });
+    const statusCode = error.status || 500;
+
+    res.status(statusCode).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
@@ -434,38 +469,62 @@ exports.cancelRequest = async (req, res) => {
   try {
     const request = await AttendanceRegularization.findById(req.params.id);
 
-    if (!request) return res.status(404).json({ success: false, message: "Request not found" });
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: "Request not found",
+      });
+    }
 
     const user = await User.findById(req.user.id);
+
     if (!user) {
-      return res.status(401).json({ success: false, message: "User not found" });
+      return res.status(401).json({
+        success: false,
+        message: "User not found",
+      });
     }
 
-    if (!request.facultyId.toString() || !user.facultyId || request.facultyId.toString() !== user.facultyId.toString()) {
-      return res.status(403).json({ success: false, message: "Not authorized" });
+    // Check ownership
+    if (
+      !user.facultyId ||
+      request.facultyId.toString() !== user.facultyId.toString()
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized",
+      });
     }
 
+    // Only pending requests can be withdrawn
     if (request.status !== "Pending") {
-      return res.status(400).json({ success: false, message: "Only pending requests can be cancelled" });
+      return res.status(400).json({
+        success: false,
+        message: "Only pending requests can be withdrawn",
+      });
     }
+
+    // Cannot withdraw after HOD approval
     if (request.currentApprovalLevel !== "hod") {
-      return res.status(400).json({ success: false, message: "Cannot withdraw after HOD approval" });
+      return res.status(400).json({
+        success: false,
+        message: "Cannot withdraw after HOD approval",
+      });
     }
 
-    request.status = "Cancelled";
-    request.currentApprovalLevel = "completed";
-    request.processedAt = new Date();
-    request.approvalHistory.push({
-      role: "faculty",
-      approvedBy: user._id,
-      action: "Cancelled",
-      remarks: req.body.approvalRemarks || "Withdrawn by faculty",
+    // Permanently delete the request
+    await AttendanceRegularization.findByIdAndDelete(req.params.id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Request withdrawn successfully",
     });
-
-    await request.save();
-
-    res.status(200).json({ success: true, message: "Request cancelled", request });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error("cancelRequest error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
