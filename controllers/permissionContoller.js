@@ -238,22 +238,28 @@ exports.getPermissionsForPrincipal = async (req, res) => {
   try {
     requireRole(req, "principal");
 
-    const permissions = await Permission.find({
-      status: "Pending",
-      currentApprovalLevel: "principal",
-    })
+    const { department } = req.query;
+
+    let query = {};
+
+    const permissions = await Permission.find(query)
       .populate("facultyId", "firstName lastName department empId")
       .sort({ createdAt: -1 });
 
-    console.log("Permissions:", permissions);
+    // Filter by department if provided
+    const filteredPermissions = department
+      ? permissions.filter(
+          p => p.facultyId?.department === department
+        )
+      : permissions;
 
     return res.json({
       success: true,
-      count: permissions.length,
-      data: permissions,
+      count: filteredPermissions.length,
+      data: filteredPermissions,
     });
+
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       success: false,
       message: error.message,
@@ -298,8 +304,23 @@ exports.approvePermission = async (req, res) => {
       });
     }
 
+    // Prevent duplicate approval/rejection
+    if (perm.status !== "Pending") {
+      return res.status(400).json({
+        success: false,
+        message: `Permission already ${perm.status}`,
+      });
+    }
+
     // HOD approval
     if (req.user.role === "hod") {
+      if (perm.currentApprovalLevel !== "hod") {
+        return res.status(400).json({
+          success: false,
+          message: "HOD approval already completed",
+        });
+      }
+
       perm.currentApprovalLevel = "principal";
       perm.remarks = remarks || "Forwarded to Principal";
 
@@ -314,6 +335,13 @@ exports.approvePermission = async (req, res) => {
 
     // Principal approval
     else if (req.user.role === "principal") {
+      if (perm.currentApprovalLevel !== "principal") {
+        return res.status(400).json({
+          success: false,
+          message: "Waiting for HOD approval",
+        });
+      }
+
       perm.status = "Approved";
       perm.approvedBy = req.user.facultyId;
       perm.approvedAt = new Date();
@@ -330,7 +358,7 @@ exports.approvePermission = async (req, res) => {
 
     await perm.save();
 
-    return res.json({
+    return res.status(200).json({
       success: true,
       data: perm,
     });
@@ -345,21 +373,31 @@ exports.approvePermission = async (req, res) => {
 };
 
 
-
 // Principal: reject permission
 exports.rejectPermission = async (req, res) => {
   try {
     requireRole(req, ["hod", "principal"]);
+
     const { id } = req.params;
     const { remarks } = req.body;
 
     const perm = await Permission.findById(id);
-    if (!perm)
-      return res
-        .status(404)
-        .json({ success: false, message: "Permission not found" });
 
-    // Require a reason when rejecting a permission
+    if (!perm) {
+      return res.status(404).json({
+        success: false,
+        message: "Permission not found",
+      });
+    }
+
+    // Prevent duplicate action
+    if (perm.status !== "Pending") {
+      return res.status(400).json({
+        success: false,
+        message: `Permission already ${perm.status}`,
+      });
+    }
+
     if (!remarks || remarks.trim() === "") {
       return res.status(400).json({
         success: false,
@@ -370,25 +408,29 @@ exports.rejectPermission = async (req, res) => {
     perm.status = "Rejected";
     perm.approvedBy = req.user.facultyId;
     perm.approvedAt = new Date();
-    perm.remarks = remarks || "Rejected";
+    perm.remarks = remarks;
 
     perm.approvalHistory.push({
-      role: req.user.role || "principal",
+      role: req.user.role,
       approvedBy: req.user.facultyId,
       action: "Rejected",
-      remarks: remarks || "Rejected",
+      remarks,
       actionDate: new Date(),
     });
 
     await perm.save();
 
-    return res.json({ success: true, data: perm });
+    return res.json({
+      success: true,
+      data: perm,
+    });
   } catch (error) {
     console.error("rejectPermission error:", error);
-    const status = error.status || 500;
-    return res
-      .status(status)
-      .json({ success: false, message: error.message || "Server error" });
+
+    return res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Server error",
+    });
   }
 };
 
