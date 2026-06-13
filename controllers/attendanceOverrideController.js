@@ -2,7 +2,6 @@ const mongoose = require("mongoose");
 const Attendance = require("../models/attendance");
 const AttendanceOverrideHistory = require("../models/AttendanceOverrideHistory");
 
-
 const STATUS_CODE_MAP = {
   Present: "P:P",
   Absent: "A:A",
@@ -17,15 +16,13 @@ const STATUS_CODE_MAP = {
 
   "Missed Punch": "M:M",
 
-   //On Duty
+  //On Duty
   "On Duty": "OD:OD",
 
-   //Optional half-day OD statuses
+  //Optional half-day OD statuses
   "First Half OD": "OD:P",
   "Second Half OD": "P:OD",
 };
-
-
 
 exports.getAttendanceByDate = async (req, res) => {
   try {
@@ -57,7 +54,10 @@ exports.getAttendanceByDate = async (req, res) => {
         $lte: endDate,
       },
     })
-      .populate("facultyId", "firstName lastName empId department")
+      .populate(
+        "facultyId",
+        "firstName lastName empId department employeeCategory",
+      )
       .sort({ createdAt: 1 });
 
     const data = attendanceList.map((attendance) => {
@@ -129,7 +129,7 @@ exports.getAttendanceByDate = async (req, res) => {
       }
 
       return {
-         facultyId: attendance.facultyId?._id,
+        facultyId: attendance.facultyId?._id,
         employeeName,
         employeeNo,
         department: attendance.facultyId?.department,
@@ -185,7 +185,10 @@ exports.getAttendanceByEmployee = async (req, res) => {
     }
 
     const attendanceList = await Attendance.find(filter)
-      .populate("facultyId", "firstName lastName empId department")
+      .populate(
+  "facultyId",
+  "firstName lastName empId department employeeCategory"
+)
       .sort({ attendanceDate: 1 });
 
     const data = attendanceList.map((attendance) => {
@@ -261,6 +264,7 @@ exports.getAttendanceByEmployee = async (req, res) => {
         employeeName,
         employeeNo,
         department: attendance.facultyId?.department,
+        employeeCategory: attendance.facultyId?.employeeCategory,
 
         date: attendance.attendanceDate,
         shiftCode: attendance.shiftCode || "S2",
@@ -348,14 +352,10 @@ exports.updateAttendanceOverride = async (req, res) => {
       SESSION_STATUS_MAP[`${session1}:${session2}`] || attendance.status;
 
     // Require reason when marking Absent
-    if (
-      newStatus === "Absent" &&
-      (!remarks || remarks.trim() === "")
-    ) {
+    if (newStatus === "Absent" && (!remarks || remarks.trim() === "")) {
       return res.status(400).json({
         success: false,
-        message:
-          "Reason is required when changing attendance status to Absent",
+        message: "Reason is required when changing attendance status to Absent",
       });
     }
 
@@ -388,9 +388,7 @@ exports.updateAttendanceOverride = async (req, res) => {
     // Recalculate working minutes
     if (attendance.inTime && attendance.outTime) {
       attendance.workingMinutes = Math.floor(
-        (new Date(attendance.outTime) -
-          new Date(attendance.inTime)) /
-          60000
+        (new Date(attendance.outTime) - new Date(attendance.inTime)) / 60000,
       );
     }
 
@@ -399,7 +397,7 @@ exports.updateAttendanceOverride = async (req, res) => {
     // Populate faculty details
     await attendance.populate(
       "facultyId",
-      "firstName lastName empId department"
+      "firstName lastName empId department",
     );
 
     // Save override history
@@ -407,6 +405,7 @@ exports.updateAttendanceOverride = async (req, res) => {
       facultyId: attendance.facultyId._id,
       attendanceId: attendance._id,
       attendanceDate: attendance.attendanceDate,
+      
 
       previousStatus,
       newStatus: attendance.status,
@@ -426,10 +425,7 @@ exports.updateAttendanceOverride = async (req, res) => {
     const result = attendance.toObject();
 
     const employeeName = attendance.facultyId
-      ? [
-          attendance.facultyId.firstName,
-          attendance.facultyId.lastName,
-        ]
+      ? [attendance.facultyId.firstName, attendance.facultyId.lastName]
           .filter(Boolean)
           .join(" ")
       : "";
@@ -479,18 +475,18 @@ exports.updateAttendanceOverride = async (req, res) => {
       default:
         responseSession1 = "";
         responseSession2 = "";
-        case "On Duty":
-          responseSession1 = "OD";
-          responseSession2 = "OD";
-          break;
-        case "First Half OD":
-          responseSession1 = "OD";
-          responseSession2 = "P";
-          break;
-        case "Second Half OD":
-          responseSession1 = "P";
-          responseSession2 = "OD";
-          break;
+      case "On Duty":
+        responseSession1 = "OD";
+        responseSession2 = "OD";
+        break;
+      case "First Half OD":
+        responseSession1 = "OD";
+        responseSession2 = "P";
+        break;
+      case "Second Half OD":
+        responseSession1 = "P";
+        responseSession2 = "OD";
+        break;
     }
 
     const response = {
@@ -513,7 +509,7 @@ exports.updateAttendanceOverride = async (req, res) => {
 
       session1: responseSession1,
       session2: responseSession2,
-    }
+    };
     res.status(200).json({
       success: true,
       message: "Attendance updated successfully",
@@ -610,7 +606,7 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
       // Recalculate working minutes
       if (attendance.inTime && attendance.outTime) {
         attendance.workingMinutes = Math.floor(
-          (new Date(attendance.outTime) - new Date(attendance.inTime)) / 60000
+          (new Date(attendance.outTime) - new Date(attendance.inTime)) / 60000,
         );
       }
 
@@ -618,13 +614,16 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
 
       await attendance.populate(
         "facultyId",
-        "firstName lastName empId department"
+        "firstName lastName empId department employeeCategory",
       );
 
       await AttendanceOverrideHistory.create({
         facultyId: attendance.facultyId._id,
         attendanceId: attendance._id,
         attendanceDate: attendance.attendanceDate,
+        employeeCategory: attendance.facultyId?.employeeCategory || "",
+
+
 
         previousStatus,
         newStatus: attendance.status,
@@ -692,6 +691,7 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
         employeeName,
         employeeNo,
         department,
+        employeeCategory,
 
         date: attendance.attendanceDate,
         shiftCode: attendance.shiftCode || "S2",
@@ -732,7 +732,10 @@ exports.getAttendanceOverrideHistory = async (req, res) => {
     }
 
     const history = await AttendanceOverrideHistory.find()
-      .populate("facultyId", "firstName lastName empId department")
+      .populate(
+        "facultyId",
+        "firstName lastName empId department employeeCategory",
+      )
       .sort({ attendanceDate: 1 });
 
     const grouped = {};
@@ -751,6 +754,7 @@ exports.getAttendanceOverrideHistory = async (req, res) => {
               : "",
           employeeId: item.facultyId?.empId || "",
           department: item.facultyId?.department || "",
+          employeeCategory: item.facultyId?.employeeCategory || "",
 
           fromDate: item.attendanceDate,
           toDate: item.attendanceDate,
@@ -777,6 +781,7 @@ exports.getAttendanceOverrideHistory = async (req, res) => {
       employeeName: item.employeeName,
       employeeId: item.employeeId,
       department: item.department,
+      employeeCategory: item.employeeCategory,
 
       attendanceDate:
         item.fromDate.getTime() === item.toDate.getTime()
