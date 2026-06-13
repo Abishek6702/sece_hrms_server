@@ -11,6 +11,13 @@ exports.createCompOffRequest = async (req, res) => {
 
     const faculty = await Faculty.findById(user.facultyId);
 
+    if (!faculty) {
+      return res.status(404).json({
+        success: false,
+        message: "Faculty not found",
+      });
+    }
+
     const { workedFromDate, workedToDate, compOffDays, reason } = req.body;
 
     if (new Date(workedFromDate) > new Date(workedToDate)) {
@@ -19,7 +26,11 @@ exports.createCompOffRequest = async (req, res) => {
         message: "Invalid worked date range",
       });
     }
-
+    const supportingDocuments =
+      req.files?.map((file) => ({
+        url: file.path,
+        publicId: file.filename,
+      })) || [];
     const request = await CompOffRequest.create({
       facultyId: faculty._id,
 
@@ -30,7 +41,7 @@ exports.createCompOffRequest = async (req, res) => {
       compOffDays,
 
       reason,
-
+      supportingDocuments,
       approvalHistory: [
         {
           role: "faculty",
@@ -223,6 +234,8 @@ exports.approveCompOff = async (req, res) => {
 
 exports.rejectCompOff = async (req, res) => {
   try {
+    const { reason } = req.body;
+
     const request = await CompOffRequest.findById(req.params.id);
 
     if (!request) {
@@ -232,19 +245,42 @@ exports.rejectCompOff = async (req, res) => {
       });
     }
 
+    if (!reason?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Rejection reason is required",
+      });
+    }
+
+    if (!["hod", "principal"].includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized",
+      });
+    }
+
+    if (request.status !== "Pending") {
+      return res.status(400).json({
+        success: false,
+        message: "Request already processed",
+      });
+    }
+
     request.status = "Rejected";
+    request.currentApprovalLevel = "completed";
 
     request.approvalHistory.push({
       role: req.user.role,
       approvedBy: req.user.id,
       action: "Rejected",
+      remarks: reason,
     });
 
     await request.save();
 
     res.status(200).json({
       success: true,
-      message: "Request rejected",
+      message: "Request rejected successfully",
     });
   } catch (error) {
     res.status(500).json({

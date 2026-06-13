@@ -13,9 +13,12 @@ const {
   revokeHodApproval,
 } = require("../controllers/compOffController");
 
+const uploadCloudinary = require("../middleware/multerConfig");
+
+
 const router = express.Router();
 
-router.post("/", protect, createCompOffRequest);
+router.post("/", protect,uploadCloudinary.array("files", 10), createCompOffRequest);
 
 router.get("/me", protect, getMyCompOffRequests);
 
