@@ -186,9 +186,9 @@ exports.getAttendanceByEmployee = async (req, res) => {
 
     const attendanceList = await Attendance.find(filter)
       .populate(
-  "facultyId",
-  "firstName lastName empId department employeeCategory"
-)
+        "facultyId",
+        "firstName lastName empId department employeeCategory",
+      )
       .sort({ attendanceDate: 1 });
 
     const data = attendanceList.map((attendance) => {
@@ -405,7 +405,6 @@ exports.updateAttendanceOverride = async (req, res) => {
       facultyId: attendance.facultyId._id,
       attendanceId: attendance._id,
       attendanceDate: attendance.attendanceDate,
-      
 
       previousStatus,
       newStatus: attendance.status,
@@ -539,17 +538,31 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
     const SESSION_STATUS_MAP = {
       "P:P": "Present",
       "A:A": "Absent",
+
+      "P:A": "Half Day",
       "A:P": "Half Day",
+
       "L:P": "First Half Leave",
       "P:L": "Second Half Leave",
       "L:L": "Leave",
+
       "H:H": "Holiday",
+
       "OD:OD": "On Duty",
+
       "OD:P": "First Half OD",
+      "OD:A": "First Half OD",
+
       "P:OD": "Second Half OD",
-      "OD:A": "OD:A",
-      "A:OD": "A:OD",
+      "A:OD": "Second Half OD",
     };
+
+    // Start and End of Day
+    const startDate = new Date(fromDate);
+    startDate.setHours(0, 0, 0, 0);
+
+    const endDate = new Date(toDate);
+    endDate.setHours(23, 59, 59, 999);
 
     const bulkOperationId = new mongoose.Types.ObjectId().toString();
 
@@ -561,21 +574,26 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
       const attendances = await Attendance.find({
         facultyId: employeeId,
         attendanceDate: {
-          $gte: new Date(fromDate),
-          $lte: new Date(toDate),
+          $gte: startDate,
+          $lte: endDate,
         },
       })
         .populate(
           "facultyId",
-          "firstName lastName empId department employeeCategory"
+          "firstName lastName empId department employeeCategory",
         )
         .sort({ attendanceDate: 1 });
+
+      console.log(
+        `Employee ${employeeId} -> Found ${attendances.length} attendance records`,
+      );
 
       for (const attendance of attendances) {
         const previousStatus = attendance.status;
         const previousInTime = attendance.inTime;
         const previousOutTime = attendance.outTime;
 
+        // Update in/out time if provided
         if (firstIn !== undefined) {
           attendance.inTime = firstIn;
         }
@@ -584,27 +602,29 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
           attendance.outTime = lastOut;
         }
 
+        // Update status
         const statusKey = `${session1}:${session2}`;
 
         if (SESSION_STATUS_MAP[statusKey]) {
           attendance.status = SESSION_STATUS_MAP[statusKey];
         }
 
+        // Recalculate working minutes
         if (attendance.inTime && attendance.outTime) {
           attendance.workingMinutes = Math.floor(
-            (new Date(attendance.outTime) -
-              new Date(attendance.inTime)) / 60000
+            (new Date(attendance.outTime) - new Date(attendance.inTime)) /
+              60000,
           );
         }
 
         await attendance.save();
 
+        // Save override history
         await AttendanceOverrideHistory.create({
           facultyId: attendance.facultyId._id,
           attendanceId: attendance._id,
           attendanceDate: attendance.attendanceDate,
-          employeeCategory:
-            attendance.facultyId?.employeeCategory || "",
+          employeeCategory: attendance.facultyId?.employeeCategory || "",
           previousStatus,
           newStatus: attendance.status,
           previousInTime,
@@ -627,10 +647,10 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
             .join(" "),
           employeeNo: attendance.facultyId.empId,
           department: attendance.facultyId.department,
-          employeeCategory:
-            attendance.facultyId.employeeCategory,
+          employeeCategory: attendance.facultyId.employeeCategory,
           date: attendance.attendanceDate,
-          status: statusKey,
+          shiftCode: attendance.shiftCode || "S2",
+          status: `${session1}:${session2}`,
           firstIn: attendance.inTime,
           lastOut: attendance.outTime,
           session1,
