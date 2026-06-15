@@ -686,24 +686,28 @@ exports.getAttendanceOverrideHistory = async (req, res) => {
     const history = await AttendanceOverrideHistory.find()
       .populate(
         "facultyId",
-        "firstName lastName empId department employeeCategory",
+        "firstName lastName empId department employeeCategory"
       )
       .sort({ attendanceDate: 1 });
 
     const grouped = {};
 
     history.forEach((item) => {
-      // For bulk update use bulkOperationId
-      // For single update use document id
-      const key = item.bulkOperationId || item._id.toString();
+      // Group by bulk operation + employee
+      const key = item.bulkOperationId
+        ? `${item.bulkOperationId}_${item.facultyId?._id}`
+        : item._id.toString();
 
       if (!grouped[key]) {
         grouped[key] = {
           employeeName:
             item.facultyId &&
             (item.facultyId.firstName || item.facultyId.lastName)
-              ? `${item.facultyId.firstName || ""} ${item.facultyId.lastName || ""}`.trim()
+              ? `${item.facultyId.firstName || ""} ${
+                  item.facultyId.lastName || ""
+                }`.trim()
               : "",
+
           employeeId: item.facultyId?.empId || "",
           department: item.facultyId?.department || "",
           employeeCategory: item.facultyId?.employeeCategory || "",
@@ -713,8 +717,10 @@ exports.getAttendanceOverrideHistory = async (req, res) => {
 
           firstIn: item.newInTime,
           lastOut: item.newOutTime,
+
           status: item.newStatus,
           statusCode: STATUS_CODE_MAP[item.newStatus] || null,
+
           overriddenOn: item.createdAt,
           remarks: item.reason,
         };
@@ -746,13 +752,13 @@ exports.getAttendanceOverrideHistory = async (req, res) => {
       lastOut: item.lastOut,
 
       status: item.status,
-      statusCode: item.statusCode || null,
-      overriddenOn: item.overriddenOn,
+      statusCode: item.statusCode,
 
+      overriddenOn: item.overriddenOn,
       remarks: item.remarks,
     }));
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       count: data.length,
       data,
@@ -760,7 +766,7 @@ exports.getAttendanceOverrideHistory = async (req, res) => {
   } catch (error) {
     console.error("Attendance Override History Error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: error.message,
     });
