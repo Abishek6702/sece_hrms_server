@@ -7,6 +7,7 @@ const {
   getMyRequests,
   getRequests,
   getRequestsForHod,
+  getRequestsForDean,
   getRequestsForPrincipal,
   getRequestById,
   updateRequest,
@@ -22,6 +23,7 @@ router.post("/", protect, upload.single("attachment"), createAttendanceRegulariz
 router.get("/my", protect, getMyRequests);
 router.get("/me", protect, getMyRequests);
 router.get("/hod/list", protect, getRequestsForHod);
+router.get("/dean/list", protect, getRequestsForDean);
 router.get("/principal/list", protect, getRequestsForPrincipal);
 
 router.get("/", protect, getRequests);

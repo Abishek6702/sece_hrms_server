@@ -276,6 +276,35 @@ exports.getRequestsForHod = async (req, res) => {
   }
 };
 
+// Dean: list requests submitted by dean
+exports.getRequestsForDean = async (req, res) => {
+  try {
+    requireRole(req, "dean");
+
+    const { department, status } = req.query;
+
+    const query = {
+      "approvalHistory.0.role": "dean",
+    };
+
+    if (status) query.status = status;
+
+    const requests = await AttendanceRegularization.find(query)
+      .populate("facultyId", "firstName lastName department empId")
+      .populate("approvalHistory.approvedBy", "_id")
+      .sort({ createdAt: -1 });
+
+    const filtered = department
+      ? requests.filter((request) => request.facultyId?.department === department)
+      : requests;
+
+    res.status(200).json({ success: true, count: filtered.length, requests: filtered });
+  } catch (error) {
+    const status = error.status || 500;
+    res.status(status).json({ success: false, message: error.message });
+  }
+};
+
 exports.getRequestsForPrincipal = async (req, res) => {
   try {
     requireRole(req, "principal");
