@@ -19,6 +19,9 @@ router.get("/:id", protect, permissionCtrl.getPermissionById);
 // HOD: list by department
 router.get("/hod/list", protect, permissionCtrl.getPermissionsForHod);
 
+// Dean: list by department
+router.get("/dean/list", protect, permissionCtrl.getPermissionsForDean);
+
 // Principal: list all permissions
 router.get("/principal/list", protect, permissionCtrl.getPermissionsForPrincipal);
 
