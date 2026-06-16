@@ -1,8 +1,8 @@
 const Faculty = require("../models/Faculty");
 const LeaveApplication = require("../models/Leave/leaveApplication");
-const Permission = require("../models/Permission");
+const Permission = require("../models/permission");
 const AttendanceRegularization = require("../models/AttendanceRegularization");
-const Attendance = require("../models/Attendance");
+const Attendance = require("../models/attendance");
 
 exports.getFacultyDesignationSummary = async (req, res) => {
   try {
