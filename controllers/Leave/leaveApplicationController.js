@@ -367,7 +367,7 @@
           const leaveName = leaveApplication.leaveTypeId.leaveName;
 
           if (leaveName === "On Duty - Research") {
-            leaveApplication.currentApprovalLevel = "iqac";
+            leaveApplication.currentApprovalLevel = "dean";
           } else if (leaveName === "On Duty - Exam") {
             leaveApplication.currentApprovalLevel = "coe";
           } else if (leaveName === "On Duty - Official") {
