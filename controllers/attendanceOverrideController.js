@@ -16,12 +16,65 @@ const STATUS_CODE_MAP = {
 
   "Missed Punch": "M:M",
 
-  //On Duty
   "On Duty": "OD:OD",
-
-  //Optional half-day OD statuses
   "First Half OD": "OD:P",
   "Second Half OD": "P:OD",
+};
+
+const SESSION_STATUS_MAP = {
+  "P:P": "Present",
+  "A:A": "Absent",
+  "A:P": "Half Day",
+  "P:A": "Half Day",
+  "L:P": "First Half Leave",
+  "P:L": "Second Half Leave",
+  "L:L": "Leave",
+  "H:H": "Holiday",
+  "OD:OD": "On Duty",
+  "OD:P": "First Half OD",
+  "P:OD": "Second Half OD",
+  "OD:A": "First Half OD",
+  "A:OD": "Second Half OD",
+};
+
+const STATUS_SESSION_MAP = {
+  Present: ["P", "P"],
+  Absent: ["A", "A"],
+  "Half Day": ["A", "P"],
+  "First Half Leave": ["L", "P"],
+  "Second Half Leave": ["P", "L"],
+  Leave: ["L", "L"],
+  Holiday: ["H", "H"],
+  "On Duty": ["OD", "OD"],
+  "First Half OD": ["OD", "P"],
+  "Second Half OD": ["P", "OD"],
+};
+
+const getSessionCodes = (status) => STATUS_SESSION_MAP[status] || ["", ""];
+const getStatusFromSessions = (session1, session2) => {
+  if (session1 === undefined || session2 === undefined) {
+    return null;
+  }
+  return SESSION_STATUS_MAP[`${session1}:${session2}`] || null;
+};
+
+const getDayRange = (date) => {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    const [year, month, day] = date.split("-").map(Number);
+    const startDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+    const endDate = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+
+    return { startDate, endDate };
+  }
+
+  const parsed = new Date(date);
+  const startDate = new Date(parsed);
+  startDate.setHours(0, 0, 0, 0);
+
+  const endDate = new Date(parsed);
+  endDate.setHours(23, 59, 59, 999);
+
+  return { startDate, endDate };
 };
 
 exports.getAttendanceByDate = async (req, res) => {
@@ -34,19 +87,7 @@ exports.getAttendanceByDate = async (req, res) => {
     }
 
     const { date } = req.params;
-
-    let startDate, endDate;
-    // If date is YYYY-MM-DD treat it as UTC day to avoid timezone shifts
-    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      startDate = new Date(`${date}T00:00:00.000Z`);
-      endDate = new Date(`${date}T23:59:59.999Z`);
-    } else {
-      startDate = new Date(date);
-      startDate.setHours(0, 0, 0, 0);
-
-      endDate = new Date(date);
-      endDate.setHours(23, 59, 59, 999);
-    }
+    const { startDate, endDate } = getDayRange(date);
 
     const attendanceList = await Attendance.find({
       attendanceDate: {
@@ -68,65 +109,7 @@ exports.getAttendanceByDate = async (req, res) => {
         : "";
       const employeeNo = attendance.facultyId?.empId || "";
       const employeeId = attendance.facultyId?._id || null;
-
-      let session1 = "";
-      let session2 = "";
-
-      switch (attendance.status) {
-        case "Present":
-          session1 = "P";
-          session2 = "P";
-          break;
-
-        case "Absent":
-          session1 = "A";
-          session2 = "A";
-          break;
-
-        case "Half Day":
-          session1 = "A";
-          session2 = "P";
-          break;
-
-        case "First Half Leave":
-          session1 = "L";
-          session2 = "P";
-          break;
-
-        case "Second Half Leave":
-          session1 = "P";
-          session2 = "L";
-          break;
-
-        case "Leave":
-          session1 = "L";
-          session2 = "L";
-          break;
-
-        case "Holiday":
-          session1 = "H";
-          session2 = "H";
-          break;
-
-        case "On Duty":
-          session1 = "OD";
-          session2 = "OD";
-          break;
-
-        case "First Half OD":
-          session1 = "OD";
-          session2 = "P";
-          break;
-
-        case "Second Half OD":
-          session1 = "P";
-          session2 = "OD";
-          break;
-
-        default:
-          session1 = "";
-          session2 = "";
-      }
+      const [session1, session2] = getSessionCodes(attendance.status);
 
       return {
         facultyId: attendance.facultyId?._id,
@@ -171,16 +154,19 @@ exports.getAttendanceByEmployee = async (req, res) => {
     }
 
     const { employeeId } = req.params;
-    const { startDate, endDate } = req.query;
+    const { startDate: startDateQuery, endDate: endDateQuery } = req.query;
 
     const filter = {
       facultyId: employeeId,
     };
 
-    if (startDate && endDate) {
+    if (startDateQuery && endDateQuery) {
+      const { startDate, endDate } = getDayRange(startDateQuery);
+      const { endDate: queryEndDate } = getDayRange(endDateQuery);
+
       filter.attendanceDate = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate),
+        $gte: startDate,
+        $lte: queryEndDate,
       };
     }
 
@@ -198,65 +184,7 @@ exports.getAttendanceByEmployee = async (req, res) => {
             .join(" ")
         : "";
       const employeeNo = attendance.facultyId?.empId || "";
-
-      let session1 = "";
-      let session2 = "";
-
-      switch (attendance.status) {
-        case "Present":
-          session1 = "P";
-          session2 = "P";
-          break;
-
-        case "Absent":
-          session1 = "A";
-          session2 = "A";
-          break;
-
-        case "Half Day":
-          session1 = "A";
-          session2 = "P";
-          break;
-
-        case "First Half Leave":
-          session1 = "L";
-          session2 = "P";
-          break;
-
-        case "Second Half Leave":
-          session1 = "P";
-          session2 = "L";
-          break;
-
-        case "Leave":
-          session1 = "L";
-          session2 = "L";
-          break;
-
-        case "Holiday":
-          session1 = "H";
-          session2 = "H";
-          break;
-
-        case "On Duty":
-          session1 = "OD";
-          session2 = "OD";
-          break;
-
-        case "First Half OD":
-          session1 = "OD";
-          session2 = "P";
-          break;
-
-        case "Second Half OD":
-          session1 = "P";
-          session2 = "OD";
-          break;
-
-        default:
-          session1 = "";
-          session2 = "";
-      }
+      const [session1, session2] = getSessionCodes(attendance.status);
 
       return {
         _id: attendance._id,
@@ -305,31 +233,7 @@ exports.updateAttendanceOverride = async (req, res) => {
     const { employeeId, date } = req.params;
     const { firstIn, lastOut, session1, session2, remarks } = req.body;
 
-    const SESSION_STATUS_MAP = {
-      "P:P": "Present",
-      "A:A": "Absent",
-      "A:P": "Half Day",
-      "L:P": "First Half Leave",
-      "P:L": "Second Half Leave",
-      "L:L": "Leave",
-      "H:H": "Holiday",
-      "OD:OD": "On Duty",
-      "OD:P": "First Half OD",
-      "P:OD": "Second Half OD",
-    };
-
-    // Date range: normalize YYYY-MM-DD to UTC day boundaries to match stored UTC dates
-    let startDate, endDate;
-    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      startDate = new Date(`${date}T00:00:00.000Z`);
-      endDate = new Date(`${date}T23:59:59.999Z`);
-    } else {
-      startDate = new Date(date);
-      startDate.setHours(0, 0, 0, 0);
-
-      endDate = new Date(date);
-      endDate.setHours(23, 59, 59, 999);
-    }
+    const { startDate, endDate } = getDayRange(date);
 
     // Find attendance record
     const attendance = await Attendance.findOne({
@@ -347,11 +251,8 @@ exports.updateAttendanceOverride = async (req, res) => {
       });
     }
 
-    // Determine new status from sessions
-    const newStatus =
-      SESSION_STATUS_MAP[`${session1}:${session2}`] || attendance.status;
+    const newStatus = getStatusFromSessions(session1, session2) || attendance.status;
 
-    // Require reason when marking Absent
     if (newStatus === "Absent" && (!remarks || remarks.trim() === "")) {
       return res.status(400).json({
         success: false,
@@ -374,11 +275,16 @@ exports.updateAttendanceOverride = async (req, res) => {
     }
 
     if (session1 !== undefined && session2 !== undefined) {
-      const statusKey = `${session1}:${session2}`;
+      const statusKey = getStatusFromSessions(session1, session2);
 
-      if (SESSION_STATUS_MAP[statusKey]) {
-        attendance.status = SESSION_STATUS_MAP[statusKey];
+      if (!statusKey) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid session values",
+        });
       }
+
+      attendance.status = statusKey;
     }
 
     if (remarks !== undefined) {
@@ -432,61 +338,7 @@ exports.updateAttendanceOverride = async (req, res) => {
     const employeeNo = attendance.facultyId?.empId || "";
     const department = attendance.facultyId?.department || "";
 
-    let responseSession1 = "";
-    let responseSession2 = "";
-
-    switch (attendance.status) {
-      case "Present":
-        responseSession1 = "P";
-        responseSession2 = "P";
-        break;
-
-      case "Absent":
-        responseSession1 = "A";
-        responseSession2 = "A";
-        break;
-
-      case "Half Day":
-        responseSession1 = "A";
-        responseSession2 = "P";
-        break;
-
-      case "First Half Leave":
-        responseSession1 = "L";
-        responseSession2 = "P";
-        break;
-
-      case "Second Half Leave":
-        responseSession1 = "P";
-        responseSession2 = "L";
-        break;
-
-      case "Leave":
-        responseSession1 = "L";
-        responseSession2 = "L";
-        break;
-
-      case "Holiday":
-        responseSession1 = "H";
-        responseSession2 = "H";
-        break;
-
-      default:
-        responseSession1 = "";
-        responseSession2 = "";
-      case "On Duty":
-        responseSession1 = "OD";
-        responseSession2 = "OD";
-        break;
-      case "First Half OD":
-        responseSession1 = "OD";
-        responseSession2 = "P";
-        break;
-      case "Second Half OD":
-        responseSession1 = "P";
-        responseSession2 = "OD";
-        break;
-    }
+    const [responseSession1, responseSession2] = getSessionCodes(attendance.status);
 
     const response = {
       _id: attendance._id,
@@ -535,35 +387,8 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
 
     const { fromDate, toDate, remarks, updates } = req.body;
 
-    const SESSION_STATUS_MAP = {
-      "P:P": "Present",
-      "A:A": "Absent",
-
-      "P:A": "Half Day",
-      "A:P": "Half Day",
-
-      "L:P": "First Half Leave",
-      "P:L": "Second Half Leave",
-      "L:L": "Leave",
-
-      "H:H": "Holiday",
-
-      "OD:OD": "On Duty",
-
-      "OD:P": "First Half OD",
-      "OD:A": "First Half OD",
-
-      "P:OD": "Second Half OD",
-      "A:OD": "Second Half OD",
-    };
-
-    // Start and End of Day
-    const startDate = new Date(fromDate);
-    startDate.setHours(0, 0, 0, 0);
-
-    const endDate = new Date(toDate);
-    endDate.setHours(23, 59, 59, 999);
-
+    const { startDate, endDate } = getDayRange(fromDate);
+    const { endDate: queryEndDate } = getDayRange(toDate);
     const bulkOperationId = new mongoose.Types.ObjectId().toString();
 
     const updatedRecords = [];
@@ -575,7 +400,7 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
         facultyId: employeeId,
         attendanceDate: {
           $gte: startDate,
-          $lte: endDate,
+          $lte: queryEndDate,
         },
       })
         .populate(
@@ -602,11 +427,10 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
           attendance.outTime = lastOut;
         }
 
-        // Update status
-        const statusKey = `${session1}:${session2}`;
+        const statusKey = getStatusFromSessions(session1, session2);
 
-        if (SESSION_STATUS_MAP[statusKey]) {
-          attendance.status = SESSION_STATUS_MAP[statusKey];
+        if (statusKey) {
+          attendance.status = statusKey;
         }
 
         // Recalculate working minutes
@@ -637,6 +461,8 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
           bulkOperationId,
         });
 
+        const [recordSession1, recordSession2] = getSessionCodes(attendance.status);
+
         updatedRecords.push({
           employeeId: attendance.facultyId._id,
           employeeName: [
@@ -650,11 +476,11 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
           employeeCategory: attendance.facultyId.employeeCategory,
           date: attendance.attendanceDate,
           shiftCode: attendance.shiftCode || "S2",
-          status: `${session1}:${session2}`,
+          status: `${recordSession1}:${recordSession2}`,
           firstIn: attendance.inTime,
           lastOut: attendance.outTime,
-          session1,
-          session2,
+          session1: recordSession1,
+          session2: recordSession2,
         });
       }
     }
