@@ -19,6 +19,11 @@ const attendanceOverrideHistorySchema = new mongoose.Schema(
       required: true,
     },
 
+    endDate: {
+      type: Date,
+      default: null,
+    },
+
     previousStatus: {
       type: String,
       required: true,

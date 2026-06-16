@@ -5,7 +5,11 @@ const protect = require("../middleware/protect");
 
 const {
   getAttendanceByDate,
-  getAttendanceByEmployee,updateAttendanceOverride,bulkUpdateAttendanceByDateRange,getAttendanceOverrideHistory
+  getAttendanceByEmployee,
+  updateAttendanceOverride,
+  bulkUpdateAttendanceByDateRange,
+  bulkUpdateAttendanceByEmployee,
+  getAttendanceOverrideHistory,
 } = require("../controllers/attendanceOverrideController");
 
 router.get("/date/:date", protect, getAttendanceByDate);
@@ -22,6 +26,12 @@ router.put(
   "/date-range",
   protect,
   bulkUpdateAttendanceByDateRange
+);
+
+router.put(
+  "/employee/:employeeId/date-range",
+  protect,
+  bulkUpdateAttendanceByEmployee
 );
 
 router.get("/history", protect, getAttendanceOverrideHistory);
