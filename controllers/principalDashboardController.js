@@ -1,5 +1,5 @@
 const Faculty = require("../models/Faculty");
-const LeaveApplication = require("../models/Leave/LeaveApplication");
+const LeaveApplication = require("../models/Leave/leaveApplication");
 const Permission = require("../models/Permission");
 const AttendanceRegularization = require("../models/AttendanceRegularization");
 const Attendance = require("../models/Attendance");
