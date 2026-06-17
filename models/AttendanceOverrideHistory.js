@@ -35,6 +35,16 @@ const attendanceOverrideHistorySchema = new mongoose.Schema(
       required: true,
     },
 
+    session1: {
+      type: String,
+      default: "abi",
+    },
+
+    session2: {
+      type: String,
+      default: null,
+    },
+
     reason: {
       type: String,
       required: true,
