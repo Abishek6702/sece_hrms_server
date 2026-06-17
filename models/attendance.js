@@ -108,5 +108,5 @@ attendanceSchema.index(
     unique: true,
   },
 );
-
-module.exports = mongoose.model("Attendance", attendanceSchema);
+module.exports =
+  mongoose.models.Attendance || mongoose.model("Attendance", attendanceSchema);

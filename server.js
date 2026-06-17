@@ -19,6 +19,7 @@ const attendanceRoutes = require("./routes/attendanceRoutes")
 const esslRoutes = require("./routes/esslRoutes")
 const attendanceRegularizationRoutes = require("./routes/attendanceRegularizationRoutes");
 const attendanceOverrideRoutes = require("./routes/attendanceOverrideRoutes");
+const principalRoutes = require("./routes/principalDashboardRoutes")  
 
 dotenv.config();
 
@@ -64,6 +65,8 @@ app.use("/api/attendance-regularization", attendanceRegularizationRoutes);
 app.use("/api/attendance-override", attendanceOverrideRoutes);
 
 app.use("/api/attendance",attendanceRoutes)
+
+app.use("/api/principal",principalRoutes);
 
 const PORT = process.env.PORT || 5000;
 
