@@ -74,6 +74,15 @@ const attendanceSchema = new mongoose.Schema(
       ],
       default: "Present",
     },
+    session1: {
+      type: String,
+      default: "",
+    },
+
+    session2: {
+      type: String,
+      default: "",
+    },
     lateCountApplied: {
       type: Boolean,
       default: false,
