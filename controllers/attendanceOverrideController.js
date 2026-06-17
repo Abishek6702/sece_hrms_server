@@ -99,7 +99,7 @@ exports.getAttendanceByDate = async (req, res) => {
         message: "Only HR can access this API",
       });
     }
-
+    
     const { date } = req.params;
     const { startDate, endDate } = getDayRange(date);
 
@@ -204,11 +204,13 @@ exports.getAttendanceByEmployee = async (req, res) => {
 
       return {
         _id: attendance._id,
+        facultyId: attendance.facultyId?._id || null,
         employeeId: attendance.facultyId?._id || null,
         employeeName,
         employeeNo,
         department: attendance.facultyId?.department,
         employeeCategory: attendance.facultyId?.employeeCategory,
+        statusCode: STATUS_CODE_MAP[attendance.status] || null,
 
         date: attendance.attendanceDate,
         shiftCode: attendance.shiftCode || "S2",
@@ -532,6 +534,7 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
         const responseSession2 = requestedSession2 || recordSession2;
 
         updatedRecords.push({
+          facultyId: attendance.facultyId?._id || null,
           employeeId: attendance.facultyId._id,
 
           employeeName: [
@@ -552,6 +555,7 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
           shiftCode: attendance.shiftCode || "S2",
 
           status: `${responseSession1}:${responseSession2}`,
+          statusCode: STATUS_CODE_MAP[attendance.status] || null,
 
           firstIn: attendance.inTime,
           lastOut: attendance.outTime,
