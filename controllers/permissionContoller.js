@@ -68,7 +68,7 @@ exports.applyPermission = async (req, res) => {
 
     // =====================================
     // Monthly limit: 2 hours (120 minutes)
-    // Count only principal-approved permissions
+    // Count pending and approved permission requests for this faculty/dean
     // =====================================
     const requestDate = new Date(permissionDate);
 
@@ -88,16 +88,16 @@ exports.applyPermission = async (req, res) => {
       999
     );
 
-    const approvedPermissions = await Permission.find({
+    const monthlyPermissions = await Permission.find({
       facultyId: req.user.facultyId,
-      status: "Approved",
+      status: { $in: ["Pending", "Approved"] },
       permissionDate: {
         $gte: startOfMonth,
         $lte: endOfMonth,
       },
     });
 
-    const totalMinutesUsed = approvedPermissions.reduce(
+    const totalMinutesUsed = monthlyPermissions.reduce(
       (sum, permission) => sum + (permission.totalMinutes || 0),
       0
     );
@@ -109,6 +109,9 @@ exports.applyPermission = async (req, res) => {
           "Monthly permission limit exceeded. Only 2 hours (120 minutes) are allowed per month.",
       });
     }
+
+    // Determine the first approval stage based on who applies
+    const currentApprovalLevel = req.user.role === "dean" ? "principal" : "hod";
 
     // =====================================
     // Create permission request
@@ -123,7 +126,7 @@ exports.applyPermission = async (req, res) => {
       reason,
 
       status: "Pending",
-      currentApprovalLevel: "hod",
+      currentApprovalLevel,
 
       approvalHistory: [
         {
@@ -233,14 +236,55 @@ exports.getPermissionsForHod = async (req, res) => {
 
 
 
-// Principal: list pending permissions only
+// Dean: list permissions submitted by dean
+exports.getPermissionsForDean = async (req, res) => {
+  try {
+    requireRole(req, "dean");
+
+    const { department } = req.query;
+
+    const query = {
+      "approvalHistory.0.role": "dean",
+    };
+
+    const permissions = await Permission.find(query)
+      .populate("facultyId", "firstName lastName department empId")
+      .sort({ createdAt: -1 });
+
+    const filteredPermissions = department
+      ? permissions.filter(
+          (p) => p.facultyId?.department === department
+        )
+      : permissions;
+
+    return res.json({
+      success: true,
+      count: filteredPermissions.length,
+      data: filteredPermissions,
+    });
+  } catch (error) {
+    console.error("getPermissionsForDean error:", error);
+
+    return res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Server error",
+    });
+  }
+};
+
+
+
+// Principal: list pending and approved permissions for principal-level requests
 exports.getPermissionsForPrincipal = async (req, res) => {
   try {
     requireRole(req, "principal");
 
     const { department } = req.query;
 
-    let query = {};
+    const query = {
+      currentApprovalLevel: "principal",
+      status: { $in: ["Pending", "Approved"] },
+    };
 
     const permissions = await Permission.find(query)
       .populate("facultyId", "firstName lastName department empId")
