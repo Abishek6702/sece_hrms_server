@@ -244,7 +244,7 @@ exports.getAttendanceByEmployee = async (req, res) => {
 exports.updateAttendanceOverride = async (req, res) => {
   try {
     // Only HR can access
-    console.log("User on edit:", req.body);
+  
     if (req.user.role !== "hr") {
       return res.status(403).json({
         success: false,
