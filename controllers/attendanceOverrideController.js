@@ -596,6 +596,7 @@ exports.bulkUpdateAttendanceByEmployee = async (req, res) => {
 
     const bulkOperationId = new mongoose.Types.ObjectId().toString();
     const updatedRecords = [];
+    const historyInserts = [];
 
     for (const update of updates) {
       const { date, session1, session2, firstIn, lastOut } = update;
@@ -666,83 +667,19 @@ exports.bulkUpdateAttendanceByEmployee = async (req, res) => {
         previousInTime,
         previousOutTime,
       });
-    }
-
-    const grouped = [];
-    updatedRecords.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    for (const record of updatedRecords) {
-      const recordDate = record.date.toISOString().split("T")[0];
-
-      if (!grouped.length) {
-        grouped.push({
-          ...record,
-          attendanceDate: recordDate,
-          dates: [recordDate],
-          rows: [record],
-        });
-        continue;
-      }
-
-      const lastGroup = grouped[grouped.length - 1];
-      const lastDate = new Date(lastGroup.dates[lastGroup.dates.length - 1]);
-      const nextDate = new Date(recordDate);
-      const diffDays = Math.round((nextDate - lastDate) / (1000 * 60 * 60 * 24));
-
-      if (diffDays === 1 && lastGroup.status === record.status) {
-        lastGroup.dates.push(recordDate);
-        lastGroup.attendanceDate = `${lastGroup.dates[0]} to ${recordDate}`;
-        lastGroup.lastOut = record.lastOut || lastGroup.lastOut;
-        lastGroup.rows.push(record);
-      } else {
-        grouped.push({
-          ...record,
-          attendanceDate: recordDate,
-          dates: [recordDate],
-          rows: [record],
-        });
-      }
-    }
-
-    const responseGroups = [];
-    const historyInserts = [];
-
-    for (const group of grouped) {
-      const attendanceDate = group.dates.length === 1
-        ? group.dates[0]
-        : `${group.dates[0]} to ${group.dates[group.dates.length - 1]}`;
-
-      const firstRow = group.rows[0];
-      const lastRow = group.rows[group.rows.length - 1];
-
-      responseGroups.push({
-        employeeId: group.employeeId,
-        employeeName: group.employeeName,
-        employeeNo: group.employeeNo,
-        department: group.department,
-        employeeCategory: group.employeeCategory,
-        date: firstRow.date,
-        shiftCode: group.shiftCode,
-        status: group.status,
-        firstIn: group.firstIn,
-        lastOut: lastRow.lastOut,
-        session1: group.session1,
-        session2: group.session2,
-        attendanceDate,
-      });
 
       historyInserts.push({
-        facultyId: group.employeeId,
-        attendanceId: firstRow.attendanceId,
-        attendanceDate: firstRow.date,
-        endDate: lastRow.date,
-        employeeCategory: group.employeeCategory,
-        previousStatus: group.previousStatus,
-        newStatus: group.status,
-        previousInTime: group.previousInTime,
-        previousOutTime: group.previousOutTime,
-        newInTime: group.firstIn,
-        newOutTime: lastRow.lastOut,
+        facultyId: attendance.facultyId._id,
+        attendanceId: attendance._id,
+        attendanceDate: attendance.attendanceDate,
+        endDate: attendance.attendanceDate,
+        employeeCategory: attendance.facultyId.employeeCategory,
+        previousStatus,
+        newStatus: attendance.status,
+        previousInTime,
+        previousOutTime,
+        newInTime: attendance.inTime,
+        newOutTime: attendance.outTime,
         reason: remarks || "Bulk update (employee)",
         changedBy: req.user._id,
         changedByRole: req.user.role,
@@ -757,8 +694,8 @@ exports.bulkUpdateAttendanceByEmployee = async (req, res) => {
     return res.status(200).json({
       success: true,
       bulkOperationId,
-      count: responseGroups.length,
-      data: responseGroups,
+      count: updatedRecords.length,
+      data: updatedRecords,
     });
   } catch (error) {
     console.error("Bulk Update Employee Error:", error);
