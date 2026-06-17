@@ -425,6 +425,8 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
 
     for (const update of updates) {
       const { employeeId, session1, session2, firstIn, lastOut } = update;
+      const requestedSession1 = session1 !== undefined ? String(session1).trim() : null;
+      const requestedSession2 = session2 !== undefined ? String(session2).trim() : null;
 
       const attendances = await Attendance.find({
         facultyId: employeeId,
@@ -459,16 +461,16 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
         }
 
         // Update Status
-        if (session1 !== undefined && session2 !== undefined) {
+        if (requestedSession1 !== null && requestedSession2 !== null) {
           const statusKey = getStatusFromSessions(
-            session1.trim(),
-            session2.trim(),
+            requestedSession1,
+            requestedSession2,
           );
 
           console.log("Employee:", employeeId);
-          console.log("session1:", session1);
-          console.log("session2:", session2);
-          console.log("combined:", `${session1}:${session2}`);
+          console.log("session1:", requestedSession1);
+          console.log("session2:", requestedSession2);
+          console.log("combined:", `${requestedSession1}:${requestedSession2}`);
           console.log("statusKey:", statusKey);
 
           if (!statusKey) {
@@ -522,6 +524,8 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
         const [recordSession1, recordSession2] = getSessionCodes(
           attendance.status,
         );
+        const responseSession1 = requestedSession1 || recordSession1;
+        const responseSession2 = requestedSession2 || recordSession2;
 
         updatedRecords.push({
           employeeId: attendance.facultyId._id,
@@ -543,13 +547,13 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
 
           shiftCode: attendance.shiftCode || "S2",
 
-          status: `${recordSession1}:${recordSession2}`,
+          status: `${responseSession1}:${responseSession2}`,
 
           firstIn: attendance.inTime,
           lastOut: attendance.outTime,
 
-          session1: recordSession1,
-          session2: recordSession2,
+          session1: responseSession1,
+          session2: responseSession2,
         });
       }
     }
