@@ -127,10 +127,12 @@ exports.getAttendanceByDate = async (req, res) => {
 
       return {
         facultyId: attendance.facultyId?._id,
+        employeeId: attendance.facultyId?._id || null,
         employeeName,
         employeeNo,
         department: attendance.facultyId?.department,
         employeeCategory: attendance.facultyId?.employeeCategory,
+        statusCode: STATUS_CODE_MAP[attendance.status] || null,
 
         date: attendance.attendanceDate,
         shiftCode: attendance.shiftCode || "S2",
@@ -425,8 +427,10 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
 
     for (const update of updates) {
       const { employeeId, session1, session2, firstIn, lastOut } = update;
-      const requestedSession1 = session1 !== undefined ? String(session1).trim() : null;
-      const requestedSession2 = session2 !== undefined ? String(session2).trim() : null;
+      const requestedSession1 =
+        session1 !== undefined ? String(session1).trim() : null;
+      const requestedSession2 =
+        session2 !== undefined ? String(session2).trim() : null;
 
       const attendances = await Attendance.find({
         facultyId: employeeId,
@@ -599,8 +603,10 @@ exports.bulkUpdateAttendanceByEmployee = async (req, res) => {
 
     for (const update of updates) {
       const { date, session1, session2, firstIn, lastOut } = update;
-      const requestedSession1 = session1 !== undefined ? String(session1).trim() : null;
-      const requestedSession2 = session2 !== undefined ? String(session2).trim() : null;
+      const requestedSession1 =
+        session1 !== undefined ? String(session1).trim() : null;
+      const requestedSession2 =
+        session2 !== undefined ? String(session2).trim() : null;
 
       if (!date) {
         continue;
@@ -613,7 +619,10 @@ exports.bulkUpdateAttendanceByEmployee = async (req, res) => {
           $gte: startDate,
           $lte: endDate,
         },
-      }).populate("facultyId", "firstName lastName empId department employeeCategory");
+      }).populate(
+        "facultyId",
+        "firstName lastName empId department employeeCategory",
+      );
 
       if (!attendance) {
         continue;
@@ -626,30 +635,40 @@ exports.bulkUpdateAttendanceByEmployee = async (req, res) => {
       if (firstIn !== undefined) attendance.inTime = firstIn;
       if (lastOut !== undefined) attendance.outTime = lastOut;
 
-      if (requestedSession1 && requestedSession2) {
-        const statusKey = getStatusFromSessions(requestedSession1, requestedSession2);
+      if (requestedSession1 !== null && requestedSession2 !== null) {
+        const statusKey = getStatusFromSessions(
+          requestedSession1,
+          requestedSession2,
+        );
+
         if (!statusKey) {
           continue;
         }
+
         attendance.status = statusKey;
       }
 
       if (attendance.inTime && attendance.outTime) {
         attendance.workingMinutes = Math.floor(
-          (new Date(attendance.outTime) - new Date(attendance.inTime)) / 60000,
+          (new Date(attendance.outTime) - new Date(attendance.inTime)) /
+            60000,
         );
       }
 
       await attendance.save();
 
-      const [recordSession1, recordSession2] = getSessionCodes(attendance.status);
+      const [recordSession1, recordSession2] = getSessionCodes(
+        attendance.status,
+      );
       const responseSession1 = requestedSession1 || recordSession1;
       const responseSession2 = requestedSession2 || recordSession2;
 
       updatedRecords.push({
-        attendanceId: attendance._id,
         employeeId: attendance.facultyId._id,
-        employeeName: [attendance.facultyId.firstName, attendance.facultyId.lastName]
+        employeeName: [
+          attendance.facultyId.firstName,
+          attendance.facultyId.lastName,
+        ]
           .filter(Boolean)
           .join(" "),
         employeeNo: attendance.facultyId.empId,
@@ -658,6 +677,7 @@ exports.bulkUpdateAttendanceByEmployee = async (req, res) => {
         date: attendance.attendanceDate,
         shiftCode: attendance.shiftCode || "S2",
         status: `${responseSession1}:${responseSession2}`,
+        attendanceStatus: attendance.status,
         firstIn: attendance.inTime,
         lastOut: attendance.outTime,
         session1: responseSession1,
@@ -668,97 +688,139 @@ exports.bulkUpdateAttendanceByEmployee = async (req, res) => {
       });
     }
 
-    const grouped = [];
+    if (updatedRecords.length === 0) {
+      return res.status(200).json({
+        success: true,
+        bulkOperationId,
+        count: 0,
+        data: [],
+      });
+    }
+
     updatedRecords.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    for (const record of updatedRecords) {
-      const recordDate = record.date.toISOString().split("T")[0];
+    const formatDate = (value) =>
+      new Date(value).toISOString().split("T")[0];
 
-      if (!grouped.length) {
-        grouped.push({
-          ...record,
-          attendanceDate: recordDate,
-          dates: [recordDate],
-          rows: [record],
-        });
-        continue;
+    const buildRanges = (rows) => {
+      const ranges = [];
+      let rangeStart = rows[0].date;
+      let rangeEnd = rows[0].date;
+
+      const pushRange = () => {
+        const startKey = formatDate(rangeStart);
+        const endKey = formatDate(rangeEnd);
+        ranges.push(
+          startKey === endKey ? startKey : `${startKey} to ${endKey}`,
+        );
+      };
+
+      for (let i = 1; i < rows.length; i += 1) {
+        const prevDate = new Date(rangeEnd);
+        const currDate = new Date(rows[i].date);
+        const diffDays = Math.round(
+          (currDate - prevDate) / (1000 * 60 * 60 * 24),
+        );
+
+        if (diffDays === 1) {
+          rangeEnd = rows[i].date;
+        } else {
+          pushRange();
+          rangeStart = rows[i].date;
+          rangeEnd = rows[i].date;
+        }
       }
 
-      const lastGroup = grouped[grouped.length - 1];
-      const lastDate = new Date(lastGroup.dates[lastGroup.dates.length - 1]);
-      const nextDate = new Date(recordDate);
-      const diffDays = Math.round((nextDate - lastDate) / (1000 * 60 * 60 * 24));
+      pushRange();
+      return ranges.join(", ");
+    };
 
-      if (diffDays === 1 && lastGroup.status === record.status) {
-        lastGroup.dates.push(recordDate);
-        lastGroup.attendanceDate = `${lastGroup.dates[0]} to ${recordDate}`;
-        lastGroup.lastOut = record.lastOut || lastGroup.lastOut;
-        lastGroup.rows.push(record);
-      } else {
-        grouped.push({
+    const groupedRecords = [];
+    let currentGroup = null;
+
+    const pushCurrentGroup = () => {
+      if (!currentGroup) return;
+
+      const rangeText = buildRanges(currentGroup.rows);
+      const orderedRows = currentGroup.rows.sort(
+        (a, b) => new Date(a.date) - new Date(b.date),
+      );
+      const previousStatusValues = [
+        ...new Set(orderedRows.map((row) => row.previousStatus)),
+      ];
+
+      groupedRecords.push({
+        employeeId: currentGroup.employeeId,
+        employeeName: currentGroup.employeeName,
+        employeeNo: currentGroup.employeeNo,
+        department: currentGroup.department,
+        employeeCategory: currentGroup.employeeCategory,
+        attendanceDate: rangeText,
+        shiftCode: currentGroup.shiftCode,
+        status: currentGroup.status,
+        attendanceStatus: currentGroup.attendanceStatus,
+        statusCode: STATUS_CODE_MAP[currentGroup.attendanceStatus] || null,
+        firstIn: orderedRows[0].firstIn,
+        lastOut: orderedRows[orderedRows.length - 1].lastOut,
+        session1: currentGroup.session1,
+        session2: currentGroup.session2,
+        rows: orderedRows,
+        previousStatusSummary: previousStatusValues.join(", "),
+      });
+    };
+
+    for (const record of updatedRecords) {
+      const shouldStartNewGroup =
+        !currentGroup || currentGroup.status !== record.status;
+
+      if (shouldStartNewGroup) {
+        pushCurrentGroup();
+        currentGroup = {
           ...record,
-          attendanceDate: recordDate,
-          dates: [recordDate],
           rows: [record],
-        });
+        };
+      } else {
+        currentGroup.rows.push(record);
       }
     }
 
-    const responseGroups = [];
-    const historyInserts = [];
+    pushCurrentGroup();
 
-    for (const group of grouped) {
-      const attendanceDate = group.dates.length === 1
-        ? group.dates[0]
-        : `${group.dates[0]} to ${group.dates[group.dates.length - 1]}`;
-
-      const firstRow = group.rows[0];
-      const lastRow = group.rows[group.rows.length - 1];
-
-      responseGroups.push({
-        employeeId: group.employeeId,
-        employeeName: group.employeeName,
-        employeeNo: group.employeeNo,
-        department: group.department,
-        employeeCategory: group.employeeCategory,
-        date: firstRow.date,
-        shiftCode: group.shiftCode,
-        status: group.status,
-        firstIn: group.firstIn,
-        lastOut: lastRow.lastOut,
-        session1: group.session1,
-        session2: group.session2,
-        attendanceDate,
-      });
-
-      historyInserts.push({
-        facultyId: group.employeeId,
-        attendanceId: firstRow.attendanceId,
-        attendanceDate: firstRow.date,
-        endDate: lastRow.date,
-        employeeCategory: group.employeeCategory,
-        previousStatus: group.previousStatus,
-        newStatus: group.status,
-        previousInTime: group.previousInTime,
-        previousOutTime: group.previousOutTime,
-        newInTime: group.firstIn,
-        newOutTime: lastRow.lastOut,
+    const historyInserts = groupedRecords.map((group) => {
+      const orderedRows = group.rows.sort(
+        (a, b) => new Date(a.date) - new Date(b.date),
+      );
+      return {
+        facultyId: employeeId,
+        attendanceDate: orderedRows[0].date,
+        endDate: orderedRows[orderedRows.length - 1].date,
+        previousStatus: group.previousStatusSummary,
+        newStatus: group.attendanceStatus,
+        previousInTime: orderedRows[0].previousInTime || null,
+        previousOutTime: orderedRows[0].previousOutTime || null,
+        newInTime: orderedRows[orderedRows.length - 1].firstIn || null,
+        newOutTime: orderedRows[orderedRows.length - 1].lastOut || null,
         reason: remarks || "Bulk update (employee)",
         changedBy: req.user._id,
         changedByRole: req.user.role,
         bulkOperationId,
-      });
-    }
+      };
+    });
 
     if (historyInserts.length > 0) {
       await AttendanceOverrideHistory.insertMany(historyInserts);
     }
 
+    const responsePayload = groupedRecords.map((group) => {
+      const { rows, previousStatusSummary, attendanceStatus, ...item } = group;
+      return item;
+    });
+
     return res.status(200).json({
       success: true,
       bulkOperationId,
-      count: responseGroups.length,
-      data: responseGroups,
+      count: responsePayload.length,
+      data: responsePayload,
     });
   } catch (error) {
     console.error("Bulk Update Employee Error:", error);
@@ -802,9 +864,7 @@ exports.getAttendanceOverrideHistory = async (req, res) => {
       attendanceDate: item.attendanceDate
         ? item.attendanceDate.toISOString().split("T")[0]
         : null,
-      endDate: item.endDate
-        ? item.endDate.toISOString().split("T")[0]
-        : null,
+      endDate: item.endDate ? item.endDate.toISOString().split("T")[0] : null,
 
       firstIn: item.newInTime,
 
@@ -824,9 +884,10 @@ exports.getAttendanceOverrideHistory = async (req, res) => {
       employeeId: item.employeeId,
       department: item.department,
       employeeCategory: item.employeeCategory,
-      attendanceDate: item.endDate && item.endDate !== item.attendanceDate
-        ? `${item.attendanceDate} to ${item.endDate}`
-        : item.attendanceDate,
+      attendanceDate:
+        item.endDate && item.endDate !== item.attendanceDate
+          ? `${item.attendanceDate} to ${item.endDate}`
+          : item.attendanceDate,
       firstIn: item.firstIn,
       lastOut: item.lastOut,
       status: item.status,

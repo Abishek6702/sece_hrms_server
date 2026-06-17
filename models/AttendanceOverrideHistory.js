@@ -11,7 +11,8 @@ const attendanceOverrideHistorySchema = new mongoose.Schema(
     attendanceId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Attendance",
-      required: true,
+      required: false,
+      default: null,
     },
 
     attendanceDate: {
