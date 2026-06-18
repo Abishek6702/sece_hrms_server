@@ -74,15 +74,7 @@ const attendanceSchema = new mongoose.Schema(
       ],
       default: "Present",
     },
-    session1: {
-      type: String,
-      default: "",
-    },
 
-    session2: {
-      type: String,
-      default: "",
-    },
     lateCountApplied: {
       type: Boolean,
       default: false,
@@ -99,6 +91,41 @@ const attendanceSchema = new mongoose.Schema(
     },
 
     remarks: {
+      type: String,
+      trim: true,
+    },
+    // override fields
+    isOverridden: {
+      type: Boolean,
+      default: false,
+    },
+    overrideStatus: {
+      type: String,
+      enum: [
+        "Present",
+        "Absent",
+        "Half Day",
+        "Leave",
+        "Holiday",
+        "First Half Leave",
+        "Second Half Leave",
+        "Missed Punch",
+        "On Duty",
+        "First Half OD",
+        "Second Half OD",
+      ],
+      default: "Present",
+    },
+    session1: {
+      type: String,
+      default: "",
+    },
+
+    session2: {
+      type: String,
+      default: "",
+    },
+    overrideRemarks: {
       type: String,
       trim: true,
     },
