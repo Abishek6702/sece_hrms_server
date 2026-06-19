@@ -312,11 +312,19 @@ exports.getRequestsForPrincipal = async (req, res) => {
 
     const { department, status } = req.query;
 
-    let query = {};
+    // Show records pending principal approval OR already approved/rejected by principal
+    let query = {
+      $or: [
+        { currentApprovalLevel: "principal" }, // Pending principal approval
+        { currentApprovalLevel: "completed", status: { $in: ["Approved", "Rejected"] } } // Approved or Rejected by principal
+      ]
+    };
 
     // Filter by status if provided
     if (status) {
-      query.status = status; // Pending, Approved, Rejected
+      query.$or.forEach(condition => {
+        condition.status = status;
+      });
     }
 
     const requests = await AttendanceRegularization.find(query)
