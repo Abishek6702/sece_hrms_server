@@ -172,3 +172,70 @@ exports.firstLoginComplete = async (
     });
   }
 };
+
+exports.createUser = async (req, res) => {
+  try {
+    const {
+      firstName,
+      lastName,
+      email,
+      phone,
+      password,
+      department,
+      role,
+    } = req.body;
+
+    if (!firstName || !email || !password || !role ||!department) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "First Name, Email, Password and Role are required",
+      });
+    }
+
+    const existingUser = await User.findOne({
+      email: email.toLowerCase(),
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "User already exists",
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await User.create({
+      firstName,
+      lastName,
+      email: email.toLowerCase(),
+      phone,
+      password: hashedPassword,
+      department,
+      role,
+      isActive: true,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: `${role} created successfully`,
+      data: {
+        _id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone,
+        department: user.department,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error("Create User Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to create user",
+    });
+  }
+};
