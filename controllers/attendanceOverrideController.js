@@ -18,7 +18,7 @@ const STATUS_CODE_MAP = {
   "On Duty": "OD:OD",
 
   "First Half OD": "OD:P",
-  "Second Half OD": "A:OD",
+  "Second Half OD": "P:OD",
 };
 
 const SESSION_STATUS_MAP = {
@@ -37,11 +37,11 @@ const SESSION_STATUS_MAP = {
   "OD:OD": "On Duty",
 
   "OD:P": "First Half OD",
-  "A:OD": "Second Half OD",
+  "P:OD": "Second Half OD",
 
   // Optional aliases
   "OD:A": "First Half OD",
-  "P:OD": "Second Half OD",
+  "A:OD": "Second Half OD",
 };
 
 const STATUS_SESSION_MAP = {
@@ -61,7 +61,7 @@ const STATUS_SESSION_MAP = {
   "On Duty": ["OD", "OD"],
 
   "First Half OD": ["OD", "P"],
-  "Second Half OD": ["A", "OD"],
+  "Second Half OD": ["P", "OD"],
 };
 
 const getSessionCodes = (status) => STATUS_SESSION_MAP[status] || ["", ""];
@@ -124,8 +124,9 @@ exports.getAttendanceByDate = async (req, res) => {
       const employeeNo = attendance.facultyId?.empId || "";
       const employeeId = attendance.facultyId?._id || null;
       // prefer stored session1/session2 (requested order), fallback to status-derived
-      const s1 = attendance.session1 || getSessionCodes(attendance.status)[0];
-      const s2 = attendance.session2 || getSessionCodes(attendance.status)[1];
+      const currentStatus = attendance.overrideStatus || attendance.status;
+      const s1 = attendance.session1 || getSessionCodes(currentStatus)[0];
+      const s2 = attendance.session2 || getSessionCodes(currentStatus)[1];
 
       return {
         facultyId: attendance.facultyId?._id,
@@ -139,7 +140,7 @@ exports.getAttendanceByDate = async (req, res) => {
         date: attendance.attendanceDate,
         shiftCode: attendance.shiftCode || "S2",
 
-        status: `${s1}:${s2}`,
+       status: attendance.status, // Present, Leave, On Duty, etc.
 
         firstIn: attendance.inTime,
         lastOut: attendance.outTime,
@@ -202,8 +203,9 @@ exports.getAttendanceByEmployee = async (req, res) => {
             .join(" ")
         : "";
       const employeeNo = attendance.facultyId?.empId || "";
-      const s1 = attendance.session1 || getSessionCodes(attendance.status)[0];
-      const s2 = attendance.session2 || getSessionCodes(attendance.status)[1];
+      const currentStatus = attendance.overrideStatus || attendance.status;
+      const s1 = attendance.session1 || getSessionCodes(currentStatus)[0];
+      const s2 = attendance.session2 || getSessionCodes(currentStatus)[1];
 
       return {
         _id: attendance._id,
@@ -218,7 +220,7 @@ exports.getAttendanceByEmployee = async (req, res) => {
         date: attendance.attendanceDate,
         shiftCode: attendance.shiftCode || "S2",
 
-        status: `${s1}:${s2}`,
+        status: attendance.status, // Present, Leave, On Duty, etc.
 
         firstIn: attendance.inTime,
         lastOut: attendance.outTime,
@@ -244,7 +246,7 @@ exports.getAttendanceByEmployee = async (req, res) => {
 exports.updateAttendanceOverride = async (req, res) => {
   try {
     // Only HR can access
-  
+
     if (req.user.role !== "hr") {
       return res.status(403).json({
         success: false,
@@ -254,8 +256,8 @@ exports.updateAttendanceOverride = async (req, res) => {
 
     const { employeeId, date } = req.params;
     const { firstIn, lastOut, session1, session2, remarks } = req.body;
-    const requestedSession1 = session1 !== undefined ? String(session1).trim() : null;
-    const requestedSession2 = session2 !== undefined ? String(session2).trim() : null;
+    const requestedSession1 =session1 !== undefined ? String(session1).trim() : null;
+    const requestedSession2 =session2 !== undefined ? String(session2).trim() : null;
 
     const { startDate, endDate } = getDayRange(date);
 
@@ -292,7 +294,8 @@ exports.updateAttendanceOverride = async (req, res) => {
         });
       }
 
-      attendance.status = newStatus;
+      attendance.overrideStatus = newStatus;
+      attendance.isOverridden = true;
     }
 
     if (newStatus === "Absent" && (!remarks || remarks.trim() === "")) {
@@ -312,7 +315,10 @@ exports.updateAttendanceOverride = async (req, res) => {
     }
 
     if (requestedSession1 !== null && requestedSession2 !== null) {
-      const statusKey = getStatusFromSessions(requestedSession1, requestedSession2);
+      const statusKey = getStatusFromSessions(
+        requestedSession1,
+        requestedSession2,
+      );
 
       if (!statusKey) {
         return res.status(400).json({
@@ -321,14 +327,17 @@ exports.updateAttendanceOverride = async (req, res) => {
         });
       }
 
-      attendance.status = statusKey;
+      // attendance.status = statusKey;
       // persist requested order
       attendance.session1 = requestedSession1;
       attendance.session2 = requestedSession2;
+      attendance.isOverridden = true;
+      attendance.overrideStatus = statusKey;
     }
 
     if (remarks !== undefined) {
-      attendance.remarks = remarks;
+      attendance.overrideRemarks = remarks;
+      attendance.isOverridden = true;
     }
 
     // Recalculate working minutes
@@ -347,7 +356,8 @@ exports.updateAttendanceOverride = async (req, res) => {
     );
 
     // Save override history
-    const [historySessions1, historySessions2] = getSessionCodes(attendance.status);
+    const currentStatus = attendance.overrideStatus || attendance.status;
+    const [historySessions1, historySessions2] = getSessionCodes(currentStatus);
     await AttendanceOverrideHistory.create({
       facultyId: attendance.facultyId._id,
       attendanceId: attendance._id,
@@ -355,7 +365,7 @@ exports.updateAttendanceOverride = async (req, res) => {
       endDate: attendance.attendanceDate,
 
       previousStatus,
-      newStatus: attendance.status,
+      newStatus: currentStatus,
       session1: attendance.session1 || historySessions1 || null,
       session2: attendance.session2 || historySessions2 || null,
 
@@ -382,8 +392,10 @@ exports.updateAttendanceOverride = async (req, res) => {
     const employeeNo = attendance.facultyId?.empId || "";
     const department = attendance.facultyId?.department || "";
 
-    const responseStatus1 = requestedSession1 || getSessionCodes(attendance.status)[0];
-    const responseStatus2 = requestedSession2 || getSessionCodes(attendance.status)[1];
+    const responseStatus1 =
+      requestedSession1 || getSessionCodes(currentStatus)[0];
+    const responseStatus2 =
+      requestedSession2 || getSessionCodes(currentStatus)[1];
 
     const response = {
       _id: attendance._id,
@@ -399,6 +411,7 @@ exports.updateAttendanceOverride = async (req, res) => {
 
       status: `${responseStatus1}:${responseStatus2}`,
       statusCode: `${responseStatus1}:${responseStatus2}`,
+      
 
       firstIn: attendance.inTime,
       lastOut: attendance.outTime,
@@ -420,6 +433,7 @@ exports.updateAttendanceOverride = async (req, res) => {
     });
   }
 };
+
 
 exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
   try {
@@ -479,8 +493,9 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
         }
 
         // Update Status
+        let newStatus = attendance.status;
         if (requestedSession1 !== null && requestedSession2 !== null) {
-          const statusKey = getStatusFromSessions(
+          newStatus = getStatusFromSessions(
             requestedSession1,
             requestedSession2,
           );
@@ -489,9 +504,9 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
           console.log("session1:", requestedSession1);
           console.log("session2:", requestedSession2);
           console.log("combined:", `${requestedSession1}:${requestedSession2}`);
-          console.log("statusKey:", statusKey);
+          console.log("newStatus:", newStatus);
 
-          if (!statusKey) {
+          if (!newStatus) {
             console.log(
               "Available combinations:",
               Object.keys(SESSION_STATUS_MAP),
@@ -500,9 +515,11 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
             continue; // skip invalid employee instead of stopping whole bulk update
           }
 
-          attendance.status = statusKey;
+          // don't update attendance.status
           attendance.session1 = requestedSession1;
           attendance.session2 = requestedSession2;
+          attendance.isOverridden = true;
+          attendance.overrideStatus = newStatus;
         }
 
         // Calculate working minutes
@@ -516,7 +533,9 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
         await attendance.save();
 
         // Save history
-        const [historySessions1, historySessions2] = getSessionCodes(attendance.status);
+        const [historySessions1, historySessions2] = getSessionCodes(
+          attendance.overrideStatus || attendance.status,
+        );
         await AttendanceOverrideHistory.create({
           facultyId: attendance.facultyId._id,
           attendanceId: attendance._id,
@@ -526,7 +545,7 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
           employeeCategory: attendance.facultyId?.employeeCategory || "",
 
           previousStatus,
-          newStatus: attendance.status,
+          newStatus: attendance.overrideStatus || attendance.status,
           session1: attendance.session1 || historySessions1 || null,
           session2: attendance.session2 || historySessions2 || null,
 
@@ -545,7 +564,7 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
         });
 
         const [recordSession1, recordSession2] = getSessionCodes(
-          attendance.status,
+          attendance.overrideStatus || attendance.status,
         );
         const responseSession1 = requestedSession1 || recordSession1;
         const responseSession2 = requestedSession2 || recordSession2;
@@ -657,18 +676,20 @@ exports.bulkUpdateAttendanceByEmployee = async (req, res) => {
       if (lastOut !== undefined) attendance.outTime = lastOut;
 
       if (requestedSession1 !== null && requestedSession2 !== null) {
-        const statusKey = getStatusFromSessions(
+        const newStatus = getStatusFromSessions(
           requestedSession1,
           requestedSession2,
         );
 
-        if (!statusKey) {
+        if (!newStatus) {
           continue;
         }
 
-        attendance.status = statusKey;
+        // don't update attendance.status
         attendance.session1 = requestedSession1;
         attendance.session2 = requestedSession2;
+        attendance.isOverridden = true;
+        attendance.overrideStatus = newStatus;
       }
 
       if (attendance.inTime && attendance.outTime) {
@@ -681,7 +702,7 @@ exports.bulkUpdateAttendanceByEmployee = async (req, res) => {
       await attendance.save();
 
       const [recordSession1, recordSession2] = getSessionCodes(
-        attendance.status,
+        attendance.overrideStatus || attendance.status,
       );
       const responseSession1 = requestedSession1 || recordSession1;
       const responseSession2 = requestedSession2 || recordSession2;
@@ -702,7 +723,7 @@ exports.bulkUpdateAttendanceByEmployee = async (req, res) => {
         shiftCode: attendance.shiftCode || "S2",
         status: `${responseSession1}:${responseSession2}`,
         statusCode: `${responseSession1}:${responseSession2}`,
-        attendanceStatus: attendance.status,
+        attendanceStatus: attendance.overrideStatus || attendance.status,
         firstIn: attendance.inTime,
         lastOut: attendance.outTime,
         session1: responseSession1,
@@ -880,10 +901,11 @@ exports.getAttendanceOverrideHistory = async (req, res) => {
       // Use stored session1/session2, fallback to derived sessions from status
       const s1 = item.session1 || getSessionCodes(item.newStatus)[0] || "";
       const s2 = item.session2 || getSessionCodes(item.newStatus)[1] || "";
-      
+
       return {
         employeeName:
-          item.facultyId && (item.facultyId.firstName || item.facultyId.lastName)
+          item.facultyId &&
+          (item.facultyId.firstName || item.facultyId.lastName)
             ? `${item.facultyId.firstName || ""} ${
                 item.facultyId.lastName || ""
               }`.trim()
@@ -896,10 +918,10 @@ exports.getAttendanceOverrideHistory = async (req, res) => {
         employeeCategory: item.facultyId?.employeeCategory || "",
 
         attendanceDate: item.attendanceDate
-          ? item.attendanceDate.toISOString().split("T")[0]
+          ? item.attendanceDate.toISOString()
           : null,
-        endDate: item.endDate ? item.endDate.toISOString().split("T")[0] : null,
 
+        endDate: item.endDate ? item.endDate.toISOString() : null,
         firstIn: item.newInTime,
 
         lastOut: item.newOutTime,
@@ -945,3 +967,4 @@ exports.getAttendanceOverrideHistory = async (req, res) => {
     });
   }
 };
+
