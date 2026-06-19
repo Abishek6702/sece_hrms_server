@@ -16,7 +16,28 @@ const generatePunchId = require("../utils/generatePunchId");
 // ================= IMPORT EXCEL =================
 const XLSX = require("xlsx");
 
+const parseDate = (value) => {
+  if (!value) return null;
 
+  if (value instanceof Date) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const parts = value.includes(".")
+      ? value.split(".")
+      : value.includes("-")
+      ? value.split("-")
+      : null;
+
+    if (parts?.length === 3) {
+      const [day, month, year] = parts;
+      return new Date(year, month - 1, day);
+    }
+  }
+
+  return value;
+};
 exports.importExcelFaculty = async (req, res) => {
   try {
     if (!req.file) {
@@ -67,9 +88,8 @@ exports.importExcelFaculty = async (req, res) => {
 
         gender: data.gender,
 
-        dob: data.dob,
-
-        doj: data.doj,
+        dob: parseDate(data.dob),
+        doj: parseDate(data.doj),
 
         department: data.department,
 

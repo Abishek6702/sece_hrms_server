@@ -134,7 +134,6 @@ const facultySchema = new mongoose.Schema(
 
     jobTitle: {
       type: String,
-      required: true,
     },
 
     department: {
