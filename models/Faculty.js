@@ -49,7 +49,7 @@ const facultySchema = new mongoose.Schema(
 
     salutation: {
       type: String,
-      enum: ["Mr", "Mrs", "Ms", "Dr", "Prof"],
+      enum: ["Mr", "Mrs", "Ms", "Dr", "Prof","Lt"],
     },
 
     firstName: {

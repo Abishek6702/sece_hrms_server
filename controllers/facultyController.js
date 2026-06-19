@@ -85,7 +85,7 @@ exports.importExcelFaculty = async (req, res) => {
 
         shiftId: shift._id,
         
-        punchId: data.punchId,
+        // punchId: data.punchId,
 
         punchId: data.punchId || (await generatePunchId()),
 
@@ -140,17 +140,17 @@ exports.importExcelFaculty = async (req, res) => {
         faculty.employeeCategory !== "Driver" &&
         faculty.employeeCategory !== "Housekeeping"
       ) {
-        const html = renderTemplate("welcomeFaculty", {
-          name: `${faculty.firstName} ${faculty.lastName}`,
-          empId: faculty.empId,
-          email: faculty.organizationEmail,
-          password: "Sece@123",
-          role: data.role?.toLowerCase() || "faculty",
-        });
+        // const html = renderTemplate("welcomeFaculty", {
+        //   name: `${faculty.firstName} ${faculty.lastName}`,
+        //   empId: faculty.empId,
+        //   email: faculty.organizationEmail,
+        //   password: "Sece@123",
+        //   role: data.role?.toLowerCase() || "faculty",
+        // });
 
-        sendMail(faculty.organizationEmail, "Welcome to SECE HRMS", html).catch(
-          console.error,
-        );
+        // sendMail(faculty.organizationEmail, "Welcome to SECE HRMS", html).catch(
+        //   console.error,
+        // );
       }
 
       created.push(faculty);
@@ -170,16 +170,16 @@ exports.importExcelFaculty = async (req, res) => {
 // ================= ADD SINGLE =================
 exports.addIndividualFaculty = async (req, res) => {
   try {
-    const empId = await generateEmployeeId(
-      req.body.employeeCategory,
-      req.body.department,
-      req.body.role,
-    );
-    const punchId = await generatePunchId();
+    // const empId = await generateEmployeeId(
+    //   req.body.employeeCategory,
+    //   req.body.department,
+    //   req.body.role,
+    // );
+    // const punchId = await generatePunchId();
     const faculty = await Faculty.create({
       ...req.body,
-      empId,
-      punchId,
+      // empId,
+      // punchId,
     });
 
     await createLeaveBalances(faculty._id);
@@ -205,17 +205,17 @@ exports.addIndividualFaculty = async (req, res) => {
       faculty.employeeCategory !== "Driver" &&
       faculty.employeeCategory !== "Housekeeping"
     ) {
-      const html = renderTemplate("welcomeFaculty", {
-        name: `${faculty.firstName} ${faculty.lastName}`,
-        empId: faculty.empId,
-        email: faculty.organizationEmail,
-        password: "Sece@123",
-        role: req.body.role?.toLowerCase() || "faculty",
-      });
+      // const html = renderTemplate("welcomeFaculty", {
+      //   name: `${faculty.firstName} ${faculty.lastName}`,
+      //   empId: faculty.empId,
+      //   email: faculty.organizationEmail,
+      //   password: "Sece@123",
+      //   role: req.body.role?.toLowerCase() || "faculty",
+      // });
 
-      sendMail(faculty.organizationEmail, "Welcome to SECE HRMS", html).catch(
-        console.error,
-      );
+      // sendMail(faculty.organizationEmail, "Welcome to SECE HRMS", html).catch(
+      //   console.error,
+      // );
     }
 
     res.status(201).json({
