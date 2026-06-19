@@ -1,4 +1,5 @@
 const AttendanceRegularization = require("../models/AttendanceRegularization");
+const Attendance = require("../models/attendance");
 const User = require("../models/User");
 const Faculty = require("../models/Faculty");
 
@@ -442,6 +443,42 @@ exports.approveRequest = async (req, res) => {
       });
 
       await request.save();
+
+      const attendanceDate = new Date(request.attendanceDate);
+      const startOfDay = new Date(Date.UTC(
+        attendanceDate.getUTCFullYear(),
+        attendanceDate.getUTCMonth(),
+        attendanceDate.getUTCDate(),
+        0,
+        0,
+        0,
+        0,
+      ));
+      const endOfDay = new Date(Date.UTC(
+        attendanceDate.getUTCFullYear(),
+        attendanceDate.getUTCMonth(),
+        attendanceDate.getUTCDate(),
+        23,
+        59,
+        59,
+        999,
+      ));
+
+      const attendance = await Attendance.findOne({
+        facultyId: request.facultyId,
+        attendanceDate: {
+          $gte: startOfDay,
+          $lte: endOfDay,
+        },
+      });
+// console.log("Attendance found for regularization:", attendance);
+      if (attendance) {
+        attendance.regularization = true;
+        attendance.regularizationRemarks = request.reason || remarks;
+        attendance.regularizationStatus = "Present";
+        await attendance.save();
+      }
+
       return res.status(200).json({ success: true, message: "Request approved by Principal", request });
     }
 
