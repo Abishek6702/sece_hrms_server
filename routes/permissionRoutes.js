@@ -14,9 +14,6 @@ router.get("/card/month", protect, permissionCtrl.getPermissionCard);
 // Faculty list own
 router.get("/my", protect, permissionCtrl.getMyPermissions);
 
-// View single
-router.get("/:id", protect, permissionCtrl.getPermissionById);
-
 // HOD: list by department
 router.get("/hod/list", protect, permissionCtrl.getPermissionsForHod);
 
@@ -25,6 +22,10 @@ router.get("/dean/list", protect, permissionCtrl.getPermissionsForDean);
 
 // Principal: list all permissions
 router.get("/principal/list", protect, permissionCtrl.getPermissionsForPrincipal);
+
+// View single
+router.get("/:id", protect, permissionCtrl.getPermissionById);
+
 
 // HOD / Principal: approve / reject
 router.patch("/:id/approve", protect, permissionCtrl.approvePermission);
