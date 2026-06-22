@@ -231,14 +231,30 @@
           facultyId: user.facultyId,
         })
           .populate("leaveTypeId", "leaveName")
-          .sort({
-            createdAt: -1,
-          });
-
+          .sort({ createdAt: -1 });
+        
+        const formattedLeaves = leaveApplications.map((leave) => {
+          const leaveObj = leave.toObject();
+        
+          if (
+            leaveObj.status === "Pending" &&
+            leaveObj.currentApprovalLevel !== "completed"
+          ) {
+            leaveObj.approvalHistory.push({
+              role: leaveObj.currentApprovalLevel,
+              action: "Pending",
+              remarks: `Waiting for ${leaveObj.currentApprovalLevel} approval`,
+              actionDate: null,
+            });
+          }
+        
+          return leaveObj;
+        });
+        
         res.status(200).json({
           success: true,
-          count: leaveApplications.length,
-          leaveApplications,
+          count: formattedLeaves.length,
+          leaveApplications: formattedLeaves,
         });
       } catch (error) {
         res.status(500).json({
