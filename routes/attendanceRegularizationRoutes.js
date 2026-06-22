@@ -16,7 +16,6 @@ const {
   rejectRequest,
   cancelRequest,
 } = require("../controllers/attendanceRegularizationController");
-
 const router = express.Router();
 
 // Create a flexible file upload middleware that accepts any field name for a single file
