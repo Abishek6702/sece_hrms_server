@@ -1,5 +1,6 @@
 const Permission = require("../models/permission");
 const Faculty = require("../models/Faculty");
+const Holiday = require("../models/holiday");
 
 // Helper to enforce role(s)
 const requireRole = (req, role) => {
@@ -9,6 +10,75 @@ const requireRole = (req, role) => {
     err.status = 403;
     throw err;
   }
+};
+
+const formatApprover = (approvedBy) => {
+  if (!approvedBy) {
+    return null;
+  }
+
+  const id = approvedBy._id ? approvedBy._id.toString() : approvedBy.toString();
+
+  return {
+    _id: id,
+    firstName: approvedBy.firstName || null,
+    lastName: approvedBy.lastName || null,
+    empId: approvedBy.empId || null,
+  };
+};
+
+const formatApprovalHistoryItem = (item) => ({
+  role: item.role,
+  approvedBy: formatApprover(item.approvedBy),
+  action: item.action,
+  remarks: item.remarks || "",
+  actionDate: item.actionDate ? item.actionDate.toISOString() : null,
+});
+
+const getPendingApprovalStep = (permission) => {
+  if (permission.status !== "Pending" || !permission.currentApprovalLevel) {
+    return null;
+  }
+
+  const action = "Pending";
+  const role = permission.currentApprovalLevel;
+  const remarks = `Waiting for ${role} approval`;
+
+  const alreadyHasPending = Array.isArray(permission.approvalHistory)
+    ? permission.approvalHistory.some(
+        (h) => h.role === role && h.action === action,
+      )
+    : false;
+
+  if (alreadyHasPending) {
+    return null;
+  }
+
+  return {
+    role,
+    approvedBy: null,
+    action,
+    remarks,
+    actionDate: null,
+  };
+};
+
+const formatPermission = (permission) => {
+  const perm = permission.toObject ? permission.toObject() : { ...permission };
+
+  const approvalHistory = Array.isArray(perm.approvalHistory)
+    ? perm.approvalHistory.map(formatApprovalHistoryItem)
+    : [];
+
+  const pendingStep = getPendingApprovalStep(perm);
+  if (pendingStep) {
+    approvalHistory.push(pendingStep);
+  }
+
+  return {
+    ...perm,
+    approvalHistory,
+  };
 };
 
 // Faculty: apply for permission
@@ -44,74 +114,159 @@ exports.applyPermission = async (req, res) => {
         message: "All fields are required.",
       });
     }
+    // normalize request date and day boundaries (local)
+    const requestDate = new Date(permissionDate);
+    const startOfDay = new Date(
+      requestDate.getFullYear(),
+      requestDate.getMonth(),
+      requestDate.getDate(),
+      0,
+      0,
+      0,
+      0,
+    );
+    const endOfDay = new Date(
+      requestDate.getFullYear(),
+      requestDate.getMonth(),
+      requestDate.getDate(),
+      23,
+      59,
+      59,
+      999,
+    );
 
     // =====================================
-    // Prevent duplicate permission on same date
+    // Prevent duplicate permission on same date (use normalized day range)
     // =====================================
     const existingPermission = await Permission.findOne({
       facultyId: req.user.facultyId,
-      permissionDate: {
-        $gte: new Date(`${permissionDate}T00:00:00.000Z`),
-        $lt: new Date(`${permissionDate}T23:59:59.999Z`),
-      },
-      status: {
-        $in: ["Pending", "Approved"],
-      },
+      permissionDate: { $gte: startOfDay, $lte: endOfDay },
+      status: { $in: ["Pending", "Approved"] },
     });
 
     if (existingPermission) {
       return res.status(400).json({
         success: false,
-        message: "Permission request already exists for this date.",
+        message: "Permission has already been applied for the selected date.",
       });
     }
 
     // =====================================
-    // Monthly limit: 2 hours (120 minutes)
-    // Count pending and approved permission requests for this faculty/dean
+    // New validations:
+    // 1) Block permissions on active holidays
+    // 2) Prevent permission if faculty has permission in previous 2 days
+    // 3) Monthly window limit: 26th -> 25th (2 hours / 120 minutes)
     // =====================================
-    const requestDate = new Date(permissionDate);
 
-    const startOfMonth = new Date(
-      requestDate.getFullYear(),
-      requestDate.getMonth(),
-      1
-    );
+    // 1) Holiday check
+    const holiday = await Holiday.findOne({
+      holidayDate: { $gte: startOfDay, $lte: endOfDay },
+      isActive: true,
+    });
 
-    const endOfMonth = new Date(
-      requestDate.getFullYear(),
-      requestDate.getMonth() + 1,
+    if (holiday) {
+      return res.status(400).json({
+        success: false,
+        message: `Permission cannot be applied on holiday: ${holiday.holidayName}`,
+      });
+    }
+
+    // NOTE: weekend check removed — permissions allowed any day unless holiday
+
+    // 3) Block permission dates older than the previous 2 days; future dates remain allowed
+    const now = new Date();
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
       0,
-      23,
-      59,
-      59,
-      999
+      0,
+      0,
+      0,
     );
+    const allowedStart = new Date(todayStart);
+    allowedStart.setDate(allowedStart.getDate() - 2); // start of day (today - 2)
+
+    if (startOfDay < allowedStart) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Permission cannot be applied for dates earlier than the previous 2 days. Applications are allowed only within the last 2 days from today.",
+      });
+    }
+
+    // 4) Permission date must fall in the current 26th -> 25th window
+    const getCurrentWindowRange = (date) => {
+      const y = date.getFullYear();
+      const m = date.getMonth();
+
+      if (date.getDate() >= 26) {
+        return {
+          start: new Date(y, m, 26, 0, 0, 0, 0),
+          end: new Date(y, m + 1, 25, 23, 59, 59, 999),
+        };
+      }
+
+      return {
+        start: new Date(y, m - 1, 26, 0, 0, 0, 0),
+        end: new Date(y, m, 25, 23, 59, 59, 999),
+      };
+    };
+
+    const { start: currentWindowStart, end: currentWindowEnd } =
+      getCurrentWindowRange(now);
+    if (startOfDay < currentWindowStart || startOfDay > currentWindowEnd) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Permission can only be applied for dates between the 26th of the current month and the 25th of the next month.",
+      });
+    }
+
+    // 5) Monthly window (26th -> 25th): compute window containing requestDate
+    const getWindowRange = (date) => {
+      const y = date.getFullYear();
+      const m = date.getMonth();
+
+      if (date.getDate() >= 26) {
+        const start = new Date(y, m, 26, 0, 0, 0, 0);
+        const end = new Date(y, m + 1, 25, 23, 59, 59, 999);
+        return { start, end };
+      } else {
+        const start = new Date(y, m - 1, 26, 0, 0, 0, 0);
+        const end = new Date(y, m, 25, 23, 59, 59, 999);
+        return { start, end };
+      }
+    };
+
+    const { start: windowStart, end: windowEnd } = getWindowRange(requestDate);
 
     const monthlyPermissions = await Permission.find({
       facultyId: req.user.facultyId,
       status: { $in: ["Pending", "Approved"] },
-      permissionDate: {
-        $gte: startOfMonth,
-        $lte: endOfMonth,
-      },
+      permissionDate: { $gte: windowStart, $lte: windowEnd },
     });
 
     const totalMinutesUsed = monthlyPermissions.reduce(
       (sum, permission) => sum + (permission.totalMinutes || 0),
-      0
+      0,
     );
 
     if (totalMinutesUsed + Number(totalMinutes) > 120) {
       return res.status(400).json({
         success: false,
         message:
-          "Monthly permission limit exceeded. Only 2 hours (120 minutes) are allowed per month.",
+          "Monthly permission limit exceeded for the 26th-25th window. Only 2 hours (120 minutes) are allowed per window.",
       });
     }
 
     // Determine the first approval stage based on who applies
-    const currentApprovalLevel = req.user.role === "dean" ? "principal" : "hod";
+    const currentApprovalLevel =
+      req.user.role === "hod"
+        ? "principal"
+        : req.user.role === "dean"
+          ? "principal"
+          : "hod";
 
     // =====================================
     // Create permission request
@@ -154,12 +309,6 @@ exports.applyPermission = async (req, res) => {
   }
 };
 
-
-
-
-
-
-
 // Faculty: list own permissions
 exports.getMyPermissions = async (req, res) => {
   try {
@@ -174,16 +323,13 @@ exports.getMyPermissions = async (req, res) => {
       facultyId: req.user.facultyId,
     })
       .populate("facultyId", "employeeName employeeCode department")
-      .populate(
-        "approvalHistory.approvedBy",
-        "employeeName employeeCode"
-      )
+      .populate("approvalHistory.approvedBy", "firstName lastName empId")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
       count: permissions.length,
-      data: permissions,
+      data: permissions.map(formatPermission),
     });
   } catch (error) {
     console.error("getMyPermissions error:", error);
@@ -203,26 +349,31 @@ exports.getPermissionsForHod = async (req, res) => {
 
     const dept = req.user.department;
 
+    // Include: 1) pending items awaiting HOD approval, and
+    // 2) items where HOD has already acted (Approved/Rejected) so their remarks are visible
     const permissions = await Permission.find({
-      status: "Pending",
-      currentApprovalLevel: "hod",
+      $or: [
+        { currentApprovalLevel: "hod", status: "Pending" },
+        { approvalHistory: { $elemMatch: { role: "hod", action: { $in: ["Approved", "Rejected"] } } } },
+      ],
     })
-      .populate(
-        "facultyId",
-        "firstName lastName department empId"
-      )
+      .populate("facultyId", "firstName lastName department empId")
+      .populate("approvalHistory.approvedBy", "firstName lastName empId")
       .sort({ createdAt: -1 });
+
 
     const filtered = permissions.filter(
       (p) =>
         p.facultyId &&
-        p.facultyId.department === dept
+        typeof p.facultyId.department === "string" &&
+        typeof dept === "string" &&
+        p.facultyId.department.trim().toLowerCase() === dept.trim().toLowerCase(),
     );
 
     return res.status(200).json({
       success: true,
       count: filtered.length,
-      data: filtered,
+      data: filtered.map(formatPermission),
     });
   } catch (error) {
     console.error("getPermissionsForHod error:", error);
@@ -234,8 +385,6 @@ exports.getPermissionsForHod = async (req, res) => {
   }
 };
 
-
-
 // Dean: list permissions submitted by dean
 exports.getPermissionsForDean = async (req, res) => {
   try {
@@ -244,23 +393,26 @@ exports.getPermissionsForDean = async (req, res) => {
     const { department } = req.query;
 
     const query = {
-      "approvalHistory.0.role": "dean",
+      $or: [
+        { currentApprovalLevel: "dean" },
+        { "approvalHistory.role": "dean" },
+      ],
+      status: { $in: ["Pending", "Approved", "Rejected"] },
     };
 
     const permissions = await Permission.find(query)
       .populate("facultyId", "firstName lastName department empId")
+      .populate("approvalHistory.approvedBy", "firstName lastName empId")
       .sort({ createdAt: -1 });
 
     const filteredPermissions = department
-      ? permissions.filter(
-          (p) => p.facultyId?.department === department
-        )
+      ? permissions.filter((p) => p.facultyId?.department === department)
       : permissions;
 
     return res.json({
       success: true,
       count: filteredPermissions.length,
-      data: filteredPermissions,
+      data: filteredPermissions.map(formatPermission),
     });
   } catch (error) {
     console.error("getPermissionsForDean error:", error);
@@ -272,37 +424,35 @@ exports.getPermissionsForDean = async (req, res) => {
   }
 };
 
-
-
 // Principal: list pending and approved permissions for principal-level requests
 exports.getPermissionsForPrincipal = async (req, res) => {
   try {
     requireRole(req, "principal");
 
     const { department } = req.query;
-
     const query = {
-      currentApprovalLevel: "principal",
-      status: { $in: ["Pending", "Approved"] },
+      $or: [
+        { currentApprovalLevel: "principal" },
+        { "approvalHistory.role": "principal" },
+      ],
+      status: { $in: ["Pending", "Approved", "Rejected"] },
     };
 
     const permissions = await Permission.find(query)
       .populate("facultyId", "firstName lastName department empId")
+      .populate("approvalHistory.approvedBy", "firstName lastName empId")
       .sort({ createdAt: -1 });
 
     // Filter by department if provided
     const filteredPermissions = department
-      ? permissions.filter(
-          p => p.facultyId?.department === department
-        )
+      ? permissions.filter((p) => p.facultyId?.department === department)
       : permissions;
 
     return res.json({
       success: true,
       count: filteredPermissions.length,
-      data: filteredPermissions,
+      data: filteredPermissions.map(formatPermission),
     });
-
   } catch (error) {
     return res.status(500).json({
       success: false,
@@ -315,15 +465,14 @@ exports.getPermissionsForPrincipal = async (req, res) => {
 exports.getPermissionById = async (req, res) => {
   try {
     const { id } = req.params;
-    const perm = await Permission.findById(id).populate(
-      "facultyId",
-      "firstName lastName department empId",
-    );
+    const perm = await Permission.findById(id)
+      .populate("facultyId", "firstName lastName department empId")
+      .populate("approvalHistory.approvedBy", "firstName lastName empId");
     if (!perm)
       return res
         .status(404)
         .json({ success: false, message: "Permission not found" });
-    return res.json({ success: true, data: perm });
+    return res.json({ success: true, data: formatPermission(perm) });
   } catch (error) {
     console.error("getPermissionById error:", error);
     return res.status(500).json({ success: false, message: error.message });
@@ -415,7 +564,6 @@ exports.approvePermission = async (req, res) => {
     });
   }
 };
-
 
 // Principal: reject permission
 exports.rejectPermission = async (req, res) => {
@@ -527,26 +675,32 @@ exports.getPermissionCard = async (req, res) => {
         .json({ success: false, message: "Faculty information missing." });
     }
 
-    // Get current month start and end dates
+    // Use 26th -> 25th window for dashboard card (approved only)
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(
-      now.getFullYear(),
-      now.getMonth() + 1,
-      0,
-      23,
-      59,
-      59,
-      999,
-    );
+    const getWindowRange = (date) => {
+      const y = date.getFullYear();
+      const m = date.getMonth();
 
-    // Fetch only approved permissions for current month
+      if (date.getDate() >= 26) {
+        const start = new Date(y, m, 26, 0, 0, 0, 0);
+        const end = new Date(y, m + 1, 25, 23, 59, 59, 999);
+        return { start, end };
+      } else {
+        const start = new Date(y, m - 1, 26, 0, 0, 0, 0);
+        const end = new Date(y, m, 25, 23, 59, 59, 999);
+        return { start, end };
+      }
+    };
+
+    const { start: windowStart, end: windowEnd } = getWindowRange(now);
+
+    // Fetch only approved permissions for current 26->25 window
     const allPerms = await Permission.find({
       facultyId: req.user.facultyId,
       status: "Approved",
       permissionDate: {
-        $gte: startOfMonth,
-        $lte: endOfMonth,
+        $gte: windowStart,
+        $lte: windowEnd,
       },
     });
 
@@ -569,10 +723,7 @@ exports.getPermissionCard = async (req, res) => {
         totalPermission: totalPermissionHours,
         permissionTaken: hoursTaken,
         remainingPermission: remainingHours,
-        month: now.toLocaleString("default", {
-          month: "long",
-          year: "numeric",
-        }),
+        window: `${windowStart.toLocaleDateString()} - ${windowEnd.toLocaleDateString()}`,
         unit: "Hours",
       },
     });
