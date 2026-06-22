@@ -11,23 +11,24 @@
       try {
         const { leaveTypeId, fromDate, toDate, leaveSession, reason } = req.body;
 
-        const user = await User.findById(req.user.id);
+        // get faculty id and role from query
+        const { facultyId, role } = req.query;
 
-        if (user.role === "principal") {
+        if (role === "principal") {
           return res.status(400).json({
             success: false,
             message: "Principal leave application is not allowed",
           });
         }
 
-        if (!user || !user.facultyId) {
+        const faculty = await Faculty.findById(facultyId);
+        if (faculty) {
           return res.status(404).json({
             success: false,
             message: "Faculty not found",
           });
         }
 
-        const faculty = await Faculty.findById(user.facultyId);
 
         const leaveType = await LeaveType.findById(leaveTypeId);
 
@@ -139,11 +140,11 @@
           currentApprovalLevel = "supervisor";
         }
 
-        if (user.role === "hod") {
+        if (role === "hod") {
           currentApprovalLevel = "principal";
         }
 
-        if (user.role === "dean") {
+        if (role === "dean") {
           currentApprovalLevel = "principal";
         }
 
@@ -166,8 +167,8 @@
 
           approvalHistory: [
             {
-              role: user.role,
-              approvedBy: user._id,
+              role:role,
+              approvedBy: facultyId,
               action: "Submitted",
               remarks: "Leave Applied",
             },
