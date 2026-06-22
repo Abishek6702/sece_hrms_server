@@ -349,9 +349,13 @@ exports.getPermissionsForHod = async (req, res) => {
 
     const dept = req.user.department;
 
+    // Include: 1) pending items awaiting HOD approval, and
+    // 2) items where HOD has already acted (Approved/Rejected) so their remarks are visible
     const permissions = await Permission.find({
-      currentApprovalLevel: "hod",
-      status: "Pending",
+      $or: [
+        { currentApprovalLevel: "hod", status: "Pending" },
+        { approvalHistory: { $elemMatch: { role: "hod", action: { $in: ["Approved", "Rejected"] } } } },
+      ],
     })
       .populate("facultyId", "firstName lastName department empId")
       .populate("approvalHistory.approvedBy", "firstName lastName empId")
@@ -359,7 +363,11 @@ exports.getPermissionsForHod = async (req, res) => {
 
 
     const filtered = permissions.filter(
-      (p) => p.facultyId && p.facultyId.department === dept,
+      (p) =>
+        p.facultyId &&
+        typeof p.facultyId.department === "string" &&
+        typeof dept === "string" &&
+        p.facultyId.department.trim().toLowerCase() === dept.trim().toLowerCase(),
     );
 
     return res.status(200).json({
