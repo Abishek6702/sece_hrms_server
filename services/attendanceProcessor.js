@@ -22,21 +22,29 @@ async function processAttendance(attendanceDate) {
 
     // HOLIDAY
 
+    const nextDate = new Date(date);
+    nextDate.setDate(nextDate.getDate() + 1);
+    
     const holiday = await Holiday.findOne({
-      holidayDate: date,
       isActive: true,
       applicableEmployeeCategories: faculty.employeeCategory,
+      holidayDate: {
+        $gte: date,
+        $lt: nextDate,
+      },
     });
 
     if (holiday) {
-      if (attendance) {
-        attendance.status = "Holiday";
-        attendance.lopDays = 0;
-        attendance.remarks = holiday.holidayName;
+      continue;
+    }
+    // SUNDAY CHECK
 
-        await attendance.save();
-      }
+    const istDate = new Date(date);
+    istDate.setMinutes(istDate.getMinutes() + 330);
 
+    const isSunday = istDate.getUTCDay() === 0;
+
+    if (isSunday) {
       continue;
     }
 

@@ -1,9 +1,7 @@
 const mongoose = require("mongoose");
 
 const Attendance = require("../models/attendance");
-
 const Faculty = require("../models/Faculty");
-
 const Holiday = require("../models/holiday");
 
 exports.getAttendanceMuster = async (req, res) => {
@@ -25,7 +23,10 @@ exports.getAttendanceMuster = async (req, res) => {
     const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59));
     endDate.setMinutes(endDate.getMinutes() - 330);
 
-    const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    const daysInMonth = new Date(
+      Date.UTC(year, month, 0),
+    ).getUTCDate();
+
     const facultyFilter = {
       employmentStatus: true,
     };
@@ -73,7 +74,7 @@ exports.getAttendanceMuster = async (req, res) => {
     }
 
     const faculties = await Faculty.find(facultyFilter).select(
-      "empId firstName middleName  lastName designation  department employeeCategory ",
+      "empId firstName middleName lastName designation department employeeCategory",
     );
 
     const facultyIds = faculties.map((faculty) => faculty._id);
@@ -85,6 +86,14 @@ exports.getAttendanceMuster = async (req, res) => {
         $lte: endDate,
       },
     });
+
+    const holidays = await Holiday.find({
+      isActive: true,
+      holidayDate: {
+        $gte: startDate,
+        $lte: endDate,
+      },
+    }).select("holidayDate applicableEmployeeCategories");
 
     const attendanceMap = {};
 
@@ -138,24 +147,53 @@ exports.getAttendanceMuster = async (req, res) => {
           break;
       }
 
-      if (attendanceMap[facultyId][day] === undefined) {
-        attendanceMap[facultyId][day] = value;
-      }
+      attendanceMap[facultyId][day] = value;
     });
 
     const employees = faculties.map((faculty) => {
       const attendanceDays = {};
 
+      const facultyAttendance =
+        attendanceMap[faculty._id.toString()] || {};
+
+      const facultyHolidayMap = new Set();
+
+      holidays.forEach((holiday) => {
+        if (
+          holiday.applicableEmployeeCategories?.includes(
+            faculty.employeeCategory,
+          )
+        ) {
+          const istDate = new Date(holiday.holidayDate);
+
+          istDate.setMinutes(
+            istDate.getMinutes() + 330,
+          );
+
+          facultyHolidayMap.add(
+            istDate.getUTCDate(),
+          );
+        }
+      });
+
       for (let day = 1; day <= daysInMonth; day++) {
-        const currentDate = new Date(Date.UTC(year, month - 1, day));
+        const currentDate = new Date(
+          Date.UTC(year, month - 1, day),
+        );
 
-        const facultyAttendance = attendanceMap[faculty._id.toString()] || {};
-
+        // Attendance exists -> show attendance
         if (facultyAttendance[day] !== undefined) {
           attendanceDays[day] = facultyAttendance[day];
-        } else if (currentDate.getUTCDay() === 0) {
+        }
+        // Sunday or Holiday without attendance
+        else if (
+          currentDate.getUTCDay() === 0 ||
+          facultyHolidayMap.has(day)
+        ) {
           attendanceDays[day] = "OFF";
-        } else {
+        }
+        // No record
+        else {
           attendanceDays[day] = "-";
         }
       }
@@ -163,7 +201,11 @@ exports.getAttendanceMuster = async (req, res) => {
       return {
         facultyId: faculty._id,
         empId: faculty.empId,
-        employeeName: [faculty.firstName, faculty.middleName, faculty.lastName]
+        employeeName: [
+          faculty.firstName,
+          faculty.middleName,
+          faculty.lastName,
+        ]
           .filter(Boolean)
           .join(" "),
         designation: faculty.designation,
