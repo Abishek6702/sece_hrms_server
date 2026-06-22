@@ -6,6 +6,7 @@ const User = require("../../models/User");
 
 const calculateLeaveDays = require("../../utils/calculateLeaveDays");
 const getCurrentAcademicYear = require("../../utils/getCurrentAcademicYear");
+const { reprocessFacultyDateRange } = require("../../services/reprocessFacultyDateRange");
 
 exports.applyLeave = async (req, res) => {
   try {
@@ -453,6 +454,12 @@ exports.approveLeave = async (req, res) => {
     }
 
     await leaveApplication.save();
+
+    await reprocessFacultyDateRange(
+      leaveApplication.facultyId,
+      leaveApplication.fromDate,
+      leaveApplication.toDate
+    );
 
     res.status(200).json({
       success: true,

@@ -18,6 +18,16 @@ exports.createCompOffRequest = async (req, res) => {
       });
     }
 
+    let currentApprovalLevel = "hod";
+
+    if (user.role === "hod") {
+      currentApprovalLevel = "principal";
+    }
+
+    if (user.role === "dean") {
+      currentApprovalLevel = "principal";
+    }
+
     const { workedFromDate, workedToDate, compOffDays, reason } = req.body;
 
     if (new Date(workedFromDate) > new Date(workedToDate)) {
@@ -42,9 +52,10 @@ exports.createCompOffRequest = async (req, res) => {
 
       reason,
       supportingDocuments,
+      currentApprovalLevel,
       approvalHistory: [
         {
-          role: "faculty",
+          role: user.role,
           approvedBy: req.user.id,
           action: "Submitted",
           remarks: "Comp Off Requested",
@@ -101,17 +112,13 @@ exports.getCompOffRequests = async (req, res) => {
     let requests = await CompOffRequest.find(filter)
       .populate({
         path: "facultyId",
-        match: department
-          ? { department }
-          : {},
+        match: department ? { department } : {},
       })
       .sort({ createdAt: -1 });
 
     // Remove records where faculty didn't match department
     if (department) {
-      requests = requests.filter(
-        (request) => request.facultyId
-      );
+      requests = requests.filter((request) => request.facultyId);
     }
 
     res.status(200).json({
@@ -125,7 +132,7 @@ exports.getCompOffRequests = async (req, res) => {
       message: error.message,
     });
   }
-};  
+};
 
 exports.getCompOffRequestById = async (req, res) => {
   try {

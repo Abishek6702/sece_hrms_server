@@ -3,6 +3,7 @@ const router = express.Router();
 const Attendance = require("../models/attendance");
 const { processAttendance } = require("../services/attendanceProcessor");
 const { reprocessAttendance } = require("../services/reprocessAttendance");
+const {processSingleFacultyAttendance} = require("../services/processSingleFacultyAttendance")
 
 router.get("/process-today", async (req, res) => {
   try {
@@ -53,8 +54,6 @@ router.post("/reprocess", async (req, res) => {
   }
 });
 
-
-
 router.get("/process-past", async (req, res) => {
   try {
     const today = new Date();
@@ -77,9 +76,7 @@ router.get("/process-past", async (req, res) => {
 
       processDate.setHours(0, 0, 0, 0);
 
-      console.log(
-        `Processing ${processDate.toISOString().split("T")[0]}`
-      );
+      console.log(`Processing ${processDate.toISOString().split("T")[0]}`);
 
       await processAttendance(processDate);
 
@@ -101,6 +98,14 @@ router.get("/process-past", async (req, res) => {
       message: error.message,
     });
   }
+});
+
+router.get("/test-single", async (req, res) => {
+  await processSingleFacultyAttendance("6a23e523a63cc698c0d09a57", "2026-06-20");
+
+  res.json({
+    success: true,
+  });
 });
 
 module.exports = router;
