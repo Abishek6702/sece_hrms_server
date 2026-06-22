@@ -126,6 +126,19 @@ const attendanceSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+
+    regularization: {
+      type: Boolean,
+      default: false,
+    },
+    regularizationRemarks: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    regularizationStatus: {
+      type: String,
+    },
   },
   {
     timestamps: true,

@@ -1,4 +1,5 @@
 const AttendanceRegularization = require("../models/AttendanceRegularization");
+const Attendance = require("../models/attendance");
 const User = require("../models/User");
 const Faculty = require("../models/Faculty");
 
@@ -311,11 +312,19 @@ exports.getRequestsForPrincipal = async (req, res) => {
 
     const { department, status } = req.query;
 
-    let query = {};
+    // Show records pending principal approval OR already approved/rejected by principal
+    let query = {
+      $or: [
+        { currentApprovalLevel: "principal" }, // Pending principal approval
+        { currentApprovalLevel: "completed", status: { $in: ["Approved", "Rejected"] } } // Approved or Rejected by principal
+      ]
+    };
 
     // Filter by status if provided
     if (status) {
-      query.status = status; // Pending, Approved, Rejected
+      query.$or.forEach(condition => {
+        condition.status = status;
+      });
     }
 
     const requests = await AttendanceRegularization.find(query)
@@ -442,6 +451,42 @@ exports.approveRequest = async (req, res) => {
       });
 
       await request.save();
+
+      const attendanceDate = new Date(request.attendanceDate);
+      const startOfDay = new Date(Date.UTC(
+        attendanceDate.getUTCFullYear(),
+        attendanceDate.getUTCMonth(),
+        attendanceDate.getUTCDate(),
+        0,
+        0,
+        0,
+        0,
+      ));
+      const endOfDay = new Date(Date.UTC(
+        attendanceDate.getUTCFullYear(),
+        attendanceDate.getUTCMonth(),
+        attendanceDate.getUTCDate(),
+        23,
+        59,
+        59,
+        999,
+      ));
+
+      const attendance = await Attendance.findOne({
+        facultyId: request.facultyId,
+        attendanceDate: {
+          $gte: startOfDay,
+          $lte: endOfDay,
+        },
+      });
+// console.log("Attendance found for regularization:", attendance);
+      if (attendance) {
+        attendance.regularization = true;
+        attendance.regularizationRemarks = request.reason || remarks;
+        attendance.regularizationStatus = "Present";
+        await attendance.save();
+      }
+
       return res.status(200).json({ success: true, message: "Request approved by Principal", request });
     }
 
