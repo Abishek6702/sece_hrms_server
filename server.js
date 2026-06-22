@@ -56,7 +56,7 @@ app.use("/api/myteam", myteamRoutes);
 app.use("/api/leave-type", leaveTypeRoutes);
 app.use("/api/leave-balance", leaveBalanceRoutes);
 app.use("/api/leave-application", leaveApplicationRoutes);
-app.use("/api/attendance",attendanceProcessRoutes)
+app.use("/api/attendance-process",attendanceProcessRoutes)
 
 app.use("/api/comp-off", compOffRoutes);
 app.use("/api/essl",esslRoutes);

@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const Attendance = require("../models/attendance");
 const { processAttendance } = require("../services/attendanceProcessor");
 const { reprocessAttendance } = require("../services/reprocessAttendance");
 
@@ -41,6 +42,56 @@ router.post("/reprocess", async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Attendance reprocessed successfully",
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+
+
+
+router.get("/process-past", async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const dates = await Attendance.distinct("attendanceDate", {
+      attendanceDate: {
+        $lt: today,
+      },
+    });
+
+    console.log("Total dates:", dates.length);
+
+    dates.sort((a, b) => new Date(a) - new Date(b));
+
+    let processed = 0;
+
+    for (const date of dates) {
+      const processDate = new Date(date);
+
+      processDate.setHours(0, 0, 0, 0);
+
+      console.log(
+        `Processing ${processDate.toISOString().split("T")[0]}`
+      );
+
+      await processAttendance(processDate);
+
+      processed++;
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Past attendance processed successfully",
+      processedDays: processed,
+      from: dates.length ? dates[0] : null,
+      to: dates.length ? dates[dates.length - 1] : null,
     });
   } catch (error) {
     console.error(error);
