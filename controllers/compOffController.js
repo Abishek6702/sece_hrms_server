@@ -90,9 +90,29 @@ exports.getMyCompOffRequests = async (req, res) => {
 
 exports.getCompOffRequests = async (req, res) => {
   try {
-    const requests = await CompOffRequest.find().populate("facultyId").sort({
-      createdAt: -1,
-    });
+    const { department, currentApprovalLevel } = req.query;
+
+    const filter = {};
+
+    if (currentApprovalLevel) {
+      filter.currentApprovalLevel = currentApprovalLevel;
+    }
+
+    let requests = await CompOffRequest.find(filter)
+      .populate({
+        path: "facultyId",
+        match: department
+          ? { department }
+          : {},
+      })
+      .sort({ createdAt: -1 });
+
+    // Remove records where faculty didn't match department
+    if (department) {
+      requests = requests.filter(
+        (request) => request.facultyId
+      );
+    }
 
     res.status(200).json({
       success: true,
@@ -105,7 +125,7 @@ exports.getCompOffRequests = async (req, res) => {
       message: error.message,
     });
   }
-};
+};  
 
 exports.getCompOffRequestById = async (req, res) => {
   try {
