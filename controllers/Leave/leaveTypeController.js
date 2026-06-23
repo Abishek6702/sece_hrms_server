@@ -29,6 +29,20 @@ exports.addLeaveType = async (req, res) => {
     const academicYear = getCurrentAcademicYear();
 
     for (const faculty of faculties) {
+      // Gender check
+if (
+  leaveType.leaveName.toLowerCase() === "maternity leave" &&
+  faculty.gender !== "Female"
+) {
+  continue;
+}
+
+if (
+  leaveType.leaveName.toLowerCase() === "paternity leave" &&
+  faculty.gender !== "Male"
+) {
+  continue;
+}
       await LeaveBalance.findOneAndUpdate(
         {
           facultyId: faculty._id,
@@ -167,6 +181,20 @@ exports.updateLeaveType = async (req, res) => {
     });
 
     for (const faculty of faculties) {
+      // Gender check
+if (
+  leaveType.leaveName.toLowerCase() === "maternity leave" &&
+  faculty.gender !== "Female"
+) {
+  continue;
+}
+
+if (
+  leaveType.leaveName.toLowerCase() === "paternity leave" &&
+  faculty.gender !== "Male"
+) {
+  continue;
+}
       await LeaveBalance.findOneAndUpdate(
         {
           facultyId: faculty._id,

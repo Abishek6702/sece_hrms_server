@@ -16,11 +16,20 @@ const createLeaveBalances = async (facultyId) => {
   });
 
   for (const leaveType of leaveTypes) {
+    if (!leaveType.employeeCategories.includes(faculty.employeeCategory)) {
+      continue;
+    }
+    // Gender check
+    if (
+      leaveType.leaveName.toLowerCase() === "maternity leave" &&
+      faculty.gender !== "Female"
+    ) {
+      continue;
+    }
 
     if (
-      !leaveType.employeeCategories.includes(
-        faculty.employeeCategory
-      )
+      leaveType.leaveName.toLowerCase() === "paternity leave" &&
+      faculty.gender !== "Male"
     ) {
       continue;
     }
@@ -42,7 +51,7 @@ const createLeaveBalances = async (facultyId) => {
       {
         upsert: true,
         new: true,
-      }
+      },
     );
   }
 };
