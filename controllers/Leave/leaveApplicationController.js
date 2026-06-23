@@ -213,7 +213,10 @@ exports.getLeaveApplications = async (req, res) => {
         select: "empId firstName lastName department designation",
         match: department ? { department } : {},
       })
-      .populate("leaveTypeId", "leaveName","leaveCategory")
+      .populate({
+        path: "leaveTypeId",
+        select: "leaveName leaveCategory",
+      })
       .sort({ createdAt: -1 });
 
     const filteredLeaves = leaveApplications.filter(
