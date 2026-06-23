@@ -496,7 +496,8 @@ exports.getFacultyAttendanceHistory = async (req, res) => {
       });
     }
 
-    const faculty = await Faculty.findById(facultyId);
+    const faculty = await Faculty.findById(facultyId)
+  .populate("shiftId", "shiftName workingMinutes");
 
     if (!faculty) {
       return res.status(404).json({
@@ -536,8 +537,14 @@ exports.getFacultyAttendanceHistory = async (req, res) => {
           checkOut: attendance.outTime,
           workingHours: attendance.workingMinutes,
           status: attendance.status,
-          regularizationStatus: attendance.regularizationStatus,
-        });
+          regularizationStatus: attendance.regularizationStatus, shift: faculty.shiftId
+          ? {
+              shiftId: faculty.shiftId._id,
+              shiftName: faculty.shiftId.shiftName,
+              workingMinutes: faculty.shiftId.workingMinutes,
+            }
+          : null,
+      });
 
         continue;
       }
