@@ -557,13 +557,13 @@ exports.revokeHodApproval = async (req, res) => {
       });
     }
 
-    if (leave.status !== "Pending") {
+    if (leave.status !== "Pending" && leave.status !== "Rejected") {
       return res.status(400).json({
         success: false,
-        message: "Leave already processed",
+        message: "Only Pending or Rejected leaves can be revoked",
       });
     }
-    const allowedStages = ["dean-research", "coe", "dean-iqac", "principal"];
+    const allowedStages = ["dean-research", "coe", "dean-iqac", "principal","completed","rejected"];
     if (!allowedStages.includes(leave.currentApprovalLevel)) {
       return res.status(400).json({
         success: false,
@@ -573,6 +573,7 @@ exports.revokeHodApproval = async (req, res) => {
     }
 
     leave.currentApprovalLevel = "hod";
+    leave.status="Pending"
 
     leave.approvalHistory.push({
       role: "hod",
