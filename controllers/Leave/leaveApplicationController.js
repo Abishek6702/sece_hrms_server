@@ -225,11 +225,11 @@ exports.getLeaveApplications = async (req, res) => {
       })
       .sort({ createdAt: -1 });
 
-      const filteredLeaves = leaveApplications
+    const filteredLeaves = leaveApplications
       .filter((leave) => leave.facultyId !== null)
       .map((leave) => {
         const leaveObj = leave.toObject();
-    
+
         if (
           leaveObj.status === "Pending" &&
           leaveObj.currentApprovalLevel !== "completed"
@@ -241,7 +241,7 @@ exports.getLeaveApplications = async (req, res) => {
             actionDate: null,
           });
         }
-    
+
         return leaveObj;
       });
 
@@ -426,21 +426,25 @@ exports.approveLeave = async (req, res) => {
       } else {
         leaveApplication.currentApprovalLevel = "principal";
       }
+      leaveApplication.approvalStatus.hodStatus = "Approved";
     }
 
     // Dean Approval
     else if (leaveApplication.currentApprovalLevel === "dean-research") {
       leaveApplication.currentApprovalLevel = "dean-iqac";
+      leaveApplication.approvalStatus.researchStatus = "Approved";
     }
 
     // COE Approval
     else if (leaveApplication.currentApprovalLevel === "coe") {
       leaveApplication.currentApprovalLevel = "dean-iqac";
+      leaveApplication.approvalStatus.coeStatus = "Approved";
     }
 
     // IQAC Approval
     else if (leaveApplication.currentApprovalLevel === "dean-iqac") {
       leaveApplication.currentApprovalLevel = "principal";
+      leaveApplication.approvalStatus.iqacStatus = "Approved";
     }
 
     // Supervisor Approval
@@ -478,6 +482,7 @@ exports.approveLeave = async (req, res) => {
       leaveApplication.status = "Approved";
 
       leaveApplication.currentApprovalLevel = "completed";
+      leaveApplication.approvalStatus.principalStatus = "Approved";
     }
 
     await leaveApplication.save();
@@ -549,6 +554,26 @@ exports.rejectLeave = async (req, res) => {
       remarks,
     });
 
+    if (user.role === "hod") {
+      leaveApplication.approvalStatus.hodStatus = "Rejected";
+    }
+
+    if (user.role === "dean-research") {
+      leaveApplication.approvalStatus.researchStatus = "Rejected";
+    }
+
+    if (user.role === "coe") {
+      leaveApplication.approvalStatus.coeStatus = "Rejected";
+    }
+
+    if (user.role === "dean-iqac") {
+      leaveApplication.approvalStatus.iqacStatus = "Rejected";
+    }
+
+    if (user.role === "principal") {
+      leaveApplication.approvalStatus.principalStatus = "Rejected";
+    }
+
     await leaveApplication.save();
 
     res.status(200).json({
@@ -588,7 +613,14 @@ exports.revokeHodApproval = async (req, res) => {
         message: "Only Pending or Rejected leaves can be revoked",
       });
     }
-    const allowedStages = ["dean-research", "coe", "dean-iqac", "principal","completed","rejected"];
+    const allowedStages = [
+      "dean-research",
+      "coe",
+      "dean-iqac",
+      "principal",
+      "completed",
+      "rejected",
+    ];
     if (!allowedStages.includes(leave.currentApprovalLevel)) {
       return res.status(400).json({
         success: false,
@@ -598,7 +630,8 @@ exports.revokeHodApproval = async (req, res) => {
     }
 
     leave.currentApprovalLevel = "hod";
-    leave.status="Pending"
+    leave.status = "Pending";
+    leave.approvalStatus.hodStatus = "Pending";
 
     leave.approvalHistory.push({
       role: "hod",

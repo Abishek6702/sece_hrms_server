@@ -8,6 +8,33 @@ const documentSchema = new mongoose.Schema(
   { _id: false },
 );
 
+// approval level status (newly added)
+const approvalStatusSchema = new mongoose.Schema(
+  {
+    hodStatus: {
+      type: String,
+      default: "Pending",
+    },
+    researchStatus: {
+      type: String,
+      default: "Pending",
+    },
+    coeStatus: {
+      type: String,
+      default: "Pending",
+    },
+    iqacStatus: {
+      type: String,
+      default: "Pending",
+    },
+    principalStatus: {
+      type: String,
+      default: "Pending",
+    },
+  },
+  { _id: false },
+);
+
 const approvalHistorySchema = new mongoose.Schema(
   {
     role: {
@@ -33,7 +60,7 @@ const approvalHistorySchema = new mongoose.Schema(
 
     action: {
       type: String,
-      enum: ["Submitted", "Approved", "Rejected", "Cancelled","Pending"],
+      enum: ["Submitted", "Approved", "Rejected", "Cancelled", "Pending"],
     },
 
     remarks: String,
@@ -112,6 +139,17 @@ const leaveApplicationSchema = new mongoose.Schema(
     },
 
     approvalHistory: [approvalHistorySchema],
+    // approval level status (newly added)
+    approvalStatus: {
+      type: approvalStatusSchema,
+      default: {
+        hodStatus: "Pending",
+        researchStatus: "Pending",
+        coeStatus: "Pending",
+        iqacStatus: "Pending",
+        principalStatus: "Pending",
+      },
+    },
   },
   {
     timestamps: true,

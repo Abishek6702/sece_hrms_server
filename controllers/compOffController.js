@@ -216,6 +216,8 @@ exports.approveCompOff = async (req, res) => {
     const role = req.user.role;
 
     if (request.currentApprovalLevel === "hod" && role === "hod") {
+      request.approvalStatus.hodStatus = "Approved";
+
       request.approvalHistory.push({
         role: "hod",
         approvedBy: req.user.id,
@@ -268,6 +270,8 @@ exports.approveCompOff = async (req, res) => {
       request.status = "Approved";
 
       request.currentApprovalLevel = "completed";
+
+      request.approvalStatus.principalStatus = "Approved";
 
       request.approvalHistory.push({
         role: "principal",
@@ -338,6 +342,14 @@ exports.rejectCompOff = async (req, res) => {
       action: "Rejected",
       remarks: reason,
     });
+
+    if (req.user.role === "hod") {
+      request.approvalStatus.hodStatus = "Rejected";
+    }
+
+    if (req.user.role === "principal") {
+      request.approvalStatus.principalStatus = "Rejected";
+    }
 
     await request.save();
 
@@ -434,6 +446,7 @@ exports.revokeHodApproval = async (req, res) => {
     }
 
     request.currentApprovalLevel = "hod";
+    request.approvalStatus.hodStatus = "Pending";
 
     request.approvalHistory.push({
       role: "hod",
