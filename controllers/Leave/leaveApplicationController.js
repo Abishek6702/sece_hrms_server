@@ -150,7 +150,13 @@ exports.applyLeave = async (req, res) => {
     }
 
     if (role === "hod") {
-      currentApprovalLevel = "principal";
+      if (leaveType.leaveName === "On Duty - Research") {
+        currentApprovalLevel = "dean-research";
+      } else if (leaveType.leaveName === "On Duty - Examination") {
+        currentApprovalLevel = "coe";
+      } else {
+        currentApprovalLevel = "principal";
+      }
     }
 
     if (role?.toLowerCase().includes("dean")) {
@@ -219,9 +225,25 @@ exports.getLeaveApplications = async (req, res) => {
       })
       .sort({ createdAt: -1 });
 
-    const filteredLeaves = leaveApplications.filter(
-      (leave) => leave.facultyId !== null,
-    );
+      const filteredLeaves = leaveApplications
+      .filter((leave) => leave.facultyId !== null)
+      .map((leave) => {
+        const leaveObj = leave.toObject();
+    
+        if (
+          leaveObj.status === "Pending" &&
+          leaveObj.currentApprovalLevel !== "completed"
+        ) {
+          leaveObj.approvalHistory.push({
+            role: leaveObj.currentApprovalLevel,
+            action: "Pending",
+            remarks: `Waiting for ${leaveObj.currentApprovalLevel} approval`,
+            actionDate: null,
+          });
+        }
+    
+        return leaveObj;
+      });
 
     res.status(200).json({
       success: true,
