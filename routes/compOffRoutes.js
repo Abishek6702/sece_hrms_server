@@ -22,9 +22,10 @@ router.post("/", protect,uploadCloudinary.array("files", 10), createCompOffReque
 
 router.get("/me", protect, getMyCompOffRequests);
 
+router.get("/", protect, getCompOffRequests);
+
 router.get("/:id", protect, getCompOffRequestById);
 
-router.get("/", protect, getCompOffRequests);
 
 router.patch("/:id/approve", protect, approveCompOff);
 

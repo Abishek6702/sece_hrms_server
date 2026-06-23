@@ -86,10 +86,28 @@ exports.getMyCompOffRequests = async (req, res) => {
       createdAt: -1,
     });
 
+    const formattedRequests = requests.map((request) => {
+      const requestObj = request.toObject();
+
+      if (
+        requestObj.status === "Pending" &&
+        requestObj.currentApprovalLevel !== "completed"
+      ) {
+        requestObj.approvalHistory.push({
+          role: requestObj.currentApprovalLevel,
+          action: "Pending",
+          remarks: `Waiting for ${requestObj.currentApprovalLevel} approval`,
+          actionDate: null,
+        });
+      }
+
+      return requestObj;
+    });
+
     res.status(200).json({
       success: true,
-      count: requests.length,
-      requests,
+      count: formattedRequests.length,
+      requests: formattedRequests,
     });
   } catch (error) {
     res.status(500).json({
