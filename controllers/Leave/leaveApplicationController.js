@@ -6,7 +6,9 @@ const User = require("../../models/User");
 
 const calculateLeaveDays = require("../../utils/calculateLeaveDays");
 const getCurrentAcademicYear = require("../../utils/getCurrentAcademicYear");
-const { reprocessFacultyDateRange } = require("../../services/reprocessFacultyDateRange");
+const {
+  reprocessFacultyDateRange,
+} = require("../../services/reprocessFacultyDateRange");
 
 exports.applyLeave = async (req, res) => {
   try {
@@ -151,7 +153,7 @@ exports.applyLeave = async (req, res) => {
       currentApprovalLevel = "principal";
     }
 
-    if (role === "dean") {
+    if (role?.toLowerCase().includes("dean")) {
       currentApprovalLevel = "principal";
     }
 
@@ -391,8 +393,8 @@ exports.approveLeave = async (req, res) => {
       const leaveName = leaveApplication.leaveTypeId.leaveName;
 
       if (leaveName === "On Duty - Research") {
-        leaveApplication.currentApprovalLevel = "dean";
-      } else if (leaveName === "On Duty - Exam") {
+        leaveApplication.currentApprovalLevel = "dean-research";
+      } else if (leaveName === "On Duty - Examination") {
         leaveApplication.currentApprovalLevel = "coe";
       } else if (leaveName === "On Duty - Official") {
         leaveApplication.currentApprovalLevel = "principal";
@@ -402,17 +404,17 @@ exports.approveLeave = async (req, res) => {
     }
 
     // Dean Approval
-    else if (leaveApplication.currentApprovalLevel === "dean") {
-      leaveApplication.currentApprovalLevel = "iqac";
+    else if (leaveApplication.currentApprovalLevel === "dean-research") {
+      leaveApplication.currentApprovalLevel = "dean-iqac";
     }
 
     // COE Approval
     else if (leaveApplication.currentApprovalLevel === "coe") {
-      leaveApplication.currentApprovalLevel = "iqac";
+      leaveApplication.currentApprovalLevel = "dean-iqac";
     }
 
     // IQAC Approval
-    else if (leaveApplication.currentApprovalLevel === "iqac") {
+    else if (leaveApplication.currentApprovalLevel === "dean-iqac") {
       leaveApplication.currentApprovalLevel = "principal";
     }
 
@@ -458,7 +460,7 @@ exports.approveLeave = async (req, res) => {
     await reprocessFacultyDateRange(
       leaveApplication.facultyId,
       leaveApplication.fromDate,
-      leaveApplication.toDate
+      leaveApplication.toDate,
     );
 
     res.status(200).json({
@@ -561,7 +563,7 @@ exports.revokeHodApproval = async (req, res) => {
         message: "Leave already processed",
       });
     }
-    const allowedStages = ["dean", "coe", "principal"];
+    const allowedStages = ["dean-research", "coe", "dean-iqac", "principal"];
     if (!allowedStages.includes(leave.currentApprovalLevel)) {
       return res.status(400).json({
         success: false,

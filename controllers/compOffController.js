@@ -24,7 +24,7 @@ exports.createCompOffRequest = async (req, res) => {
       currentApprovalLevel = "principal";
     }
 
-    if (user.role === "dean") {
+    if (user.role?.toLowerCase().includes("dean")) {
       currentApprovalLevel = "principal";
     }
 
