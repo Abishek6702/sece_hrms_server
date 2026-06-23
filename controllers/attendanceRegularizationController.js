@@ -5,7 +5,19 @@ const Faculty = require("../models/Faculty");
 
 const requireRole = (req, role) => {
   const roles = Array.isArray(role) ? role : [role];
-  if (!req.user || !roles.includes(req.user.role)) {
+  if (!req.user) {
+    const err = new Error("Forbidden");
+    err.status = 403;
+    throw err;
+  }
+
+  // Normalize roles for comparison (map new dean variants to "dean")
+  const userRole = req.user.role;
+  const deanRoles = ["dean", "dean-academics", "dean-iqac", "dean-research"];
+  const normalizedUserRole = deanRoles.includes(userRole) ? "dean" : userRole;
+  const normalizedRoles = roles.map(r => (deanRoles.includes(r) ? "dean" : r));
+
+  if (!normalizedRoles.includes(normalizedUserRole)) {
     const err = new Error("Forbidden");
     err.status = 403;
     throw err;
@@ -247,11 +259,12 @@ exports.createAttendanceRegularization = async (req, res) => {
     // ==========================
     // Determine approval flow
     // Faculty -> HOD -> Principal
-    // Dean -> Principal
+    // Dean variants -> Principal
     // ==========================
+    const deanRoles = ["dean", "dean-academics", "dean-iqac", "dean-research"];
     let approvalLevel = "hod";
 
-    if (req.user.role === "dean") {
+    if (deanRoles.includes(req.user.role)) {
       approvalLevel = "principal";
     }
 
@@ -270,6 +283,8 @@ exports.createAttendanceRegularization = async (req, res) => {
     // ==========================
     // Create request
     // ==========================
+    const submitterRole = deanRoles.includes(req.user.role) ? "dean" : (req.user.role || "faculty");
+
     const request = await AttendanceRegularization.create({
       facultyId,
       attendanceDate,
@@ -284,7 +299,7 @@ exports.createAttendanceRegularization = async (req, res) => {
 
       approvalHistory: [
         {
-          role: req.user.role || "faculty",
+          role: submitterRole,
           approvedBy: user._id,
           action: "Submitted",
           remarks: reason || "",
@@ -379,10 +394,12 @@ exports.getRequestsForHod = async (req, res) => {
   try {
     requireRole(req, "hod");
 
+    const deanRoles = ["dean", "dean-academics", "dean-iqac", "dean-research"];
+
     // HOD sees:
-    // 1) Pending requests awaiting their approval (currentApprovalLevel: "hod", status: "Pending")
-    // 2) Requests they approved and forwarded (status: "Pending", currentApprovalLevel: "principal", HOD approved in history)
-    // 3) Requests they rejected (status: "Rejected" with HOD rejection in history)
+    // 1) Pending requests awaiting their approval (faculty submissions only)
+    // 2) Requests they approved and forwarded
+    // 3) Requests they rejected
     const requests = await AttendanceRegularization.find({
       $or: [
         { status: "Pending", currentApprovalLevel: "hod" },
@@ -401,10 +418,19 @@ exports.getRequestsForHod = async (req, res) => {
       .populate("approvalHistory.approvedBy", "firstName lastName facultyId")
       .sort({ createdAt: -1 });
 
-    // Filter by HOD's department
-    const filtered = requests.filter(
-      (request) => request.facultyId?.department === req.user.department,
-    );
+    // Filter by HOD's department and exclude HOD/dean submissions
+    const filtered = requests.filter((request) => {
+      if (request.facultyId?.department !== req.user.department) return false;
+
+      // Check first history entry to exclude HOD and dean submissions
+      if (Array.isArray(request.approvalHistory) && request.approvalHistory.length > 0) {
+        const submitter = request.approvalHistory[0].role;
+        // Only show faculty submissions
+        if (submitter !== "faculty") return false;
+      }
+
+      return true;
+    });
 
     const formatted = await Promise.all(filtered.map(formatRequest));
 
@@ -450,18 +476,19 @@ exports.getRequestsForPrincipal = async (req, res) => {
     requireRole(req, "principal");
 
     const { department, status } = req.query;
+    const deanRoles = ["dean", "dean-academics", "dean-iqac", "dean-research"];
 
-    // Show records pending principal approval OR already approved/rejected by principal
-    let query = {
+    // Show records pending principal approval OR already processed by principal
+    const query = {
       $or: [
-        { currentApprovalLevel: "principal" }, // Pending principal approval
-        { currentApprovalLevel: "completed", status: { $in: ["Approved", "Rejected"] } } // Approved or Rejected by principal
-      ]
+        { currentApprovalLevel: "principal", status: "Pending" },
+        { currentApprovalLevel: "completed", status: { $in: ["Approved", "Rejected"] } },
+      ],
     };
 
     // Filter by status if provided
     if (status) {
-      query.$or.forEach(condition => {
+      query.$or.forEach((condition) => {
         condition.status = status;
       });
     }
@@ -471,10 +498,25 @@ exports.getRequestsForPrincipal = async (req, res) => {
       .populate("approvalHistory.approvedBy", "firstName lastName facultyId")
       .sort({ createdAt: -1 });
 
+    // Filter: only show if HOD approved it OR if submitted by HOD/dean
+    const filtered = requests.filter((request) => {
+      if (Array.isArray(request.approvalHistory) && request.approvalHistory.length > 0) {
+        const submitter = request.approvalHistory[0].role;
+        // Include dean and HOD submissions (go directly to principal)
+        if (submitter === "hod" || deanRoles.includes(submitter)) return true;
+
+        // Include faculty submissions only if HOD already approved
+        if (submitter === "faculty") {
+          return request.approvalHistory.some((h) => h.role === "hod" && h.action === "Approved");
+        }
+      }
+      return false;
+    });
+
     // Filter by department if provided
     const filteredRequests = department
-      ? requests.filter((request) => request.facultyId?.department === department)
-      : requests;
+      ? filtered.filter((request) => request.facultyId?.department === department)
+      : filtered;
 
     const formatted = await Promise.all(filteredRequests.map(formatRequest));
 
@@ -556,6 +598,8 @@ exports.approveRequest = async (req, res) => {
     const remarks = req.body.approvalRemarks || "Approved";
     const user = await User.findById(req.user.id);
 
+    const deanRoles = ["dean", "dean-academics", "dean-iqac", "dean-research"];
+
     if (req.user.role === "hod") {
       if (request.currentApprovalLevel !== "hod") {
         return res.status(403).json({ success: false, message: "Request is not pending HOD approval" });
@@ -574,7 +618,7 @@ exports.approveRequest = async (req, res) => {
       return res.status(200).json({ success: true, message: "Request approved by HOD and forwarded to Principal", request });
     }
 
-    if (req.user.role === "principal") {
+    if (req.user.role === "principal" || deanRoles.includes(req.user.role)) {
       if (request.currentApprovalLevel !== "principal") {
         return res.status(403).json({ success: false, message: "Request is not pending Principal approval" });
       }
@@ -584,8 +628,9 @@ exports.approveRequest = async (req, res) => {
       request.approvedBy = req.user.id;
       request.processedAt = new Date();
       request.approvalRemarks = remarks;
+      const approverRole = deanRoles.includes(req.user.role) ? "dean" : "principal";
       request.approvalHistory.push({
-        role: "principal",
+        role: approverRole,
         approvedBy: user._id,
         action: "Approved",
         remarks,
@@ -652,11 +697,12 @@ exports.rejectRequest = async (req, res) => {
     }
 
     const user = await User.findById(req.user.id);
+    const deanRoles = ["dean", "dean-academics", "dean-iqac", "dean-research"];
 
     if (req.user.role === "hod" && request.currentApprovalLevel !== "hod") {
       return res.status(403).json({ success: false, message: "Request is not pending HOD approval" });
     }
-    if (req.user.role === "principal" && request.currentApprovalLevel !== "principal") {
+    if ((req.user.role === "principal" || deanRoles.includes(req.user.role)) && request.currentApprovalLevel !== "principal") {
       return res.status(403).json({ success: false, message: "Request is not pending Principal approval" });
     }
 
@@ -665,15 +711,16 @@ exports.rejectRequest = async (req, res) => {
     request.approvedBy = req.user.id;
     request.processedAt = new Date();
     request.approvalRemarks = remarks;
+    const rejectionRole = deanRoles.includes(req.user.role) ? "dean" : req.user.role;
     request.approvalHistory.push({
-      role: req.user.role,
+      role: rejectionRole,
       approvedBy: user._id,
       action: "Rejected",
       remarks,
     });
 
     await request.save();
-    res.status(200).json({ success: true, message: "Request rejected", request });
+    res.status(200).json({ success: true, message: "Request rejected", request: await formatRequest(request) });
   } catch (error) {
     const status = error.status || 500;
     res.status(status).json({ success: false, message: error.message });
