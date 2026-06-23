@@ -5,7 +5,19 @@ const Holiday = require("../models/holiday");
 // Helper to enforce role(s)
 const requireRole = (req, role) => {
   const roles = Array.isArray(role) ? role : [role];
-  if (!req.user || !roles.includes(req.user.role)) {
+  if (!req.user) {
+    const err = new Error("Forbidden");
+    err.status = 403;
+    throw err;
+  }
+
+  // Normalize roles for comparison (map new dean variants to "dean")
+  const userRole = req.user.role;
+  const deanRoles = ["dean", "dean-academics", "dean-iqac", "dean-research"];
+  const normalizedUserRole = deanRoles.includes(userRole) ? "dean" : userRole;
+  const normalizedRoles = roles.map(r => (deanRoles.includes(r) ? "dean" : r));
+
+  if (!normalizedRoles.includes(normalizedUserRole)) {
     const err = new Error("Forbidden");
     err.status = 403;
     throw err;
@@ -261,10 +273,11 @@ exports.applyPermission = async (req, res) => {
     }
 
     // Determine the first approval stage based on who applies
+    const deanRoles = ["dean", "dean-academics", "dean-iqac", "dean-research"];
     const currentApprovalLevel =
       req.user.role === "hod"
         ? "principal"
-        : req.user.role === "dean"
+        : deanRoles.includes(req.user.role)
           ? "principal"
           : "hod";
 
@@ -505,6 +518,13 @@ exports.approvePermission = async (req, res) => {
       });
     }
 
+    // Resolve approver ID: use facultyId if available, otherwise use User ID
+    const approverId = req.user.facultyId || req.user._id;
+
+    // Resolve role for approval history (map dean variants to "dean")
+    const deanRoles = ["dean", "dean-academics", "dean-iqac", "dean-research"];
+    const approvalRole = deanRoles.includes(req.user.role) ? "dean" : req.user.role;
+
     // HOD approval
     if (req.user.role === "hod") {
       if (perm.currentApprovalLevel !== "hod") {
@@ -519,15 +539,15 @@ exports.approvePermission = async (req, res) => {
 
       perm.approvalHistory.push({
         role: "hod",
-        approvedBy: req.user.facultyId,
+        approvedBy: approverId,
         action: "Approved",
         remarks: remarks || "Approved by HOD",
         actionDate: new Date(),
       });
     }
 
-    // Principal approval
-    else if (req.user.role === "principal") {
+    // Principal or dean approval
+    else if (req.user.role === "principal" || deanRoles.includes(req.user.role)) {
       if (perm.currentApprovalLevel !== "principal") {
         return res.status(400).json({
           success: false,
@@ -536,15 +556,15 @@ exports.approvePermission = async (req, res) => {
       }
 
       perm.status = "Approved";
-      perm.approvedBy = req.user.facultyId;
+      perm.approvedBy = approverId;
       perm.approvedAt = new Date();
       perm.remarks = remarks || "Approved";
 
       perm.approvalHistory.push({
-        role: "principal",
-        approvedBy: req.user.facultyId,
+        role: approvalRole,
+        approvedBy: approverId,
         action: "Approved",
-        remarks: remarks || "Approved by Principal",
+        remarks: remarks || "Approved by " + (approvalRole === "dean" ? "Dean" : "Principal"),
         actionDate: new Date(),
       });
     }
@@ -597,14 +617,21 @@ exports.rejectPermission = async (req, res) => {
       });
     }
 
+    // Resolve approver ID: use facultyId if available, otherwise use User ID
+    const approverId = req.user.facultyId || req.user._id;
+
+    // Resolve role for approval history (map dean variants to "dean")
+    const deanRoles = ["dean", "dean-academics", "dean-iqac", "dean-research"];
+    const rejectionRole = deanRoles.includes(req.user.role) ? "dean" : req.user.role;
+
     perm.status = "Rejected";
-    perm.approvedBy = req.user.facultyId;
+    perm.approvedBy = approverId;
     perm.approvedAt = new Date();
     perm.remarks = remarks;
 
     perm.approvalHistory.push({
-      role: req.user.role,
-      approvedBy: req.user.facultyId,
+      role: rejectionRole,
+      approvedBy: approverId,
       action: "Rejected",
       remarks,
       actionDate: new Date(),
