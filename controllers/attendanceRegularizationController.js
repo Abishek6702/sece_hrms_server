@@ -25,6 +25,83 @@ const getRequestActionLabel = (request) => {
   return request.status || "Unknown";
 };
 
+const formatApprover = (approvedBy) => {
+  if (!approvedBy) return null;
+
+  return {
+    _id: approvedBy._id ? approvedBy._id.toString() : approvedBy.toString(),
+    firstName: approvedBy.firstName || null,
+    lastName: approvedBy.lastName || null,
+    empId: null, // will try to resolve below if faculty record exists
+  };
+};
+
+const formatApprovalHistoryItem = async (item) => {
+  const base = {
+    role: item.role,
+    approvedBy: null,
+    action: item.action,
+    remarks: item.remarks || "",
+    actionDate: item.actionDate ? item.actionDate.toISOString() : null,
+  };
+
+  if (!item.approvedBy) return base;
+
+  // approvedBy is a User document (populated). Try to include empId from Faculty if available
+  const approverUser = item.approvedBy;
+  const approver = formatApprover(approverUser);
+
+  if (approverUser.facultyId) {
+    try {
+      const fac = await Faculty.findById(approverUser.facultyId).select("empId");
+      if (fac && fac.empId) approver.empId = fac.empId;
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  base.approvedBy = approver;
+
+  return base;
+};
+
+const getPendingApprovalStep = (request) => {
+  if (request.status !== "Pending" || !request.currentApprovalLevel) return null;
+
+  const role = request.currentApprovalLevel;
+  const action = "Pending";
+  const remarks = `Waiting for ${role} approval`;
+
+  const alreadyHasPending = Array.isArray(request.approvalHistory)
+    ? request.approvalHistory.some((h) => h.role === role && h.action === action)
+    : false;
+
+  if (alreadyHasPending) return null;
+
+  return {
+    role,
+    approvedBy: null,
+    action,
+    remarks,
+    actionDate: null,
+  };
+};
+
+const formatRequest = async (request) => {
+  const reqObj = request.toObject ? request.toObject() : { ...request };
+
+  const history = Array.isArray(reqObj.approvalHistory) ? reqObj.approvalHistory : [];
+  const formattedHistory = await Promise.all(history.map(formatApprovalHistoryItem));
+
+  const pending = getPendingApprovalStep(reqObj);
+  if (pending) formattedHistory.push(pending);
+
+  return {
+    ...reqObj,
+    approvalHistory: formattedHistory,
+  };
+};
+
 
 
 exports.createAttendanceRegularization = async (req, res) => {
@@ -130,6 +207,44 @@ exports.createAttendanceRegularization = async (req, res) => {
     }
 
     // ==========================
+    // Permit requests only inside the current 26th-to-25th window
+    // ==========================
+    const today = new Date();
+    const getCurrentWindowRange = (date) => {
+      const y = date.getFullYear();
+      const m = date.getMonth();
+
+      if (date.getDate() >= 26) {
+        return {
+          start: new Date(y, m, 26, 0, 0, 0, 0),
+          end: new Date(y, m + 1, 25, 23, 59, 59, 999),
+        };
+      }
+
+      return {
+        start: new Date(y, m - 1, 26, 0, 0, 0, 0),
+        end: new Date(y, m, 25, 23, 59, 59, 999),
+      };
+    };
+
+    const { start: currentWindowStart, end: currentWindowEnd } = getCurrentWindowRange(today);
+    const attendanceDateObj = new Date(attendanceDate);
+    if (Number.isNaN(attendanceDateObj.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid attendance date",
+      });
+    }
+
+    if (attendanceDateObj < currentWindowStart || attendanceDateObj > currentWindowEnd) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Attendance regularization can only be applied for dates between the 26th of the current month and the 25th of the next month.",
+      });
+    }
+
+    // ==========================
     // Determine approval flow
     // Faculty -> HOD -> Principal
     // Dean -> Principal
@@ -213,19 +328,21 @@ exports.getMyRequests = async (req, res) => {
       status: { $ne: "Cancelled" }, // Exclude cancelled requests
     })
       .populate("facultyId", "firstName lastName department empId")
-      .populate("approvalHistory.approvedBy", "_id")
+      .populate("approvalHistory.approvedBy", "firstName lastName facultyId")
       .sort({ createdAt: -1 });
 
-    const requestsWithAction = requests.map((request) => {
-      const obj = request.toObject();
-      obj.action = getRequestActionLabel(obj);
-      return obj;
-    });
+    const formatted = await Promise.all(
+      requests.map(async (request) => {
+        const obj = await formatRequest(request);
+        obj.action = getRequestActionLabel(obj);
+        return obj;
+      }),
+    );
 
     res.status(200).json({
       success: true,
-      count: requestsWithAction.length,
-      requests: requestsWithAction,
+      count: formatted.length,
+      requests: formatted,
     });
   } catch (error) {
     res.status(500).json({
@@ -247,10 +364,12 @@ exports.getRequests = async (req, res) => {
 
     const requests = await AttendanceRegularization.find(query)
       .populate("facultyId", "firstName lastName department empId")
-      .populate("approvalHistory.approvedBy", "_id")
+      .populate("approvalHistory.approvedBy", "firstName lastName facultyId")
       .sort({ createdAt: -1 });
 
-    res.status(200).json({ success: true, count: requests.length, requests });
+    const formatted = await Promise.all(requests.map(formatRequest));
+
+    res.status(200).json({ success: true, count: formatted.length, requests: formatted });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -260,17 +379,36 @@ exports.getRequestsForHod = async (req, res) => {
   try {
     requireRole(req, "hod");
 
+    // HOD sees:
+    // 1) Pending requests awaiting their approval (currentApprovalLevel: "hod", status: "Pending")
+    // 2) Requests they approved and forwarded (status: "Pending", currentApprovalLevel: "principal", HOD approved in history)
+    // 3) Requests they rejected (status: "Rejected" with HOD rejection in history)
     const requests = await AttendanceRegularization.find({
-      currentApprovalLevel: "hod",
-      status: "Pending",
+      $or: [
+        { status: "Pending", currentApprovalLevel: "hod" },
+        {
+          status: "Pending",
+          currentApprovalLevel: "principal",
+          approvalHistory: { $elemMatch: { role: "hod", action: "Approved" } },
+        },
+        {
+          status: "Rejected",
+          approvalHistory: { $elemMatch: { role: "hod", action: "Rejected" } },
+        },
+      ],
     })
       .populate("facultyId", "firstName lastName department empId")
-      .populate("approvalHistory.approvedBy", "_id")
+      .populate("approvalHistory.approvedBy", "firstName lastName facultyId")
       .sort({ createdAt: -1 });
 
-    const filtered = requests.filter((request) => request.facultyId?.department === req.user.department);
+    // Filter by HOD's department
+    const filtered = requests.filter(
+      (request) => request.facultyId?.department === req.user.department,
+    );
 
-    res.status(200).json({ success: true, count: filtered.length, requests: filtered });
+    const formatted = await Promise.all(filtered.map(formatRequest));
+
+    res.status(200).json({ success: true, count: formatted.length, requests: formatted });
   } catch (error) {
     const status = error.status || 500;
     res.status(status).json({ success: false, message: error.message });
@@ -292,14 +430,15 @@ exports.getRequestsForDean = async (req, res) => {
 
     const requests = await AttendanceRegularization.find(query)
       .populate("facultyId", "firstName lastName department empId")
-      .populate("approvalHistory.approvedBy", "_id")
+      .populate("approvalHistory.approvedBy", "firstName lastName facultyId")
       .sort({ createdAt: -1 });
-
     const filtered = department
       ? requests.filter((request) => request.facultyId?.department === department)
       : requests;
 
-    res.status(200).json({ success: true, count: filtered.length, requests: filtered });
+    const formatted = await Promise.all(filtered.map(formatRequest));
+
+    res.status(200).json({ success: true, count: formatted.length, requests: formatted });
   } catch (error) {
     const status = error.status || 500;
     res.status(status).json({ success: false, message: error.message });
@@ -329,20 +468,20 @@ exports.getRequestsForPrincipal = async (req, res) => {
 
     const requests = await AttendanceRegularization.find(query)
       .populate("facultyId", "firstName lastName department empId")
-      .populate("approvalHistory.approvedBy", "_id")
+      .populate("approvalHistory.approvedBy", "firstName lastName facultyId")
       .sort({ createdAt: -1 });
 
     // Filter by department if provided
     const filteredRequests = department
-      ? requests.filter(
-          (request) => request.facultyId?.department === department
-        )
+      ? requests.filter((request) => request.facultyId?.department === department)
       : requests;
+
+    const formatted = await Promise.all(filteredRequests.map(formatRequest));
 
     res.status(200).json({
       success: true,
-      count: filteredRequests.length,
-      requests: filteredRequests,
+      count: formatted.length,
+      requests: formatted,
     });
   } catch (error) {
     const statusCode = error.status || 500;
@@ -359,11 +498,13 @@ exports.getRequestById = async (req, res) => {
     const request = await AttendanceRegularization.findById(req.params.id)
       .populate("facultyId", "firstName lastName department empId")
       .populate("approvedBy", "firstName lastName email")
-      .populate("approvalHistory.approvedBy", "_id");
+      .populate("approvalHistory.approvedBy", "firstName lastName facultyId");
 
     if (!request) return res.status(404).json({ success: false, message: "Request not found" });
 
-    res.status(200).json({ success: true, request });
+    const formatted = await formatRequest(request);
+
+    res.status(200).json({ success: true, request: formatted });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
