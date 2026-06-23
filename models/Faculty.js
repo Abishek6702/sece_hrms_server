@@ -12,12 +12,10 @@ const qualificationSchema = new mongoose.Schema(
   {
     degree: {
       type: String,
-      required: true,
     },
     specialization: String,
     institutionName: {
       type: String,
-      required: true,
     },
     institutionLocation: String,
     yearOfPassing: Number,
