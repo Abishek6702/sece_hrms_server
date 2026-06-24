@@ -15,6 +15,7 @@ const {
   approveRequest,
   rejectRequest,
   cancelRequest,
+  revokeRequestByHod
 } = require("../controllers/attendanceRegularizationController");
 const router = express.Router();
 
@@ -54,5 +55,10 @@ router.patch("/:id", protect, updateRequest);
 router.patch("/:id/approve", protect, approveRequest);
 router.patch("/:id/reject", protect, rejectRequest);
 router.patch("/:id/cancel", protect, cancelRequest);
+router.put(
+  "/:id/revoke",
+  protect,
+  revokeRequestByHod
+);
 
 module.exports = router;
