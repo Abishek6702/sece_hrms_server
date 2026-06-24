@@ -487,7 +487,7 @@ exports.approveLeave = async (req, res) => {
 
       if (leaveName === "On Duty - Research") {
         leaveApplication.currentApprovalLevel = "dean-research";
-      } else if (leaveName === "On Duty - Examination") {
+      } else if (leaveName === "On Duty - Exam") {
         leaveApplication.currentApprovalLevel = "coe";
       } else if (leaveName === "On Duty - Official") {
         leaveApplication.currentApprovalLevel = "principal";
