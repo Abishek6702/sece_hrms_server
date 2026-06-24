@@ -269,14 +269,8 @@ exports.getAttendanceList = async (req, res) => {
     }
 
     // Get Faculty IDs matching filters
-    if (
-      department ||
-      employeeCategory ||
-      search
-    ) {
-      const faculties = await Faculty.find(facultyFilter)
-        .select("_id")
-        .lean();
+    if (department || employeeCategory || search) {
+      const faculties = await Faculty.find(facultyFilter).select("_id").lean();
 
       const facultyIds = faculties.map((f) => f._id);
 
@@ -291,7 +285,11 @@ exports.getAttendanceList = async (req, res) => {
       .populate({
         path: "facultyId",
         select:
-          "empId firstName lastName department designation employeeCategory",
+          "empId firstName lastName department designation employeeCategory shiftId",
+        populate: {
+          path: "shiftId",
+          select: "shiftName startTime endTime graceTime workingMinutes",
+        },
       })
       .sort({
         attendanceDate: -1,
@@ -299,11 +297,17 @@ exports.getAttendanceList = async (req, res) => {
       .skip(skip)
       .limit(Number(limit))
       .lean();
-
     const formattedAttendance = attendance.map((item) => ({
       _id: item._id,
 
       facultyId: item.facultyId?._id,
+      
+      shiftID: item.facultyId?.shiftId?._id,
+shiftName: item.facultyId?.shiftId?.shiftName,
+startTime: item.facultyId?.shiftId?.startTime,
+endTime: item.facultyId?.shiftId?.endTime,
+graceTime: item.facultyId?.shiftId?.graceTime,
+
 
       empId: item.facultyId?.empId || "",
 
@@ -326,7 +330,7 @@ exports.getAttendanceList = async (req, res) => {
       workingMinutes: item.workingMinutes || 0,
 
       workingHours: `${Math.floor(
-        (item.workingMinutes || 0) / 60
+        (item.workingMinutes || 0) / 60,
       )}h ${(item.workingMinutes || 0) % 60}m`,
 
       status: item.status,
