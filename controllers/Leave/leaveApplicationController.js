@@ -136,7 +136,33 @@ exports.applyLeave = async (req, res) => {
         message: "No working days selected",
       });
     }
+    if (leaveType.leaveName === "Casual Leave") {
+      const leaveMonth = new Date(fromDate).getMonth();
+      const leaveYear = new Date(fromDate).getFullYear();
 
+      const monthStart = new Date(leaveYear, leaveMonth, 1);
+      const monthEnd = new Date(leaveYear, leaveMonth + 1, 0, 23, 59, 59, 999);
+
+      const existingCLLeaves = await LeaveApplication.find({
+        facultyId: faculty._id,
+        status: { $in: ["Pending", "Approved"] },
+        fromDate: {
+          $gte: monthStart,
+          $lte: monthEnd,
+        },
+      }).populate("leaveTypeId", "leaveName");
+
+      const usedCLDays = existingCLLeaves
+        .filter((leave) => leave.leaveTypeId?.leaveName === "Casual Leave")
+        .reduce((sum, leave) => sum + (leave.totalDays || 0), 0);
+
+      if (usedCLDays + totalDays > 3) {
+        return res.status(400).json({
+          success: false,
+          message: "Only 3 days of Casual Leave can be availed in a month",
+        });
+      }
+    }
     const academicYear = getCurrentAcademicYear();
 
     const leaveBalance = await LeaveBalance.findOne({
