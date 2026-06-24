@@ -678,7 +678,7 @@ exports.revokeHodApproval = async (req, res) => {
     if (leave.status !== "Pending" && leave.status !== "Rejected") {
       return res.status(400).json({
         success: false,
-        message: "Only Pending or Rejected leaves can be revoked",
+        message: "HOD can revoke only while the request is pending at HOD level",
       });
     }
     const allowedStages = [
@@ -696,11 +696,39 @@ exports.revokeHodApproval = async (req, res) => {
           "Approval cannot be revoked because higher level approval has already been given",
       });
     }
-
+    
+    // ADD HERE 👇👇👇
+    
+    let approvedLevel = null;
+    
+    if (leave.approvalStatus.researchStatus === "Approved") {
+      approvedLevel = "Dean Research";
+    }
+    
+    if (leave.approvalStatus.coeStatus === "Approved") {
+      approvedLevel = "COE";
+    }
+    
+    if (leave.approvalStatus.iqacStatus === "Approved") {
+      approvedLevel = "Dean IQAC";
+    }
+    
+    if (leave.approvalStatus.principalStatus === "Approved") {
+      approvedLevel = "Principal";
+    }
+    
+    if (approvedLevel) {
+      return res.status(400).json({
+        success: false,
+        message: `${approvedLevel} has already approved this leave. HOD cannot revoke approval.`,
+      });
+    }
+    
+    // EXISTING CODE
+    
     leave.currentApprovalLevel = "hod";
     leave.status = "Pending";
     leave.approvalStatus.hodStatus = "Pending";
-
     leave.approvalHistory.push({
       role: "hod",
       approvedBy: req.user.id,
