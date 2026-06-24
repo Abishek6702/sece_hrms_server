@@ -156,6 +156,22 @@ exports.createAttendanceRegularization = async (req, res) => {
     }
 
     // ==========================
+    // Validate only attendance date (in/out times are optional)
+    // Convert string "null" to actual null
+    // ==========================
+    const attendanceDateObj = new Date(attendanceDate);
+    if (Number.isNaN(attendanceDateObj.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid attendance date",
+      });
+    }
+
+    // Convert string "null" to actual null for in/out times
+    const sanitizedInTime = requestedInTime === "null" || requestedInTime === "" ? null : requestedInTime;
+    const sanitizedOutTime = requestedOutTime === "null" || requestedOutTime === "" ? null : requestedOutTime;
+
+    // ==========================
     // Prevent duplicate request for same date
     // ==========================
     const existingRequest = await AttendanceRegularization.findOne({
@@ -240,14 +256,7 @@ exports.createAttendanceRegularization = async (req, res) => {
     };
 
     const { start: currentWindowStart, end: currentWindowEnd } = getCurrentWindowRange(today);
-    const attendanceDateObj = new Date(attendanceDate);
-    if (Number.isNaN(attendanceDateObj.getTime())) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid attendance date",
-      });
-    }
-
+    
     if (attendanceDateObj < currentWindowStart || attendanceDateObj > currentWindowEnd) {
       return res.status(400).json({
         success: false,
@@ -258,13 +267,13 @@ exports.createAttendanceRegularization = async (req, res) => {
 
     // ==========================
     // Determine approval flow
-    // Faculty -> HOD -> Principal
-    // Dean variants -> Principal
+    // Faculty / Non-Teaching / Driver / Housekeeping -> HOD -> Principal
+    // HOD/Dean -> Principal (skip HOD approval)
     // ==========================
     const deanRoles = ["dean", "dean-academics", "dean-iqac", "dean-research"];
     let approvalLevel = "hod";
 
-    if (deanRoles.includes(req.user.role)) {
+    if (deanRoles.includes(req.user.role) || req.user.role === "hod") {
       approvalLevel = "principal";
     }
 
@@ -283,13 +292,13 @@ exports.createAttendanceRegularization = async (req, res) => {
     // ==========================
     // Create request
     // ==========================
-    const submitterRole = deanRoles.includes(req.user.role) ? "dean" : (req.user.role || "faculty");
+    const submitterRole = req.user.role || "faculty";
 
     const request = await AttendanceRegularization.create({
       facultyId,
       attendanceDate,
-      requestedInTime: requestedInTime || null,
-      requestedOutTime: requestedOutTime || null,
+      requestedInTime: sanitizedInTime,
+      requestedOutTime: sanitizedOutTime,
       reason,
 
       attachment,
@@ -394,50 +403,69 @@ exports.getRequestsForHod = async (req, res) => {
   try {
     requireRole(req, "hod");
 
-    const deanRoles = ["dean", "dean-academics", "dean-iqac", "dean-research"];
+    const deanRoles = [
+      "dean",
+      "dean-academics",
+      "dean-iqac",
+      "dean-research",
+    ];
 
-    // HOD sees:
-    // 1) Pending requests awaiting their approval (faculty submissions only)
-    // 2) Requests they approved and forwarded
-    // 3) Requests they rejected
     const requests = await AttendanceRegularization.find({
-      $or: [
-        { status: "Pending", currentApprovalLevel: "hod" },
-        {
-          status: "Pending",
-          currentApprovalLevel: "principal",
-          approvalHistory: { $elemMatch: { role: "hod", action: "Approved" } },
-        },
-        {
-          status: "Rejected",
-          approvalHistory: { $elemMatch: { role: "hod", action: "Rejected" } },
-        },
-      ],
+      status: { $in: ["Pending", "Approved", "Rejected"] },
     })
-      .populate("facultyId", "firstName lastName department empId")
-      .populate("approvalHistory.approvedBy", "firstName lastName facultyId")
+      .populate(
+        "facultyId",
+        "firstName lastName department empId employeeCategory"
+      )
+      .populate(
+        "approvalHistory.approvedBy",
+        "firstName lastName facultyId"
+      )
       .sort({ createdAt: -1 });
 
-    // Filter by HOD's department and exclude HOD/dean submissions
-    const filtered = requests.filter((request) => {
-      if (request.facultyId?.department !== req.user.department) return false;
+   const filtered = requests.filter((request) => {
+  const facultyDept =
+    request.facultyId?.department?.trim().toLowerCase();
 
-      // Check first history entry to exclude HOD and dean submissions
-      if (Array.isArray(request.approvalHistory) && request.approvalHistory.length > 0) {
-        const submitter = request.approvalHistory[0].role;
-        // Only show faculty submissions
-        if (submitter !== "faculty") return false;
-      }
+  const hodDept =
+    req.user.department?.trim().toLowerCase();
 
-      return true;
+  // Department-wise filter
+  if (!facultyDept || facultyDept !== hodDept) {
+    return false;
+  }
+
+  const submittedRecord = request.approvalHistory?.find(
+    (h) => h.action === "Submitted"
+  );
+
+  const submitter = submittedRecord?.role;
+
+  // Exclude HOD and Dean self-submissions
+  if (
+    submitter === "hod" ||
+    deanRoles.includes(submitter)
+  ) {
+    return false;
+  }
+
+  return true;
+});
+
+    const formatted = await Promise.all(
+      filtered.map(formatRequest)
+    );
+
+    return res.status(200).json({
+      success: true,
+      count: formatted.length,
+      requests: formatted,
     });
-
-    const formatted = await Promise.all(filtered.map(formatRequest));
-
-    res.status(200).json({ success: true, count: formatted.length, requests: formatted });
   } catch (error) {
-    const status = error.status || 500;
-    res.status(status).json({ success: false, message: error.message });
+    return res.status(error.status || 500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
@@ -502,11 +530,13 @@ exports.getRequestsForPrincipal = async (req, res) => {
     const filtered = requests.filter((request) => {
       if (Array.isArray(request.approvalHistory) && request.approvalHistory.length > 0) {
         const submitter = request.approvalHistory[0].role;
+
         // Include dean and HOD submissions (go directly to principal)
         if (submitter === "hod" || deanRoles.includes(submitter)) return true;
 
-        // Include faculty submissions only if HOD already approved
-        if (submitter === "faculty") {
+        // Include faculty and non-teaching/driver/housekeeping submissions only if HOD already approved
+        const requiresHodApproval = ["faculty", "non-teaching", "driver", "housekeeping"].includes(submitter);
+        if (requiresHodApproval) {
           return request.approvalHistory.some((h) => h.role === "hod" && h.action === "Approved");
         }
       }
