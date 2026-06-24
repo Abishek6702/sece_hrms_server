@@ -48,8 +48,50 @@ exports.applyLeave = async (req, res) => {
       });
     }
 
+    // ADD HERE 👇👇👇
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
+    const oneYearAfterJoining = new Date(faculty.doj);
+    oneYearAfterJoining.setHours(0, 0, 0, 0);
+    oneYearAfterJoining.setFullYear(oneYearAfterJoining.getFullYear() + 1);
+
+    const threeYearsAfterJoining = new Date(faculty.doj);
+    threeYearsAfterJoining.setHours(0, 0, 0, 0);
+    threeYearsAfterJoining.setFullYear(
+      threeYearsAfterJoining.getFullYear() + 3,
+    );
+
+    if (
+      leaveType.leaveName === "Medical Leave" &&
+      today < threeYearsAfterJoining
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Medical Leave can be applied only after 3 years of service",
+      });
+    }
+
+    if (
+      leaveType.leaveName === "Maternity Leave" &&
+      today < oneYearAfterJoining
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Maternity Leave can be applied only after 1 year of service",
+      });
+    }
+
+    if (
+      leaveType.leaveName === "Marriage Leave" &&
+      today < oneYearAfterJoining
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Marriage Leave can be applied only after 1 year of service",
+      });
+    }
+    // EXISTING CODE CONTINUES 👇
 
     const allowedPastDate = new Date(today);
     allowedPastDate.setDate(allowedPastDate.getDate() - 2);
