@@ -75,6 +75,50 @@ const getPendingApprovalStep = (permission) => {
   };
 };
 
+const getApprovalStatus = (permission) => {
+  const status = {
+    hod: null,
+    principal: null,
+  };
+
+  const approvalHistory = Array.isArray(permission.approvalHistory)
+    ? permission.approvalHistory
+    : [];
+
+  const hodDecision = approvalHistory.find(
+    (item) => item.role === "hod" && ["Approved", "Rejected"].includes(item.action),
+  );
+
+  const principalDecision = approvalHistory.find(
+    (item) =>
+      ["principal", "dean"].includes(item.role) &&
+      ["Approved", "Rejected"].includes(item.action),
+  );
+
+  if (permission.status === "Pending") {
+    if (permission.currentApprovalLevel === "hod") {
+      status.hod = "Pending";
+      status.principal = null;
+    } else if (permission.currentApprovalLevel === "principal") {
+      status.hod = hodDecision?.action || "Approved";
+      status.principal = "Pending";
+    }
+  } else if (permission.status === "Approved") {
+    status.hod = hodDecision?.action || "Approved";
+    status.principal = "Approved";
+  } else if (permission.status === "Rejected") {
+    if (principalDecision) {
+      status.hod = hodDecision?.action || "Approved";
+      status.principal = principalDecision.action;
+    } else {
+      status.hod = hodDecision?.action || "Rejected";
+      status.principal = null;
+    }
+  }
+
+  return status;
+};
+
 const formatPermission = (permission) => {
   const perm = permission.toObject ? permission.toObject() : { ...permission };
 
@@ -90,6 +134,7 @@ const formatPermission = (permission) => {
   return {
     ...perm,
     approvalHistory,
+    approvalStatus: getApprovalStatus(perm),
   };
 };
 
@@ -757,5 +802,49 @@ exports.getPermissionCard = async (req, res) => {
   } catch (error) {
     console.error("getPermissionCard error:", error);
     return res.status(500).json({ success: false, message: error.message });
+  }
+};
+exports.revokePermissionByHod = async (req, res) => {
+  try {
+    requireRole(req, "hod");
+
+    const { id } = req.params;
+
+    const permission = await Permission.findById(id);
+
+    if (!permission) {
+      return res.status(404).json({
+        success: false,
+        message: "Permission not found",
+      });
+    }
+
+    // Only permissions waiting for Principal
+    if (
+      permission.status !== "Pending" ||
+      permission.currentApprovalLevel !== "principal"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Only permissions pending at Principal can be recalled",
+      });
+    }
+
+    // Move back to HOD
+    permission.currentApprovalLevel = "hod";
+
+    await permission.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Permission moved back to HOD pending",
+      data: permission,
+    });
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
