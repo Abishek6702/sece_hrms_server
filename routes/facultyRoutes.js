@@ -13,7 +13,6 @@ const {
   deleteDocument,
   searchFaculty,
   bulkUpdateReportingManager,
-  verifyPassword
 } = require("../controllers/facultyController");
 const protect = require("../middleware/protect");
 
@@ -35,7 +34,6 @@ router.get("/", protect, getFaculties);
 router.get("/search", protect, searchFaculty);
 
 router.put("/add-manger", bulkUpdateReportingManager);
-router.post("/verify-password", protect, verifyPassword);
 
 
 router.get("/:id", protect, getFacultyId);
