@@ -12,6 +12,7 @@ const {
   uploadDocuments,
   deleteDocument,
   searchFaculty,
+  bulkUpdateReportingManager
 } = require("../controllers/facultyController");
 const protect = require("../middleware/protect");
 
@@ -31,6 +32,8 @@ router.post("/",protect, addIndividualFaculty);
 router.get("/", protect, getFaculties);
 
 router.get("/search", protect, searchFaculty);
+
+router.put("/add-manger", bulkUpdateReportingManager);
 
 router.get("/:id", protect, getFacultyId);
 

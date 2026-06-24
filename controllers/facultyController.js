@@ -590,3 +590,44 @@ exports.searchFaculty = async (req, res) => {
     });
   }
 };
+
+
+exports.bulkUpdateReportingManager = async (req, res) => {
+  try {
+    const { department, facultyId, empId, name } = req.body;
+
+    if (!department || !facultyId || !empId || !name) {
+      return res.status(400).json({
+        success: false,
+        message: "department, facultyId, empId and name are required",
+      });
+    }
+
+    const result = await Faculty.updateMany(
+      {
+        department,
+        _id: { $ne: facultyId }, // don't update manager himself
+      },
+      {
+        $set: {
+          reportingTo: {
+            facultyId,
+            empId,
+            name,
+          },
+        },
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `Updated ${result.modifiedCount} faculty members`,
+      modifiedCount: result.modifiedCount,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
