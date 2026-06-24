@@ -9,6 +9,7 @@ const {
   approveLeave,
   rejectLeave,
   revokeHodApproval,
+  getFacultyLeaveApplications,
 } = require("../../controllers/Leave/leaveApplicationController");
 
 const protect = require("../../middleware/protect");
@@ -25,6 +26,8 @@ router.get("/:id", protect, getLeaveApplicationById);
 
 router.get("/", protect, getLeaveApplications);
 
+router.get("/faculty/:id", getFacultyLeaveApplications);
+
 router.patch("/:id/cancel", protect, cancelLeave);
 
 router.patch("/:id/approve", protect, approveLeave);
@@ -32,5 +35,6 @@ router.patch("/:id/approve", protect, approveLeave);
 router.patch("/:id/reject", protect, rejectLeave);
 
 router.patch("/:id/revoke-hod", protect, revokeHodApproval);
+
 
 module.exports = router;

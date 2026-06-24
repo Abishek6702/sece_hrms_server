@@ -749,3 +749,28 @@ exports.revokeHodApproval = async (req, res) => {
     });
   }
 };
+
+
+exports.getFacultyLeaveApplications = async (req, res) => {
+  try {
+    const facultyId = req.params.id;
+
+    const leaveApplications = await LeaveApplication.find({
+      facultyId,
+      status: { $in: ["Approved", "Rejected"] },
+    })
+      .populate("leaveTypeId", "leaveName")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: leaveApplications.length,
+      leaveApplications,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
