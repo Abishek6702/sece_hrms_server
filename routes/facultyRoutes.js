@@ -26,7 +26,7 @@ router.post(
   importExcelFaculty,
 );
 
-router.post("/", addIndividualFaculty);
+router.post("/",protect, addIndividualFaculty);
 
 router.get("/", protect, getFaculties);
 

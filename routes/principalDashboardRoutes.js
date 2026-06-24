@@ -12,9 +12,9 @@ const router = express.Router();
 
 router.get("/faculty-count", protect, getFacultyDesignationSummary);
 router.get("/pending-approvals",protect, getPendingApprovals);
-router.get("/today-punch-summary", getTodayPunchSummary);
-router.get("/today-attendance-faculty-summary", getAttendanceDashboardSummary);
-router.get("/today-attendance-faculty", getAttendanceList);
+router.get("/today-punch-summary",protect, getTodayPunchSummary);
+router.get("/today-attendance-faculty-summary",protect, getAttendanceDashboardSummary);
+router.get("/today-attendance-faculty",protect, getAttendanceList);
 
 
 module.exports = router;

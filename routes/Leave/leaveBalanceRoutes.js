@@ -16,7 +16,7 @@ const router = express.Router();
 
 router.get("/", getLeaveBalances);
 
-router.get("/faculty/:facultyId", getFacultyLeaveBalances);
+router.get("/faculty/:facultyId",protect, getFacultyLeaveBalances);
 
 router.get("/me", protect, getMyLeaveBalances);
 
