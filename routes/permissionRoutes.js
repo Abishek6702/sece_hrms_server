@@ -33,5 +33,10 @@ router.patch("/:id/reject", protect, permissionCtrl.rejectPermission);router.pos
 router.post('/:id/reject', protect, permissionCtrl.rejectPermission);
 // Faculty: cancel
 router.patch("/:id/cancel", protect, permissionCtrl.cancelPermission);
+router.put(
+  "/:id/revoke",
+  protect,
+  permissionCtrl.revokePermissionByHod
+);
 
 module.exports = router;

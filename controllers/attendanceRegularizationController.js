@@ -99,6 +99,56 @@ const getPendingApprovalStep = (request) => {
   };
 };
 
+const getApprovalStatus = (request) => {
+  const status = {
+    hod: null,
+    principal: null,
+  };
+
+  const approvalHistory = Array.isArray(request.approvalHistory)
+    ? request.approvalHistory
+    : [];
+
+  const hodDecision = approvalHistory.find(
+    (item) => item.role === "hod" && ["Approved", "Rejected"].includes(item.action),
+  );
+
+  const principalDecision = approvalHistory.find(
+    (item) =>
+      ["principal", "dean"].includes(item.role) && ["Approved", "Rejected"].includes(item.action),
+  );
+
+  if (request.status === "Pending") {
+    if (request.currentApprovalLevel === "hod") {
+      status.hod = "Pending";
+      status.principal = null;
+    } else if (request.currentApprovalLevel === "principal") {
+      status.hod = hodDecision?.action || "Approved";
+      status.principal = "Pending";
+    }
+  } else if (request.currentApprovalLevel === "completed") {
+    if (hodDecision) {
+      status.hod = hodDecision.action;
+    } else if (request.currentApprovalLevel === "principal") {
+      status.hod = "Approved";
+    }
+
+    status.principal = principalDecision?.action ?? null;
+
+    if (!principalDecision && request.status === "Rejected") {
+      // If rejected without a principal decision, it was rejected by HOD
+      status.principal = null;
+    }
+
+    if (!principalDecision && request.status === "Approved") {
+      // Fallback: completed approved request should show principal approved
+      status.principal = "Approved";
+    }
+  }
+
+  return status;
+};
+
 const formatRequest = async (request) => {
   const reqObj = request.toObject ? request.toObject() : { ...request };
 
@@ -111,6 +161,7 @@ const formatRequest = async (request) => {
   return {
     ...reqObj,
     approvalHistory: formattedHistory,
+    approvalStatus: getApprovalStatus(reqObj),
   };
 };
 
@@ -815,6 +866,50 @@ exports.cancelRequest = async (req, res) => {
     console.error("cancelRequest error:", error);
 
     return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+exports.revokeRequestByHod = async (req, res) => {
+  try {
+    requireRole(req, "hod");
+
+    const request = await AttendanceRegularization.findById(
+      req.params.id
+    );
+
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: "Request not found",
+      });
+    }
+
+    // Only if waiting for principal
+    if (
+      request.status !== "Pending" ||
+      request.currentApprovalLevel !== "principal"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Only requests pending at Principal can be recalled",
+      });
+    }
+
+    // Move back to HOD
+    request.currentApprovalLevel = "hod";
+
+    await request.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Request moved back to HOD pending",
+      request,
+    });
+  } catch (error) {
+    return res.status(error.status || 500).json({
       success: false,
       message: error.message,
     });
