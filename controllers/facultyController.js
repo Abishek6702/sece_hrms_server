@@ -110,6 +110,7 @@ exports.importExcelFaculty = async (req, res) => {
         punchId: data.punchId || (await generatePunchId()),
 
         employmentStatus: data.employmentStatus ?? true,
+        
       };
 
       const exists = await Faculty.findOne({
