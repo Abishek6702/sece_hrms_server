@@ -15,24 +15,29 @@ const {
 
 const uploadCloudinary = require("../middleware/multerConfig");
 
+const validateObjectId = require("../middleware/validateObjectId");
 
 const router = express.Router();
 
-router.post("/", protect,uploadCloudinary.array("files", 10), createCompOffRequest);
+router.post(
+  "/",
+  protect,
+  uploadCloudinary.array("files", 10),
+  createCompOffRequest,
+);
 
 router.get("/me", protect, getMyCompOffRequests);
 
 router.get("/", protect, getCompOffRequests);
 
-router.get("/:id", protect, getCompOffRequestById);
+router.get("/:id", protect, validateObjectId(), getCompOffRequestById);
 
+router.patch("/:id/approve", protect,validateObjectId(), approveCompOff);
 
-router.patch("/:id/approve", protect, approveCompOff);
+router.patch("/:id/reject", protect,validateObjectId(), rejectCompOff);
 
-router.patch("/:id/reject", protect, rejectCompOff);
+router.patch("/:id/withdraw", protect,validateObjectId(), withdrawCompOff);
 
-router.patch("/:id/withdraw", protect, withdrawCompOff);
-
-router.patch("/:id/revoke-hod", protect, revokeHodApproval);
+router.patch("/:id/revoke-hod", protect,validateObjectId(), revokeHodApproval);
 
 module.exports = router;

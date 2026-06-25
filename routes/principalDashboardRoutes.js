@@ -14,7 +14,7 @@ const router = express.Router();
 router.get("/faculty-count", protect, getFacultyDesignationSummary);
 router.get("/pending-approvals",protect, getPendingApprovals);
 router.get("/today-punch-summary",protect, getTodayPunchSummary);
-router.get("/recentFaculty",getRecentFaculty);
+router.get("/recentFaculty",protect,getRecentFaculty);
 router.get("/today-attendance-faculty-summary",protect, getAttendanceDashboardSummary);
 router.get("/today-attendance-faculty",protect, getAttendanceList);
 

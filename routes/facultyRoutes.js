@@ -18,39 +18,37 @@ const protect = require("../middleware/protect");
 
 const upload = require("../middleware/upload");
 const uploadCloudinary = require("../middleware/multerConfig.js");
+const validateObjectId = require("../middleware/validateObjectId");
 
 const router = express.Router();
 
-router.post(
-  "/import-faculty",
-  upload.single("faculties"),
-  importExcelFaculty,
-);
+router.post("/import-faculty",protect, upload.single("faculties"), importExcelFaculty);
 
-router.post("/",protect, addIndividualFaculty);
+router.post("/", protect, addIndividualFaculty);
 
 router.get("/", protect, getFaculties);
 
 router.get("/search", protect, searchFaculty);
 
-router.put("/add-manger", bulkUpdateReportingManager);
+router.put("/add-manger",protect, bulkUpdateReportingManager);
 
+router.get("/:id", protect, validateObjectId(), getFacultyId);
 
-router.get("/:id", protect, getFacultyId);
+router.delete("/:id", protect, validateObjectId(), deleteFaculty);
 
-router.delete("/:id", protect, deleteFaculty);
-
-router.put("/:id", protect, editFaculty);
+router.put("/:id", protect, validateObjectId(), editFaculty);
 
 router.patch(
   "/:id/profile-image",
   protect,
+  validateObjectId(),
   uploadCloudinary.single("profileImage"),
   uploadProfileImage,
 );
 router.patch(
   "/:id/documents",
   protect,
+  validateObjectId(),
   uploadCloudinary.fields([
     { name: "sslcMarkSheet", maxCount: 1 },
     { name: "hscMarkSheet", maxCount: 1 },
@@ -67,8 +65,13 @@ router.patch(
   uploadDocuments,
 );
 
-router.delete("/:id/documents", protect, deleteDocument);
+router.delete("/:id/documents", protect, validateObjectId(), deleteDocument);
 
-router.delete("/:id/profile-image", protect, deleteProfileImage);
+router.delete(
+  "/:id/profile-image",
+  protect,
+  validateObjectId(),
+  deleteProfileImage,
+);
 
 module.exports = router;

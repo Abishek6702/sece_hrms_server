@@ -14,25 +14,42 @@ cloudinary.config({
 // Setup Cloudinary Storage
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  params: {
-    folder: "faculty-doc", 
-    allowed_formats: ["jpeg", "jpg", "png", "pdf"], 
-    resource_type: "auto", 
-  },
+  params: async (req, file) => ({
+    folder: "faculty-doc",
+    allowed_formats: ["jpeg", "jpg", "png", "pdf"],
+    resource_type: "auto",
+    public_id: `${Date.now()}-${path.parse(file.originalname).name}`,
+  }),
 });
 
 // File Filter 
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|pdf/;
+  const allowedExtensions = [".jpeg", ".jpg", ".png", ".pdf"];
+  const allowedMimeTypes = [
+    "image/jpeg",
+    "image/png",
+    "application/pdf",
+  ];
+
   const ext = path.extname(file.originalname).toLowerCase();
-  if (allowedTypes.test(ext)) {
+
+  if (
+    allowedExtensions.includes(ext) &&
+    allowedMimeTypes.includes(file.mimetype)
+  ) {
     cb(null, true);
   } else {
-    cb(new Error("Only .jpeg, .jpg, .png, .pdf allowed"));
+    cb(new Error("Only JPEG, JPG, PNG, and PDF files are allowed."));
   }
 };
 
 // 🔹 Create Multer Upload Middleware
-const upload = multer({ storage, fileFilter });
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5 MB
+  },
+});
 
 module.exports = upload;
