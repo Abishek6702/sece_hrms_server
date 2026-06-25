@@ -353,3 +353,25 @@ graceTime: item.facultyId?.shiftId?.graceTime,
     });
   }
 };
+
+exports.getRecentFaculty = async (req, res) => {
+  try {
+    const faculties = await Faculty.find()
+      .sort({ createdAt: -1 }) // Newest first
+      .limit(7)
+      .select(
+        "empId salutation firstName lastName designation department organizationEmail phone createdAt"
+      );
+
+    res.status(200).json({
+      success: true,
+      count: faculties.length,
+      faculties,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
