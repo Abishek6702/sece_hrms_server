@@ -898,8 +898,15 @@ exports.revokeRequestByHod = async (req, res) => {
       });
     }
 
-    // Move back to HOD
+    // Move back to HOD and record the revoke event
     request.currentApprovalLevel = "hod";
+    request.approvalHistory.push({
+      role: "hod",
+      approvedBy: req.user._id,
+      action: "Revoked",
+      remarks: "HOD approval revoked and returned to HOD",
+      actionDate: new Date(),
+    });
 
     await request.save();
 
