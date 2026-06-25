@@ -3,7 +3,6 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const hpp = require("hpp");
-const mongoSanitize = require("express-mongo-sanitize");
 const auditLogger = require("./middleware/auditLogger.js");
 const connectDB = require("./config/db");
 const shiftRoutes = require("./routes/shiftRoutes");
@@ -64,7 +63,7 @@ app.use(
     limit: "5mb",
   }),
 );
-app.use(mongoSanitize());
+
 app.use(hpp());
 app.use(auditLogger);
 app.use("/api", apiLimiter);
