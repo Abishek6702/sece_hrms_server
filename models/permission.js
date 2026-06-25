@@ -101,7 +101,7 @@ const permissionSchema = new mongoose.Schema(
 
         action: {
           type: String,
-          enum: ["Submitted", "Approved", "Rejected"],
+          enum: ["Submitted", "Approved", "Rejected", "Revoked"],
           required: true,
         },
 

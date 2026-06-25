@@ -831,8 +831,15 @@ exports.revokePermissionByHod = async (req, res) => {
       });
     }
 
-    // Move back to HOD
+    // Move back to HOD and record the revoke event
     permission.currentApprovalLevel = "hod";
+    permission.approvalHistory.push({
+      role: "hod",
+      approvedBy: req.user.facultyId || req.user._id,
+      action: "Revoked",
+      remarks: "HOD approval revoked and returned to HOD",
+      actionDate: new Date(),
+    });
 
     await permission.save();
 
