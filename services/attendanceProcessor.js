@@ -118,7 +118,7 @@ async function processAttendance(attendanceDate) {
 
         status: "Absent",
 
-        lopDays: 1,
+        lopDays: 0,
 
         remarks: "No Punch Found",
       });
@@ -178,7 +178,7 @@ async function processAttendance(attendanceDate) {
 
     if (!punchInTime) {
       attendance.status = "Absent";
-      attendance.lopDays = 1;
+      attendance.lopDays = 0;
       attendance.remarks = "No In Time Found";
 
       await attendance.save();
@@ -238,7 +238,7 @@ async function processAttendance(attendanceDate) {
 
       attendance.status = "Second Half Leave";
 
-      attendance.lopDays = 0.5;
+      attendance.lopDays = 0;
 
       attendance.remarks = "Second Half Absent - Insufficient Working Hours";
 
@@ -294,7 +294,7 @@ async function processAttendance(attendanceDate) {
 
         attendance.status = "Second Half Leave";
 
-        attendance.lopDays = 0.5;
+        attendance.lopDays = 0;
 
         attendance.remarks = `Late Entry ${lateCounter.lateCount}/3 - Insufficient Working Hours`;
 
@@ -305,7 +305,7 @@ async function processAttendance(attendanceDate) {
 
       attendance.status = "First Half Leave";
 
-      attendance.lopDays = 0.5;
+      attendance.lopDays = 0;
 
       attendance.remarks = "First Half Absent - Late Entry Limit Exceeded";
 
@@ -320,7 +320,7 @@ async function processAttendance(attendanceDate) {
 
     attendance.status = "First Half Leave";
 
-    attendance.lopDays = 0.5;
+    attendance.lopDays = 0;
 
     attendance.remarks = "First Half Absent - Beyond Late Grace";
 
