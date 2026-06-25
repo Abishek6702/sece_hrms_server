@@ -61,7 +61,7 @@ async function processSingleFacultyAttendance(facultyId, attendanceDate) {
   }
 
   // LEAVE
-console.log("checking leavev :",date)
+   console.log("checking leavev :",date)
   const leaveApplication = await LeaveApplication.findOne({
     facultyId: faculty._id,
     status: "Approved",
