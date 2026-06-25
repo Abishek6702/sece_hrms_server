@@ -47,7 +47,7 @@ const facultySchema = new mongoose.Schema(
 
     salutation: {
       type: String,
-      enum: ["Mr", "Mrs", "Ms", "Dr", "Prof","Lt"],
+      enum: ["Mr", "Mrs", "Ms", "Dr", "Prof", "Lt"],
     },
 
     firstName: {
@@ -139,6 +139,10 @@ const facultySchema = new mongoose.Schema(
       required: true,
     },
 
+    reportingDepartment: {
+      type: String,
+    },
+
     reportingTo: {
       facultyId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -211,23 +215,23 @@ const facultySchema = new mongoose.Schema(
 
     documents: {
       sslcMarkSheet: documentSchema,
-    
+
       hscMarkSheet: documentSchema,
-    
+
       ugDegreeCertificate: documentSchema,
-    
+
       pgDegreeCertificate: documentSchema,
-    
+
       phdDegreeCertificate: documentSchema,
-    
+
       panCard: documentSchema,
-    
+
       aadharCard: documentSchema,
-    
+
       experienceCertificates: [documentSchema],
-    
+
       relievingLetters: [documentSchema],
-    
+
       otherDocuments: [documentSchema],
     },
     shiftId: {
