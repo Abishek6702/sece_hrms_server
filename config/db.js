@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
-const dontenv = require('dotenv');
+const dotenv = require('dotenv');
 
-dontenv.config();
+dotenv.config();
 
 // MongoDB connecton establishment
 const connectDB = async()=>{
@@ -9,7 +9,7 @@ const connectDB = async()=>{
         await mongoose.connect(process.env.MONGO_URI); // MongoDB connection string from env file
         console.log('MongoDB Connected Sucessfully');
     } catch (error){
-        console.error('MongoDb Connection Failed :', error.moessage || error);
+        console.error('MongoDb Connection Failed :', error.message || error);
         process.exit(1);
     }
 };
