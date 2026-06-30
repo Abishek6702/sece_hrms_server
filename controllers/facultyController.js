@@ -27,8 +27,8 @@ const parseDate = (value) => {
     const parts = value.includes(".")
       ? value.split(".")
       : value.includes("-")
-      ? value.split("-")
-      : null;
+        ? value.split("-")
+        : null;
 
     if (parts?.length === 3) {
       const [day, month, year] = parts;
@@ -104,13 +104,12 @@ exports.importExcelFaculty = async (req, res) => {
         timeType: data.timeType,
 
         shiftId: shift._id,
-        
+
         // punchId: data.punchId,
 
         punchId: data.punchId || (await generatePunchId()),
 
         employmentStatus: data.employmentStatus ?? true,
-        
       };
 
       const exists = await Faculty.findOne({
@@ -168,7 +167,6 @@ exports.importExcelFaculty = async (req, res) => {
         //   password: "Sece@123",
         //   role: data.role?.toLowerCase() || "faculty",
         // });
-
         // sendMail(faculty.organizationEmail, "Welcome to SECE HRMS", html).catch(
         //   console.error,
         // );
@@ -191,16 +189,21 @@ exports.importExcelFaculty = async (req, res) => {
 // ================= ADD SINGLE =================
 exports.addIndividualFaculty = async (req, res) => {
   try {
-    // const empId = await generateEmployeeId(
-    //   req.body.employeeCategory,
-    //   req.body.department,
-    //   req.body.role,
-    // );
-    // const punchId = await generatePunchId();
+    // Use provided values if available, otherwise generate new ones
+    const empId =
+      req.body.empId ||
+      (await generateEmployeeId(
+        req.body.employeeCategory,
+        req.body.department,
+        req.body.role,
+      ));
+
+    const punchId = req.body.punchId || (await generatePunchId());
+
     const faculty = await Faculty.create({
       ...req.body,
-      // empId,
-      // punchId,
+      empId,
+      punchId,
     });
 
     await createLeaveBalances(faculty._id);
@@ -233,7 +236,6 @@ exports.addIndividualFaculty = async (req, res) => {
       //   password: "Sece@123",
       //   role: req.body.role?.toLowerCase() || "faculty",
       // });
-
       // sendMail(faculty.organizationEmail, "Welcome to SECE HRMS", html).catch(
       //   console.error,
       // );
@@ -437,11 +439,9 @@ exports.uploadDocuments = async (req, res) => {
     for (const field of singleFields) {
       if (req.files[field]?.length) {
         if (faculty.documents[field]?.publicId) {
-          await cloudinary.uploader.destroy(
-            faculty.documents[field].publicId
-          );
+          await cloudinary.uploader.destroy(faculty.documents[field].publicId);
         }
-    
+
         faculty.documents[field] = {
           url: req.files[field][0].path,
           publicId: req.files[field][0].filename,
@@ -465,7 +465,7 @@ exports.uploadDocuments = async (req, res) => {
 
         faculty.documents[field].push(...uploadedDocs);
       }
-    };
+    }
 
     await faculty.save();
 
@@ -522,13 +522,12 @@ exports.deleteDocument = async (req, res) => {
           message: "Invalid document type",
         });
       }
-      
+
       await cloudinary.uploader.destroy(publicId);
-      
-      faculty.documents[documentType] =
-        faculty.documents[documentType].filter(
-          (doc) => doc.publicId !== publicId
-        );
+
+      faculty.documents[documentType] = faculty.documents[documentType].filter(
+        (doc) => doc.publicId !== publicId,
+      );
     }
 
     await faculty.save();
@@ -565,7 +564,7 @@ exports.searchFaculty = async (req, res) => {
       ],
     })
       .select(
-        "_id empId firstName lastName designation department profileImage"
+        "_id empId firstName lastName designation department profileImage",
       )
       .limit(10);
 
@@ -592,7 +591,6 @@ exports.searchFaculty = async (req, res) => {
   }
 };
 
-
 exports.bulkUpdateReportingManager = async (req, res) => {
   try {
     const { department, facultyId, empId, name } = req.body;
@@ -617,7 +615,7 @@ exports.bulkUpdateReportingManager = async (req, res) => {
             name,
           },
         },
-      }
+      },
     );
 
     res.status(200).json({
