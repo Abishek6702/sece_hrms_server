@@ -1,7 +1,11 @@
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
+const dns = require('dns')
 
 dotenv.config();
+
+//  system to force use google dn for connection establishmnet
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
 // MongoDB connecton establishment
 const connectDB = async()=>{
