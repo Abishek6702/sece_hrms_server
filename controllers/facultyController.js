@@ -74,6 +74,28 @@ exports.importExcelFaculty = async (req, res) => {
 
         continue;
       }
+
+      let reportingTo = undefined;
+
+      if (data.reportingTo) {
+        const manager = await Faculty.findById(data.reportingTo);
+
+        if (!manager) {
+          failed.push({
+            empId: data.empId,
+            name: `${data.firstName} ${data.lastName}`,
+            reason: "Reporting manager not found",
+          });
+
+          continue;
+        }
+
+        reportingTo = {
+          facultyId: manager._id,
+          empId: manager.empId,
+          name: `${manager.firstName} ${manager.lastName}`,
+        };
+      }
       // map column names (IMPORTANT)
       const facultyData = {
         empId: data.empId,
@@ -111,6 +133,7 @@ exports.importExcelFaculty = async (req, res) => {
         punchId: data.punchId || (await generatePunchId()),
 
         employmentStatus: data.employmentStatus ?? true,
+        reportingTo,
       };
 
       const exists = await Faculty.findOne({
