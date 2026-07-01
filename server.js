@@ -28,7 +28,16 @@ dotenv.config();
 const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        imgSrc: ["'self'", "data:", "https://res.cloudinary.com"],
+      },
+    },
+  }),
+);
 
 const allowedOrigins = [process.env.FRONTEND_URL, "http://localhost:5173"];
 app.use(
