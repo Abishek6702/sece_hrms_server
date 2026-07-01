@@ -139,7 +139,7 @@ const facultySchema = new mongoose.Schema(
       required: true,
     },
 
-    reportingDepartment: {
+    originalDepartment: {
       type: String,
     },
 

@@ -11,7 +11,7 @@ async function updateReportingDepartment() {
     let count = 0;
 
     for (const faculty of faculties) {
-      faculty.reportingDepartment = faculty.department;
+      faculty.originalDepartment = faculty.department;
       await faculty.save();
       count++;
     }

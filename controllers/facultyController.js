@@ -92,6 +92,7 @@ exports.importExcelFaculty = async (req, res) => {
         doj: parseDate(data.doj),
 
         department: data.department,
+        originalDepartment: data.originalDepartment,
 
         designation: data.designation,
 
