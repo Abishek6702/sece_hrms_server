@@ -17,13 +17,13 @@ const { loginLimiter } = require("../middleware/rateLimiter");
 
 const router = express.Router();
 
-router.post("/login/v1",loginLimiter, loginv1);
-router.post("/login",loginLimiter, login);
-router.post("/verify-login-otp",loginLimiter, verifyLoginOtp);
+router.post("/login/v1", loginv1);
+router.post("/login", login);
+router.post("/verify-login-otp", verifyLoginOtp);
 router.post("/verify-password",protect, verifyPassword);
 
-router.post("/forgot-password",loginLimiter, forgotPassword);
-router.post("/reset-password",loginLimiter, resetPassword);
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", resetPassword);
 router.post("/change-password", protect, changePassword);
 router.patch("/first-login-complete", protect, firstLoginComplete);
 router.get("/me", protect, getProfile);
