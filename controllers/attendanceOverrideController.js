@@ -99,10 +99,10 @@ const getDayRange = (date) => {
 
 exports.getAttendanceByDate = async (req, res) => {
   try {
-    if (req.user.role !== "hr") {
+    if (req.user.role !== "admin") {
       return res.status(403).json({
         success: false,
-        message: "Only HR can access this API",
+        message: "Only Admin can access this API",
       });
     }
 
@@ -170,10 +170,10 @@ exports.getAttendanceByDate = async (req, res) => {
 
 exports.getAttendanceByEmployee = async (req, res) => {
   try {
-    if (req.user.role !== "hr") {
+    if (req.user.role !== "admin") {
       return res.status(403).json({
         success: false,
-        message: "Only HR can access this API",
+        message: "Only Admin can access this API",
       });
     }
 
@@ -249,12 +249,12 @@ exports.getAttendanceByEmployee = async (req, res) => {
 
 exports.updateAttendanceOverride = async (req, res) => {
   try {
-    // Only HR can access
+    // Only Admin can access
 
-    if (req.user.role !== "hr") {
+    if (req.user.role !== "admin") {
       return res.status(403).json({
         success: false,
-        message: "Only HR can access this API",
+        message: "Only Admin can access this API",
       });
     }
 
@@ -442,10 +442,10 @@ exports.updateAttendanceOverride = async (req, res) => {
 
 exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
   try {
-    if (req.user.role !== "hr") {
+    if (req.user.role !== "admin") {
       return res.status(403).json({
         success: false,
-        message: "Only HR can access this API",
+        message: "Only Admin can access this API",
       });
     }
 
@@ -626,10 +626,10 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
 // Bulk update attendance for a single employee over a date range
 exports.bulkUpdateAttendanceByEmployee = async (req, res) => {
   try {
-    if (req.user.role !== "hr") {
+    if (req.user.role !== "admin") {
       return res.status(403).json({
         success: false,
-        message: "Only HR can access this API",
+        message: "Only Admin can access this API",
       });
     }
 
@@ -888,10 +888,10 @@ exports.bulkUpdateAttendanceByEmployee = async (req, res) => {
 
 exports.getAttendanceOverrideHistory = async (req, res) => {
   try {
-    if (req.user.role !== "hr") {
+    if (req.user.role !== "admin") {
       return res.status(403).json({
         success: false,
-        message: "Only HR can access this API",
+        message: "Only Admin can access this API",
       });
     }
 
