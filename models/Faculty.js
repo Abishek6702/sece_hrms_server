@@ -181,14 +181,12 @@ const facultySchema = new mongoose.Schema(
     identityDetails: {
       aadharNumber: {
         type: String,
-        unique: true,
-        sparse: true,
+       
       },
 
       panNumber: {
         type: String,
-        unique: true,
-        sparse: true,
+        
       },
 
       pfNumber: {
