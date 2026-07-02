@@ -1,6 +1,9 @@
 const Permission = require("../models/permission");
 const Faculty = require("../models/Faculty");
 const Holiday = require("../models/holiday");
+const {
+  incrementPermissionBalanceOnApproval,
+} = require("../services/permissionBalanceService");
 
 // Helper to enforce role(s)
 const requireRole = (req, role) => {
@@ -139,7 +142,7 @@ const formatPermission = (permission) => {
 };
 
 // Faculty: apply for permission
-exports.applyPermission = async (req, res) => {
+exports.applyPermission = async (req, res, next) => {
   try {
     const {
       permissionDate,
@@ -612,6 +615,12 @@ exports.approvePermission = async (req, res) => {
         remarks: remarks || "Approved by " + (approvalRole === "dean" ? "Dean" : "Principal"),
         actionDate: new Date(),
       });
+
+      await incrementPermissionBalanceOnApproval(
+        perm.facultyId,
+        perm.totalMinutes,
+        perm.permissionDate,
+      );
     }
 
     await perm.save();
