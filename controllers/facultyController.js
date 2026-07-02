@@ -11,6 +11,9 @@ const sendMail = require("../utils/sendMail");
 const renderTemplate = require("../utils/renderTemplate");
 
 const createLeaveBalances = require("../services/createLeaveBalances");
+const {
+  createPermissionBalanceForFaculty,
+} = require("../services/permissionBalanceService");
 const generatePunchId = require("../utils/generatePunchId");
 
 // ================= IMPORT EXCEL =================
@@ -135,6 +138,7 @@ exports.importExcelFaculty = async (req, res) => {
       const faculty = await Faculty.create(facultyData);
 
       await createLeaveBalances(faculty._id);
+      await createPermissionBalanceForFaculty(faculty._id);
 
       const password = "Sece@123";
       const hashed = await bcrypt.hash(password, 10);
@@ -208,6 +212,7 @@ exports.addIndividualFaculty = async (req, res) => {
     });
 
     await createLeaveBalances(faculty._id);
+    await createPermissionBalanceForFaculty(faculty._id);
 
     const hashedPassword = await bcrypt.hash("Sece@123", 10);
 
