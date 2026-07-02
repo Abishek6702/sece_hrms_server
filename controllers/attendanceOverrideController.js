@@ -8,8 +8,8 @@ const STATUS_CODE_MAP = {
 
   "Half Day": "A:P",
 
-  "First Half Leave": "L:P",
-  "Second Half Leave": "P:L",
+  "First Half Leave": "A:P",
+  "Second Half Leave": "P:A",
 
   Leave: "L:L",
   Holiday: "H:H",
@@ -23,8 +23,8 @@ const STATUS_CODE_MAP = {
 const SESSION_STATUSDB_MAP = {
   Present: "P:P",
   Absent: "A:A",
-  "First Half Leave": "L:P",
-  "Second Half Leave": "P:L",
+  "First Half Leave": "A:P",
+  "Second Half Leave": "P:A",
 };
 
 const SESSION_STATUS_MAP = {
@@ -34,8 +34,8 @@ const SESSION_STATUS_MAP = {
   "A:P": "Half Day",
   "P:A": "Half Day",
 
-  "L:P": "First Half Leave",
-  "P:L": "Second Half Leave",
+  "A:P": "First Half Leave",
+  "P:A": "Second Half Leave",
 
   "L:L": "Leave",
   "H:H": "Holiday",
@@ -57,8 +57,8 @@ const STATUS_SESSION_MAP = {
 
   "Half Day": ["A", "P"],
 
-  "First Half Leave": ["L", "P"],
-  "Second Half Leave": ["P", "L"],
+  "First Half Leave": ["A", "P"],
+  "Second Half Leave": ["P", "A"],
 
   Leave: ["L", "L"],
 
@@ -200,8 +200,9 @@ exports.getAttendanceByEmployee = async (req, res) => {
         "firstName lastName empId department employeeCategory",
       )
       .sort({ attendanceDate: 1 });
-
+    console.log(" Attendance List:", attendanceList);
     const data = attendanceList.map((attendance) => {
+      
       const employeeName = attendance.facultyId
         ? [attendance.facultyId.firstName, attendance.facultyId.lastName]
             .filter(Boolean)
