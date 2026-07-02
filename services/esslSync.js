@@ -15,17 +15,36 @@ async function syncAttendance() {
   let sync = await AttendanceSync.findOne();
 
   if (!sync) {
+    const tableName = getCurrentESSLTable();
+
     sync = await AttendanceSync.create({
+      tableName,
       lastDeviceLogId: 0,
       lastSyncTime: null,
     });
   }
 
-  const lastDeviceLogId = sync.lastDeviceLogId;
-
   await sql.connect(config);
 
   const tableName = getCurrentESSLTable();
+
+  console.log("Current Table:", tableName);
+
+  // If ESSL has switched to a new month's table,
+  // reset the last synced DeviceLogId.
+  if (sync.tableName !== tableName) {
+    console.log(
+      `ESSL table changed from ${sync.tableName} to ${tableName}. Resetting sync...`,
+    );
+
+    sync.tableName = tableName;
+    sync.lastDeviceLogId = 0;
+
+    await sync.save();
+  }
+  const lastDeviceLogId = sync.lastDeviceLogId;
+
+  console.log("Last Synced DeviceLogId:", lastDeviceLogId);
 
   const result = await sql.query(`
     SELECT
@@ -39,6 +58,7 @@ async function syncAttendance() {
   `);
 
   const punches = result.recordset;
+  console.log("New Punches:", punches.length);
 
   if (punches.length === 0) {
     return {
@@ -47,18 +67,21 @@ async function syncAttendance() {
     };
   }
 
+  console.log("Before processing punches...");
+
   await processAttendancePunches(punches);
 
-  const latestDeviceLogId =
-    punches[punches.length - 1].DeviceLogId;
+  console.log("After processing punches...");
 
-  await AttendanceSync.updateOne(
-    { _id: sync._id },
-    {
-      lastDeviceLogId: latestDeviceLogId,
-      lastSyncTime: new Date(),
-    }
-  );
+  const latestDeviceLogId = punches[punches.length - 1].DeviceLogId;
+
+  console.log("Latest DeviceLogId:", latestDeviceLogId);
+
+  sync.tableName = tableName;
+  sync.lastDeviceLogId = latestDeviceLogId;
+  sync.lastSyncTime = new Date();
+
+  await sync.save();
 
   return {
     success: true,

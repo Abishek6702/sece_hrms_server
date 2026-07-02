@@ -2,7 +2,7 @@ const cron = require("node-cron");
 const { syncAttendance } = require("../services/esslSync");
 
 cron.schedule(
-  "*/5 * * * *",
+  "*/10 * * * *",
   async () => {
     try {
       console.log("Running attendance sync...");
