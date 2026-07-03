@@ -231,10 +231,9 @@ exports.getAttendanceMusterV1 = async (req, res) => {
 
     const startDate = new Date(Date.UTC(year, month - 2, 26));
     startDate.setMinutes(startDate.getMinutes() - 330);
-    
+
     const endDate = new Date(Date.UTC(year, month - 1, 25, 23, 59, 59));
     endDate.setMinutes(endDate.getMinutes() - 330);
-
 
     const facultyFilter = {
       employmentStatus: true,
@@ -324,9 +323,18 @@ exports.getAttendanceMusterV1 = async (req, res) => {
         day = istDate.getUTCDate();
       }
 
+      // Decide which status to display
+      let displayStatus = attendance.status;
+
+      if (attendance.isOverridden) {
+        displayStatus = attendance.overrideStatus;
+      } else if (attendance.regularization) {
+        displayStatus = attendance.regularizationStatus;
+      }
+
       let value = "-";
 
-      switch (attendance.status) {
+      switch (displayStatus) {
         case "Present":
           value = "P";
           break;
@@ -343,6 +351,10 @@ exports.getAttendanceMusterV1 = async (req, res) => {
           value = "H";
           break;
 
+        case "Half Day":
+          value = "HD";
+          break;
+
         case "First Half Leave":
           value = "A:P";
           break;
@@ -354,9 +366,25 @@ exports.getAttendanceMusterV1 = async (req, res) => {
         case "Missed Punch":
           value = "MP";
           break;
+
+        case "On Duty":
+          value = "OD";
+          break;
+
+        case "First Half OD":
+          value = "OD:P";
+          break;
+
+        case "Second Half OD":
+          value = "P:OD";
+          break;
       }
 
-      attendanceMap[facultyId][day] = value;
+      attendanceMap[facultyId][day] = {
+        status: value,
+        isOverridden: attendance.isOverridden,
+        regularization: attendance.regularization,
+      };
     });
 
     const employees = faculties.map((faculty) => {
@@ -381,25 +409,25 @@ exports.getAttendanceMusterV1 = async (req, res) => {
       });
       const musterDays = [];
 
-const previousMonthDays = new Date(
-  Date.UTC(year, month - 1, 0)
-).getUTCDate();
+      const previousMonthDays = new Date(
+        Date.UTC(year, month - 1, 0),
+      ).getUTCDate();
 
-for (let day = 26; day <= previousMonthDays; day++) {
-  musterDays.push(day);
-}
+      for (let day = 26; day <= previousMonthDays; day++) {
+        musterDays.push(day);
+      }
 
-for (let day = 1; day <= 25; day++) {
-  musterDays.push(day);
-}
+      for (let day = 1; day <= 25; day++) {
+        musterDays.push(day);
+      }
       for (const day of musterDays) {
         let dateObj;
-      
+
         if (day >= 26) {
           dateObj = new Date(Date.UTC(year, month - 2, day));
         } else {
           dateObj = new Date(Date.UTC(year, month - 1, day));
-        };
+        }
 
         // Attendance exists -> show attendance
         if (facultyAttendance[day] !== undefined) {
@@ -409,12 +437,8 @@ for (let day = 1; day <= 25; day++) {
           });
         }
 
-        
         // Sunday or Holiday without attendance
-        else if (
-          dateObj.getUTCDay() === 0 ||
-          facultyHolidayMap.has(day)
-        ) {
+        else if (dateObj.getUTCDay() === 0 || facultyHolidayMap.has(day)) {
           attendanceDays.push({
             day,
             status: "OFF",
@@ -442,15 +466,15 @@ for (let day = 1; day <= 25; day++) {
       };
     });
     const previousMonthDays = new Date(
-      Date.UTC(year, month - 1, 0)
+      Date.UTC(year, month - 1, 0),
     ).getUTCDate();
-    
+
     const musterDays = [];
-    
+
     for (let day = 26; day <= previousMonthDays; day++) {
       musterDays.push(day);
     }
-    
+
     for (let day = 1; day <= 25; day++) {
       musterDays.push(day);
     }
@@ -470,7 +494,6 @@ for (let day = 1; day <= 25; day++) {
     });
   }
 };
-
 
 const formatISTDate = (date) => {
   const istDate = new Date(date);
@@ -496,8 +519,10 @@ exports.getFacultyAttendanceHistory = async (req, res) => {
       });
     }
 
-    const faculty = await Faculty.findById(facultyId)
-  .populate("shiftId", "shiftName workingMinutes");
+    const faculty = await Faculty.findById(facultyId).populate(
+      "shiftId",
+      "shiftName workingMinutes",
+    );
 
     if (!faculty) {
       return res.status(404).json({
@@ -537,14 +562,15 @@ exports.getFacultyAttendanceHistory = async (req, res) => {
           checkOut: attendance.outTime,
           workingHours: attendance.workingMinutes,
           status: attendance.status,
-          regularizationStatus: attendance.regularizationStatus, shift: faculty.shiftId
-          ? {
-              shiftId: faculty.shiftId._id,
-              shiftName: faculty.shiftId.shiftName,
-              workingMinutes: faculty.shiftId.workingMinutes,
-            }
-          : null,
-      });
+          regularizationStatus: attendance.regularizationStatus,
+          shift: faculty.shiftId
+            ? {
+                shiftId: faculty.shiftId._id,
+                shiftName: faculty.shiftId.shiftName,
+                workingMinutes: faculty.shiftId.workingMinutes,
+              }
+            : null,
+        });
 
         continue;
       }
