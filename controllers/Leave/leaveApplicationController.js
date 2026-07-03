@@ -281,11 +281,25 @@ exports.getLeaveApplications = async (req, res) => {
       query.currentApprovalLevel = currentApprovalLevel;
     }
 
+    // Handle single or multiple departments
+    let departmentMatch = {};
+
+    if (department) {
+      const departments = department
+        .split(",")
+        .map((d) => d.trim())
+        .filter(Boolean);
+    
+      departmentMatch = {
+        department: { $in: departments },
+      };
+    }
+
     const leaveApplications = await LeaveApplication.find(query)
       .populate({
         path: "facultyId",
         select: "empId firstName lastName department designation",
-        match: department ? { department } : {},
+        match: departmentMatch,
       })
       .populate({
         path: "leaveTypeId",
