@@ -200,12 +200,12 @@ exports.getAttendanceList = async (req, res) => {
       date,
       fromDate,
       toDate,
-     
+      status,
     } = req.query;
 
     const attendanceFilter = {};
 
-    // Single Date Filter
+    // Date Filter
     if (date) {
       const startDate = new Date(date);
       startDate.setHours(0, 0, 0, 0);
@@ -234,7 +234,9 @@ exports.getAttendanceList = async (req, res) => {
     }
 
     // Faculty Filters
-    const facultyFilter = {};
+    const facultyFilter = {
+      employmentStatus: true,
+    };
 
     if (department) {
       facultyFilter.department = department;
@@ -267,17 +269,101 @@ exports.getAttendanceList = async (req, res) => {
       ];
     }
 
-    // Get Faculty IDs matching filters
-    if (department || employeeCategory || search) {
-      const faculties = await Faculty.find(facultyFilter).select("_id").lean();
+    // ==========================
+    // NOT CHECKED IN
+    // ==========================
+    if (status === "Not Checked In") {
+      if (!date) {
+        return res.status(400).json({
+          success: false,
+          message: "Date is required for Not Checked In filter",
+        });
+      }
 
-      const facultyIds = faculties.map((f) => f._id);
+      const startDate = new Date(date);
+      startDate.setHours(0, 0, 0, 0);
 
-      attendanceFilter.facultyId = {
-        $in: facultyIds,
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 1);
+
+      const checkedInFacultyIds = await Attendance.find({
+        attendanceDate: {
+          $gte: startDate,
+          $lt: endDate,
+        },
+        inTime: {
+          $ne: null,
+        },
+      }).distinct("facultyId");
+
+      facultyFilter._id = {
+        $nin: checkedInFacultyIds,
       };
+
+      const employees = await Faculty.find(facultyFilter)
+        .populate({
+          path: "shiftId",
+          select: "shiftName startTime endTime graceTime workingMinutes",
+        })
+        .lean();
+
+      const formattedEmployees = employees.map((emp) => ({
+        facultyId: emp._id,
+
+        shiftID: emp.shiftId?._id,
+        shiftName: emp.shiftId?.shiftName,
+        startTime: emp.shiftId?.startTime,
+        endTime: emp.shiftId?.endTime,
+        graceTime: emp.shiftId?.graceTime,
+
+        empId: emp.empId,
+
+        employeeName: `${emp.firstName || ""} ${emp.lastName || ""}`.trim(),
+
+        department: emp.department,
+
+        designation: emp.designation,
+
+        employeeCategory: emp.employeeCategory,
+
+        attendanceDate: startDate,
+
+        inTime: null,
+
+        outTime: null,
+
+        workingMinutes: 0,
+
+        workingHours: "0h 0m",
+
+        status: "Not Checked In",
+      }));
+
+      return res.status(200).json({
+        success: true,
+        count: formattedEmployees.length,
+        totalCount: formattedEmployees.length,
+        attendance: formattedEmployees,
+      });
     }
 
+    // ==========================
+    // NORMAL ATTENDANCE
+    // ==========================
+
+    if (status) {
+      attendanceFilter.status = status;
+    }
+
+    if (department || employeeCategory || search) {
+      const faculties = await Faculty.find(facultyFilter)
+        .select("_id")
+        .lean();
+
+      attendanceFilter.facultyId = {
+        $in: faculties.map((f) => f._id),
+      };
+    }
 
     const attendance = await Attendance.find(attendanceFilter)
       .populate({
@@ -293,17 +379,17 @@ exports.getAttendanceList = async (req, res) => {
         attendanceDate: -1,
       })
       .lean();
+
     const formattedAttendance = attendance.map((item) => ({
       _id: item._id,
 
       facultyId: item.facultyId?._id,
-      
-      shiftID: item.facultyId?.shiftId?._id,
-shiftName: item.facultyId?.shiftId?.shiftName,
-startTime: item.facultyId?.shiftId?.startTime,
-endTime: item.facultyId?.shiftId?.endTime,
-graceTime: item.facultyId?.shiftId?.graceTime,
 
+      shiftID: item.facultyId?.shiftId?._id,
+      shiftName: item.facultyId?.shiftId?.shiftName,
+      startTime: item.facultyId?.shiftId?.startTime,
+      endTime: item.facultyId?.shiftId?.endTime,
+      graceTime: item.facultyId?.shiftId?.graceTime,
 
       empId: item.facultyId?.empId || "",
 
@@ -326,7 +412,7 @@ graceTime: item.facultyId?.shiftId?.graceTime,
       workingMinutes: item.workingMinutes || 0,
 
       workingHours: `${Math.floor(
-        (item.workingMinutes || 0) / 60,
+        (item.workingMinutes || 0) / 60
       )}h ${(item.workingMinutes || 0) % 60}m`,
 
       status: item.status,
@@ -334,15 +420,14 @@ graceTime: item.facultyId?.shiftId?.graceTime,
 
     const totalCount = await Attendance.countDocuments(attendanceFilter);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       count: formattedAttendance.length,
       totalCount,
-      
       attendance: formattedAttendance,
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: error.message,
     });
