@@ -200,8 +200,7 @@ exports.getAttendanceList = async (req, res) => {
       date,
       fromDate,
       toDate,
-      page = 1,
-      limit = 20,
+     
     } = req.query;
 
     const attendanceFilter = {};
@@ -279,7 +278,6 @@ exports.getAttendanceList = async (req, res) => {
       };
     }
 
-    const skip = (Number(page) - 1) * Number(limit);
 
     const attendance = await Attendance.find(attendanceFilter)
       .populate({
@@ -294,8 +292,6 @@ exports.getAttendanceList = async (req, res) => {
       .sort({
         attendanceDate: -1,
       })
-      .skip(skip)
-      .limit(Number(limit))
       .lean();
     const formattedAttendance = attendance.map((item) => ({
       _id: item._id,
@@ -342,8 +338,7 @@ graceTime: item.facultyId?.shiftId?.graceTime,
       success: true,
       count: formattedAttendance.length,
       totalCount,
-      currentPage: Number(page),
-      totalPages: Math.ceil(totalCount / Number(limit)),
+      
       attendance: formattedAttendance,
     });
   } catch (error) {
