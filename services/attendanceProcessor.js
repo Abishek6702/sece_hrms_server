@@ -6,30 +6,57 @@ const AttendanceLateCounter = require("../models/attendanceLateCounter");
 const Permission = require("../models/permission.js");
 
 async function processAttendance(attendanceDate) {
-  const date = new Date(attendanceDate);
+  // Business date (IST day)
+  const processDate = new Date(attendanceDate);
+  processDate.setUTCHours(0, 0, 0, 0);
 
-  date.setHours(0, 0, 0, 0);
+  // Attendance storage date (IST midnight stored in UTC)
+  const date = new Date(processDate);
+  date.setUTCHours(18, 30, 0, 0);
+  date.setUTCDate(date.getUTCDate() - 1);
+
+  console.log("================================");
+  console.log("Process Date:", processDate.toISOString());
+  console.log("Storage Date:", date.toISOString());
+  console.log("================================");
 
   const faculties = await Faculty.find({
     employmentStatus: true,
   }).populate("shiftId");
 
   for (const faculty of faculties) {
+    const nextAttendanceDate = new Date(date);
+    nextAttendanceDate.setUTCDate(nextAttendanceDate.getUTCDate() + 1);
+
     let attendance = await Attendance.findOne({
       facultyId: faculty._id,
-      attendanceDate: date,
+      attendanceDate: {
+        $gte: date,
+        $lt: nextAttendanceDate,
+      },
     });
+
+    console.log("Faculty:", faculty.empId);
+
+    if (attendance) {
+      console.log("Attendance Found");
+      console.log("Attendance Date:", attendance.attendanceDate.toISOString());
+      console.log("In Time:", attendance.inTime?.toISOString());
+      console.log("Working Minutes:", attendance.workingMinutes);
+    } else {
+      console.log("Attendance NOT Found");
+    }
 
     // HOLIDAY
 
-    const nextDate = new Date(date);
-    nextDate.setDate(nextDate.getDate() + 1);
-    
+    const nextDate = new Date(processDate);
+    nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+
     const holiday = await Holiday.findOne({
       isActive: true,
       applicableEmployeeCategories: faculty.employeeCategory,
       holidayDate: {
-        $gte: date,
+        $gte: processDate,
         $lt: nextDate,
       },
     });
@@ -39,8 +66,8 @@ async function processAttendance(attendanceDate) {
     }
     // SUNDAY CHECK
 
-    const istDate = new Date(date);
-    istDate.setMinutes(istDate.getMinutes() + 330);
+    const istDate = new Date(processDate);
+    istDate.setUTCMinutes(istDate.getUTCMinutes() + 330);
 
     const isSunday = istDate.getUTCDay() === 0;
 
@@ -54,10 +81,10 @@ async function processAttendance(attendanceDate) {
       facultyId: faculty._id,
       status: "Approved",
       fromDate: {
-        $lte: date,
+        $lte: processDate,
       },
       toDate: {
-        $gte: date,
+        $gte: processDate,
       },
     }).populate("leaveTypeId");
 
@@ -104,8 +131,8 @@ async function processAttendance(attendanceDate) {
       facultyId: faculty._id,
       status: "Approved",
       permissionDate: {
-        $gte: date,
-        $lt: new Date(date.getTime() + 24 * 60 * 60 * 1000),
+        $gte: processDate,
+        $lt: new Date(processDate.getTime() + 24 * 60 * 60 * 1000),
       },
     });
     // ABSENT
@@ -155,19 +182,28 @@ async function processAttendance(attendanceDate) {
 
     const [startHour, startMinute] = shift.startTime.split(":").map(Number);
 
-    const shiftStartTime = new Date(date);
+    // Base everything on the stored attendance date
+    const shiftStartTime = new Date(attendance.attendanceDate);
 
-    shiftStartTime.setUTCHours(startHour, startMinute, 0, 0);
-
-    shiftStartTime.setMinutes(shiftStartTime.getMinutes() - 330);
+    // attendanceDate = IST midnight stored in UTC (18:30 previous day)
+    // Add the shift start time in IST
+    shiftStartTime.setUTCMinutes(
+      shiftStartTime.getUTCMinutes() + startHour * 60 + startMinute,
+    );
 
     const normalGraceEnd = new Date(shiftStartTime);
 
-    normalGraceEnd.setMinutes(normalGraceEnd.getMinutes() + shift.graceTime);
+    normalGraceEnd.setUTCMinutes(
+      normalGraceEnd.getUTCMinutes() + shift.graceTime,
+    );
 
     const lateGraceEnd = new Date(normalGraceEnd);
 
-    lateGraceEnd.setMinutes(lateGraceEnd.getMinutes() + 10);
+    lateGraceEnd.setUTCMinutes(lateGraceEnd.getUTCMinutes() + 10);
+
+    console.log("Shift Start:", shiftStartTime.toISOString());
+    console.log("Normal Grace End:", normalGraceEnd.toISOString());
+    console.log("Late Window End:", lateGraceEnd.toISOString());
 
     const requiredMinutes = shift.workingMinutes;
 
@@ -191,18 +227,15 @@ async function processAttendance(attendanceDate) {
 
     if (permission) {
       const [hour, minute] = permission.toTime.split(":").map(Number);
+      effectiveReportingTime = new Date(attendance.attendanceDate);
 
-      effectiveReportingTime = new Date(date);
-
-      effectiveReportingTime.setUTCHours(hour, minute, 0, 0);
-      effectiveReportingTime.setMinutes(
-        effectiveReportingTime.getMinutes() - 330,
+      effectiveReportingTime.setUTCMinutes(
+        effectiveReportingTime.getUTCMinutes() + hour * 60 + minute,
       );
-
       effectiveLateWindowEnd = new Date(effectiveReportingTime);
 
-      effectiveLateWindowEnd.setMinutes(
-        effectiveLateWindowEnd.getMinutes() + 10,
+      effectiveLateWindowEnd.setUTCMinutes(
+        effectiveLateWindowEnd.getUTCMinutes() + 10,
       );
 
       console.log(`${faculty.empId} Permission Applied`);
@@ -222,7 +255,9 @@ async function processAttendance(attendanceDate) {
     const lateWindowMinutes =
       effectiveLateWindowEnd.getUTCHours() * 60 +
       effectiveLateWindowEnd.getUTCMinutes();
-
+    console.log("Punch Minutes:", punchMinutes);
+    console.log("Reporting Minutes:", reportingMinutes);
+    console.log("Late Window Minutes:", lateWindowMinutes);
     if (punchMinutes <= reportingMinutes) {
       if (hasCompletedWorkingHours) {
         attendance.status = "Present";
@@ -232,6 +267,8 @@ async function processAttendance(attendanceDate) {
         attendance.remarks = "";
 
         await attendance.save();
+        console.log("FINAL STATUS:", attendance.status);
+        console.log("REMARKS:", attendance.remarks);
 
         continue;
       }
@@ -252,8 +289,11 @@ async function processAttendance(attendanceDate) {
     // =================================
 
     if (punchMinutes <= lateWindowMinutes) {
-      const month = date.getUTCMonth() + 1;
-      const year = date.getUTCFullYear();
+      const attendanceDay = new Date(attendance.attendanceDate);
+      attendanceDay.setUTCMinutes(attendanceDay.getUTCMinutes() + 330);
+
+      const month = attendanceDay.getUTCMonth() + 1;
+      const year = attendanceDay.getUTCFullYear();
 
       let lateCounter = await AttendanceLateCounter.findOne({
         facultyId: faculty._id,

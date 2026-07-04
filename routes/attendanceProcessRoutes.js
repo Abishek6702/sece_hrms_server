@@ -101,7 +101,9 @@ router.get("/process-past", async (req, res) => {
 });
 
 router.get("/test-single", async (req, res) => {
-  await processSingleFacultyAttendance("6a23e523a63cc698c0d09a57", "2026-06-20");
+  // mention the acrtual attendacne date to crct
+  await processSingleFacultyAttendance("6a450b55d23d4589762e606f", "2026-07-02"); 
+
 
   res.json({
     success: true,
