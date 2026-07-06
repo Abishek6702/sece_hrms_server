@@ -19,6 +19,12 @@ const permissionSchema = new mongoose.Schema(
       default: "Personal",
     },
 
+    slot: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
     fromTime: {
       type: String,
       required: true,
