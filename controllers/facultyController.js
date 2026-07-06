@@ -340,7 +340,6 @@ exports.editFaculty = async (req, res) => {
         email: faculty.organizationEmail,
         phone: faculty.phone,
         department: faculty.department,
-        role: data.role?.toLowerCase() || "faculty",
       },
     );
 
@@ -374,6 +373,7 @@ exports.deleteFaculty = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
 
 exports.uploadProfileImage = async (req, res) => {
   try {
