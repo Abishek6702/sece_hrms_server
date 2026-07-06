@@ -44,7 +44,10 @@ router.post("/", protect, flexibleUpload, createAttendanceRegularization);
 
 router.get("/my", protect, getMyRequests);
 router.get("/me", protect, getMyRequests);
-router.get("/hod/list", protect, getRequestsForHod);
+router.get(
+  "/hod/:department",
+  protect,getRequestsForHod
+);
 router.get("/dean/list", protect, getRequestsForDean);
 router.get("/principal/list", protect, getRequestsForPrincipal);
 

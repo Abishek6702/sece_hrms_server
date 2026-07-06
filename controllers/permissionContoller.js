@@ -408,27 +408,54 @@ exports.getPermissionsForHod = async (req, res) => {
   try {
     requireRole(req, "hod");
 
-    const dept = req.user.department;
+    const { department } = req.params;
 
-    // Include: 1) pending items awaiting HOD approval, and
-    // 2) items where HOD has already acted (Approved/Rejected) so their remarks are visible
+    if (!department) {
+      return res.status(400).json({
+        success: false,
+        message: "Department is required",
+      });
+    }
+
+    const departments = department
+      .split(",")
+      .map((dept) => dept.trim().toLowerCase());
+
     const permissions = await Permission.find({
       $or: [
-        { currentApprovalLevel: "hod", status: "Pending" },
-        { approvalHistory: { $elemMatch: { role: "hod", action: { $in: ["Approved", "Rejected"] } } } },
+        {
+          currentApprovalLevel: "hod",
+          status: "Pending",
+        },
+        {
+          approvalHistory: {
+            $elemMatch: {
+              role: "hod",
+              action: {
+                $in: ["Approved", "Rejected"],
+              },
+            },
+          },
+        },
       ],
     })
-      .populate("facultyId", "firstName lastName department empId")
-      .populate("approvalHistory.approvedBy", "firstName lastName empId")
+      .populate(
+        "facultyId",
+        "firstName lastName department empId",
+      )
+      .populate(
+        "approvalHistory.approvedBy",
+        "firstName lastName empId",
+      )
       .sort({ createdAt: -1 });
-
 
     const filtered = permissions.filter(
       (p) =>
         p.facultyId &&
         typeof p.facultyId.department === "string" &&
-        typeof dept === "string" &&
-        p.facultyId.department.trim().toLowerCase() === dept.trim().toLowerCase(),
+        departments.includes(
+          p.facultyId.department.trim().toLowerCase(),
+        ),
     );
 
     return res.status(200).json({

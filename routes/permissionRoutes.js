@@ -15,7 +15,7 @@ router.get("/card/month", protect, permissionCtrl.getPermissionCard);
 router.get("/my", protect, permissionCtrl.getMyPermissions);
 
 // HOD: list by department
-router.get("/hod/list", protect, permissionCtrl.getPermissionsForHod);
+router.get("/hod/:department", protect, permissionCtrl.getPermissionsForHod);
 
 // Dean: list by department
 router.get("/dean/list", protect, permissionCtrl.getPermissionsForDean);
