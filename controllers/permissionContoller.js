@@ -147,6 +147,7 @@ exports.applyPermission = async (req, res, next) => {
     const {
       permissionDate,
       permissionType,
+      slot,
       fromTime,
       toTime,
       totalMinutes,
@@ -164,6 +165,7 @@ exports.applyPermission = async (req, res, next) => {
     if (
       !permissionDate ||
       !permissionType ||
+      !slot ||
       !fromTime ||
       !toTime ||
       !totalMinutes ||
@@ -336,6 +338,7 @@ exports.applyPermission = async (req, res, next) => {
       facultyId: req.user.facultyId,
       permissionDate,
       permissionType,
+      slot,
       fromTime,
       toTime,
       totalMinutes,
