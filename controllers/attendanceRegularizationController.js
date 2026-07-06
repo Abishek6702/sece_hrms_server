@@ -454,12 +454,18 @@ exports.getRequestsForHod = async (req, res) => {
   try {
     requireRole(req, "hod");
 
+    const { department } = req.params;
+
     const deanRoles = [
       "dean",
       "dean-academics",
       "dean-iqac",
       "dean-research",
     ];
+
+    const departments = department
+      .split(",")
+      .map((dept) => dept.trim().toLowerCase());
 
     const requests = await AttendanceRegularization.find({
       status: { $in: ["Pending", "Approved", "Rejected"] },
@@ -474,34 +480,35 @@ exports.getRequestsForHod = async (req, res) => {
       )
       .sort({ createdAt: -1 });
 
-   const filtered = requests.filter((request) => {
-  const facultyDept =
-    request.facultyId?.department?.trim().toLowerCase();
+    const filtered = requests.filter((request) => {
+      const facultyDept =
+        request.facultyId?.department?.trim().toLowerCase();
 
-  const hodDept =
-    req.user.department?.trim().toLowerCase();
+      // URL department-wise filter
+      // Example: CFRD,QPT
+      if (
+        !facultyDept ||
+        !departments.includes(facultyDept)
+      ) {
+        return false;
+      }
 
-  // Department-wise filter
-  if (!facultyDept || facultyDept !== hodDept) {
-    return false;
-  }
+      const submittedRecord = request.approvalHistory?.find(
+        (h) => h.action === "Submitted"
+      );
 
-  const submittedRecord = request.approvalHistory?.find(
-    (h) => h.action === "Submitted"
-  );
+      const submitter = submittedRecord?.role;
 
-  const submitter = submittedRecord?.role;
+      // Exclude HOD and Dean self-submissions
+      if (
+        submitter === "hod" ||
+        deanRoles.includes(submitter)
+      ) {
+        return false;
+      }
 
-  // Exclude HOD and Dean self-submissions
-  if (
-    submitter === "hod" ||
-    deanRoles.includes(submitter)
-  ) {
-    return false;
-  }
-
-  return true;
-});
+      return true;
+    });
 
     const formatted = await Promise.all(
       filtered.map(formatRequest)
