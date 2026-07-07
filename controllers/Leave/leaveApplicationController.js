@@ -513,13 +513,13 @@ exports.approveLeave = async (req, res) => {
 
     // Dean Approval
     else if (leaveApplication.currentApprovalLevel === "dean-research") {
-      leaveApplication.currentApprovalLevel = "dean-iqac";
+      leaveApplication.currentApprovalLevel = "principal";
       leaveApplication.approvalStatus.researchStatus = "Approved";
     }
 
     // COE Approval
     else if (leaveApplication.currentApprovalLevel === "coe") {
-      leaveApplication.currentApprovalLevel = "dean-iqac";
+      leaveApplication.currentApprovalLevel = "principal";
       leaveApplication.approvalStatus.coeStatus = "Approved";
     }
 
