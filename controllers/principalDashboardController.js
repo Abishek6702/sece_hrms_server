@@ -3,6 +3,7 @@ const LeaveApplication = require("../models/Leave/leaveApplication");
 const Permission = require("../models/permission");
 const AttendanceRegularization = require("../models/AttendanceRegularization");
 const Attendance = require("../models/attendance");
+const Shift = require("../models/shift");
 
 exports.getFacultyDesignationSummary = async (req, res) => {
   try {
@@ -191,49 +192,61 @@ exports.getAttendanceDashboardSummary = async (req, res) => {
   }
 };
 
+exports.getRecentFaculty = async (req, res) => {
+  try {
+    const faculties = await Faculty.find()
+      .sort({ createdAt: -1 }) // Newest first
+      .limit(7)
+      .select(
+        "empId salutation firstName lastName designation department organizationEmail phone createdAt"
+      );
+
+    res.status(200).json({
+      success: true,
+      count: faculties.length,
+      faculties,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 exports.getAttendanceList = async (req, res) => {
   try {
     const {
       search,
       department,
       employeeCategory,
-      date,
       fromDate,
       toDate,
       status,
+      shiftName,
     } = req.query;
 
-    const attendanceFilter = {};
+    // =============================
+    // Validate Date Range
+    // =============================
 
-    // Date Filter
-    if (date) {
-      const startDate = new Date(date);
-      startDate.setHours(0, 0, 0, 0);
-
-      const endDate = new Date(startDate);
-      endDate.setDate(endDate.getDate() + 1);
-
-      attendanceFilter.attendanceDate = {
-        $gte: startDate,
-        $lt: endDate,
-      };
+    if (!fromDate || !toDate) {
+      return res.status(400).json({
+        success: false,
+        message: "fromDate and toDate are required.",
+      });
     }
 
-    // Date Range Filter
-    if (fromDate && toDate) {
-      const startDate = new Date(fromDate);
-      startDate.setHours(0, 0, 0, 0);
+    const startDate = new Date(fromDate);
+    startDate.setHours(0, 0, 0, 0);
 
-      const endDate = new Date(toDate);
-      endDate.setHours(23, 59, 59, 999);
+    const endDate = new Date(toDate);
+    endDate.setHours(23, 59, 59, 999);
 
-      attendanceFilter.attendanceDate = {
-        $gte: startDate,
-        $lte: endDate,
-      };
-    }
+    // =============================
+    // Faculty Filter
+    // =============================
 
-    // Faculty Filters
     const facultyFilter = {
       employmentStatus: true,
     };
@@ -244,6 +257,14 @@ exports.getAttendanceList = async (req, res) => {
 
     if (employeeCategory) {
       facultyFilter.employeeCategory = employeeCategory;
+    }
+
+    if (shiftName) {
+      const Shift = require("../models/shift");
+      const shift = await Shift.findOne({ shiftName });
+      if (shift) {
+        facultyFilter.shiftId = shift._id;
+      }
     }
 
     if (search) {
@@ -269,103 +290,119 @@ exports.getAttendanceList = async (req, res) => {
       ];
     }
 
-    // ==========================
-    // NOT CHECKED IN
-    // ==========================
+    // Get Faculty IDs
+
+    const faculties = await Faculty.find(facultyFilter)
+      .populate({
+        path: "shiftId",
+        select: "shiftName startTime endTime graceTime workingMinutes",
+      })
+      .lean();
+
+    const facultyIds = faculties.map((f) => f._id);
+
+    // =============================
+    // Handle "Not Checked In" Status
+    // =============================
+
     if (status === "Not Checked In") {
-      if (!date) {
-        return res.status(400).json({
-          success: false,
-          message: "Date is required for Not Checked In filter",
-        });
-      }
-
-      const startDate = new Date(date);
-      startDate.setHours(0, 0, 0, 0);
-
-      const endDate = new Date(startDate);
-      endDate.setDate(endDate.getDate() + 1);
-
       const checkedInFacultyIds = await Attendance.find({
+        facultyId: {
+          $in: facultyIds,
+        },
         attendanceDate: {
           $gte: startDate,
-          $lt: endDate,
+          $lte: endDate,
         },
         inTime: {
           $ne: null,
         },
       }).distinct("facultyId");
 
-      facultyFilter._id = {
-        $nin: checkedInFacultyIds,
-      };
+      const notCheckedInFaculties = faculties.filter(
+        (f) => !checkedInFacultyIds.some((id) => id.equals(f._id))
+      );
 
-      const employees = await Faculty.find(facultyFilter)
-        .populate({
-          path: "shiftId",
-          select: "shiftName startTime endTime graceTime workingMinutes",
-        })
-        .lean();
-
-      const formattedEmployees = employees.map((emp) => ({
+      const formattedEmployees = notCheckedInFaculties.map((emp) => ({
+        _id: emp._id,
         facultyId: emp._id,
-
         shiftID: emp.shiftId?._id,
         shiftName: emp.shiftId?.shiftName,
         startTime: emp.shiftId?.startTime,
         endTime: emp.shiftId?.endTime,
-        graceTime: emp.shiftId?.graceTime,
-
+        graceTime: emp.shiftId?.graceTime || 0,
         empId: emp.empId,
-
         employeeName: `${emp.firstName || ""} ${emp.lastName || ""}`.trim(),
-
         department: emp.department,
-
         designation: emp.designation,
-
         employeeCategory: emp.employeeCategory,
-
-        attendanceDate: startDate,
-
+        fromDate: startDate,
+        toDate: endDate,
         inTime: null,
-
         outTime: null,
-
         workingMinutes: 0,
-
         workingHours: "0h 0m",
-
+        lateMinutes: 0,
         status: "Not Checked In",
       }));
 
       return res.status(200).json({
         success: true,
+        totalRecords: formattedEmployees.length,
         count: formattedEmployees.length,
-        totalCount: formattedEmployees.length,
+        filters: {
+          search: search || null,
+          department: department || null,
+          employeeCategory: employeeCategory || null,
+          fromDate: startDate,
+          toDate: endDate,
+          status: status || null,
+          shiftName: shiftName || null,
+        },
         attendance: formattedEmployees,
       });
     }
 
-    // ==========================
-    // NORMAL ATTENDANCE
-    // ==========================
+    // =============================
+    // Build Attendance Filter
+    // =============================
 
-    if (status) {
-      attendanceFilter.status = status;
+    const attendanceFilter = {
+      facultyId: {
+        $in: facultyIds,
+      },
+      attendanceDate: {
+        $gte: startDate,
+        $lte: endDate,
+      },
+      inTime: { $ne: null }, // Must have check-in to determine status
+    };
+
+    // Handle different statuses
+    if (status && status !== "Late" && status !== "Late Checked In") {
+      if (status === "Checked In") {
+        // Already filtered by inTime above
+      } else if (status === "Present") {
+        attendanceFilter.status = "Present";
+      } else if (status === "Absent") {
+        attendanceFilter.status = "Absent";
+      } else if (status === "Leave") {
+        attendanceFilter.status = {
+          $in: [
+            "Leave",
+            "First Half Leave",
+            "Second Half Leave",
+            "Holiday",
+          ],
+        };
+      }
     }
 
-    if (department || employeeCategory || search) {
-      const faculties = await Faculty.find(facultyFilter)
-        .select("_id")
-        .lean();
+    // =============================
+    // Get Attendance Records
+    // =============================
 
-      attendanceFilter.facultyId = {
-        $in: faculties.map((f) => f._id),
-      };
-    }
-
-    const attendance = await Attendance.find(attendanceFilter)
+    let attendance = await Attendance.find(attendanceFilter)
       .populate({
         path: "facultyId",
         select:
@@ -380,78 +417,120 @@ exports.getAttendanceList = async (req, res) => {
       })
       .lean();
 
-    const formattedAttendance = attendance.map((item) => ({
-      _id: item._id,
+    // =============================
+    // Format Attendance Data with Late Calculation
+    // =============================
 
-      facultyId: item.facultyId?._id,
+    const formattedAttendance = attendance
+      .map((item) => {
+        const shiftStartTime = item.facultyId?.shiftId?.startTime;
+        const graceTime = item.facultyId?.shiftId?.graceTime || 0;
+        let lateMinutes = 0;
+        let isLate = false;
 
-      shiftID: item.facultyId?.shiftId?._id,
-      shiftName: item.facultyId?.shiftId?.shiftName,
-      startTime: item.facultyId?.shiftId?.startTime,
-      endTime: item.facultyId?.shiftId?.endTime,
-      graceTime: item.facultyId?.shiftId?.graceTime,
+        // Calculate if employee is late
+        if (item.inTime && shiftStartTime) {
+          try {
+            const inTimeDate = new Date(item.inTime);
+            const [shiftHours, shiftMinutes] = shiftStartTime
+              .split(":")
+              .map(Number);
 
-      empId: item.facultyId?.empId || "",
+            // Create shift start time using the same date and timezone as inTime
+            const shiftStart = new Date(inTimeDate);
+            shiftStart.setHours(shiftHours, shiftMinutes, 0, 0);
 
-      employeeName: `${item.facultyId?.firstName || ""} ${
-        item.facultyId?.lastName || ""
-      }`.trim(),
+            // Add grace time (in minutes)
+            const shiftStartWithGrace = new Date(
+              shiftStart.getTime() + graceTime * 60000
+            );
 
-      department: item.facultyId?.department || "",
+            // Round down inTime to nearest minute (ignore seconds for comparison)
+            const inTimeRounded = new Date(inTimeDate);
+            inTimeRounded.setSeconds(0, 0); // Set seconds and milliseconds to 0
 
-      designation: item.facultyId?.designation || "",
+            // Compare actual check-in time with shift start + grace time
+            // Only mark as late if check-in is STRICTLY after the grace deadline (by at least 1 full minute)
+            if (inTimeRounded > shiftStartWithGrace) {
+              lateMinutes = Math.floor(
+                (inTimeRounded - shiftStartWithGrace) / 60000
+              );
+              isLate = true;
 
-      employeeCategory: item.facultyId?.employeeCategory || "",
+              // // Only log employees who are late
+              // console.log(`\n🔴 LATE - Employee: ${item.facultyId?.empId}`);
+              // console.log(`   InTime: ${inTimeDate.toISOString()}`);
+              // console.log(`   Shift: ${shiftStartTime}, Grace: ${graceTime}min`);
+              // console.log(`   Deadline (with grace): ${shiftStartWithGrace.toISOString()}`);
+              // console.log(`   Late Minutes: ${lateMinutes}\n`);
+            }
+          } catch (err) {
+            console.error("Error calculating late time:", err);
+          }
+        }
 
-      attendanceDate: item.attendanceDate,
+        return {
+          _id: item._id,
+          facultyId: item.facultyId?._id,
+          shiftID: item.facultyId?.shiftId?._id,
+          shiftName: item.facultyId?.shiftId?.shiftName,
+          startTime: item.facultyId?.shiftId?.startTime,
+          endTime: item.facultyId?.shiftId?.endTime,
+          graceTime: item.facultyId?.shiftId?.graceTime || 0,
+          empId: item.facultyId?.empId || "",
+          employeeName: `${item.facultyId?.firstName || ""} ${
+            item.facultyId?.lastName || ""
+          }`.trim(),
+          department: item.facultyId?.department || "",
+          designation: item.facultyId?.designation || "",
+          employeeCategory: item.facultyId?.employeeCategory || "",
+          attendanceDate: item.attendanceDate,
+          inTime: item.inTime,
+          outTime: item.outTime,
+          workingMinutes: item.workingMinutes || 0,
+          workingHours: `${Math.floor(
+            (item.workingMinutes || 0) / 60
+          )}h ${(item.workingMinutes || 0) % 60}m`,
+          lateMinutes: lateMinutes,
+          status: status === "Late" || status === "Late Checked In" ? "Late Checked In" : item.status,
+          isLate: isLate,
+          isOverridden: item.isOverridden || false,
+          regularization: item.regularization || false,
+        };
+      })
+      .filter((item) => {
+        // Filter by late status if specified
+        if (status === "Late" || status === "Late Checked In") {
+          // console.log(`Late Filter - Employee: ${item.empId}, isLate: ${item.isLate}, lateMinutes: ${item.lateMinutes}`);
+          return item.isLate;
+        }
+        return true;
+      });
 
-      inTime: item.inTime,
-
-      outTime: item.outTime,
-
-      workingMinutes: item.workingMinutes || 0,
-
-      workingHours: `${Math.floor(
-        (item.workingMinutes || 0) / 60
-      )}h ${(item.workingMinutes || 0) % 60}m`,
-
-      status: item.status,
-    }));
-
-    const totalCount = await Attendance.countDocuments(attendanceFilter);
+    // console.log(`Total Records after Late Filter: ${formattedAttendance.length}`);
 
     return res.status(200).json({
       success: true,
+      totalRecords: formattedAttendance.length,
       count: formattedAttendance.length,
-      totalCount,
+      filters: {
+        search: search || null,
+        department: department || null,
+        employeeCategory: employeeCategory || null,
+        fromDate: startDate,
+        toDate: endDate,
+        status: status || null,
+        shiftName: shiftName || null,
+      },
       attendance: formattedAttendance,
     });
   } catch (error) {
+    console.error("Error in getAttendanceList:", error);
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: error.message || "Failed to fetch attendance list",
     });
   }
 };
 
-exports.getRecentFaculty = async (req, res) => {
-  try {
-    const faculties = await Faculty.find()
-      .sort({ createdAt: -1 }) // Newest first
-      .limit(7)
-      .select(
-        "empId salutation firstName lastName designation department organizationEmail phone createdAt"
-      );
 
-    res.status(200).json({
-      success: true,
-      count: faculties.length,
-      faculties,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
