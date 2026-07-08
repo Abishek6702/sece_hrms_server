@@ -191,17 +191,14 @@ const facultySchema = new mongoose.Schema(
 
       pfNumber: {
         type: String,
-        unique: true,
-
-        sparse: true,
+       
       },
     },
 
     bankDetails: {
       accountNumber: {
         type: String,
-        unique: true,
-        sparse: true,
+        
       },
 
       bankName: String,
