@@ -80,9 +80,8 @@ const getStatusFromSessions = (session1, session2) => {
 
 const getDayRange = (date) => {
   if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    const [year, month, day] = date.split("-").map(Number);
-    const startDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
-    const endDate = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+    const startDate = new Date(`${date}T00:00:00+05:30`);
+    const endDate = new Date(`${date}T23:59:59.999+05:30`);
 
     return { startDate, endDate };
   }
