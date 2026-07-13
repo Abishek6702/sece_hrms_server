@@ -42,6 +42,74 @@ const formatApprover = (approvedBy) => {
   };
 };
 
+const normalizeDepartment = (value) => {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+};
+
+const getLevenshteinDistance = (left, right) => {
+  if (left === right) {
+    return 0;
+  }
+
+  if (!left.length) {
+    return right.length;
+  }
+
+  if (!right.length) {
+    return left.length;
+  }
+
+  const matrix = Array.from({ length: left.length + 1 }, () => []);
+
+  for (let i = 0; i <= left.length; i += 1) {
+    matrix[i][0] = i;
+  }
+
+  for (let j = 0; j <= right.length; j += 1) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= left.length; i += 1) {
+    for (let j = 1; j <= right.length; j += 1) {
+      const cost = left[i - 1] === right[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost,
+      );
+    }
+  }
+
+  return matrix[left.length][right.length];
+};
+
+const matchesDepartment = (requestedDepartment, facultyDepartment) => {
+  const normalizedRequested = normalizeDepartment(requestedDepartment);
+  const normalizedFaculty = normalizeDepartment(facultyDepartment);
+
+  if (!normalizedRequested || !normalizedFaculty) {
+    return false;
+  }
+
+  if (normalizedRequested === normalizedFaculty) {
+    return true;
+  }
+
+  if (normalizedRequested.length <= 3 || normalizedFaculty.length <= 3) {
+    return getLevenshteinDistance(normalizedRequested, normalizedFaculty) <= 1;
+  }
+
+  return (
+    getLevenshteinDistance(normalizedRequested, normalizedFaculty) <= 2 ||
+    normalizedRequested.includes(normalizedFaculty) ||
+    normalizedFaculty.includes(normalizedRequested)
+  );
+};
+
 const formatApprovalHistoryItem = (item) => ({
   role: item.role,
   approvedBy: formatApprover(item.approvedBy),
@@ -407,6 +475,8 @@ exports.getMyPermissions = async (req, res) => {
 
 // HOD: list permissions for department
 
+exports.matchesDepartment = matchesDepartment;
+
 exports.getPermissionsForHod = async (req, res) => {
   try {
     requireRole(req, "hod");
@@ -422,7 +492,7 @@ exports.getPermissionsForHod = async (req, res) => {
 
     const departments = department
       .split(",")
-      .map((dept) => dept.trim().toLowerCase());
+      .map((dept) => normalizeDepartment(dept));
 
     const permissions = await Permission.find({
       $or: [
@@ -452,14 +522,18 @@ exports.getPermissionsForHod = async (req, res) => {
       )
       .sort({ createdAt: -1 });
 
-    const filtered = permissions.filter(
-      (p) =>
-        p.facultyId &&
-        typeof p.facultyId.department === "string" &&
-        departments.includes(
-          p.facultyId.department.trim().toLowerCase(),
-        ),
-    );
+    const filtered = permissions.filter((p) => {
+      if (!p.facultyId) {
+        return false;
+      }
+
+      const facultyDepartment =
+        p.facultyId.department || p.facultyId.originalDepartment;
+
+      return departments.some((requestedDepartment) =>
+        matchesDepartment(requestedDepartment, facultyDepartment),
+      );
+    });
 
     return res.status(200).json({
       success: true,
