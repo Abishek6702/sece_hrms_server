@@ -25,6 +25,14 @@ async function processAttendance(attendanceDate) {
   }).populate("shiftId");
 
   for (const faculty of faculties) {
+    const isDriver = faculty.employeeCategory === "Driver";
+
+    const isSupportStaff = [
+      "Housekeeping",
+      "Security",
+      "Electrical-Maintenance",
+    ].includes(faculty.employeeCategory);
+
     const nextAttendanceDate = new Date(date);
     nextAttendanceDate.setUTCDate(nextAttendanceDate.getUTCDate() + 1);
 
@@ -180,6 +188,24 @@ async function processAttendance(attendanceDate) {
       continue;
     }
 
+    if (isSupportStaff) {
+      if (attendance.workingMinutes >= shift.workingMinutes) {
+        attendance.status = "Present";
+        attendance.lopDays = 0;
+        attendance.remarks = "";
+  
+        await attendance.save();
+        continue;
+      }
+  
+      attendance.status = "Second Half Leave";
+      attendance.lopDays = 0;
+      attendance.remarks = "Insufficient Working Hours";
+  
+      await attendance.save();
+      continue;
+    }
+
     const [startHour, startMinute] = shift.startTime.split(":").map(Number);
 
     // Base everything on the stored attendance date
@@ -190,12 +216,21 @@ async function processAttendance(attendanceDate) {
     shiftStartTime.setUTCMinutes(
       shiftStartTime.getUTCMinutes() + startHour * 60 + startMinute,
     );
+    const [endHour, endMinute] = shift.endTime.split(":").map(Number);
 
+    const shiftEndTime = new Date(attendance.attendanceDate);
+    
+    shiftEndTime.setUTCMinutes(
+      shiftEndTime.getUTCMinutes() +
+      endHour * 60 +
+      endMinute
+    );
     const normalGraceEnd = new Date(shiftStartTime);
 
     normalGraceEnd.setUTCMinutes(
       normalGraceEnd.getUTCMinutes() + shift.graceTime,
     );
+  
 
     const lateGraceEnd = new Date(normalGraceEnd);
 
@@ -211,6 +246,7 @@ async function processAttendance(attendanceDate) {
       attendance.workingMinutes >= requiredMinutes;
 
     const punchInTime = attendance.inTime;
+    const punchOutTime = attendance.outTime;
 
     if (!punchInTime) {
       attendance.status = "Absent";
@@ -221,11 +257,27 @@ async function processAttendance(attendanceDate) {
       continue;
     }
 
-    let effectiveReportingTime = normalGraceEnd;
+    if (
+      isDriver &&
+      (
+        !punchOutTime ||
+        punchOutTime.getTime() < shiftEndTime.getTime()
+      )
+    ) {
+        attendance.status = "Second Half Leave";
+        attendance.lopDays = 0;
+        attendance.remarks = "Early Out";
+    
+        await attendance.save();
+        continue;
+    }
 
-    let effectiveLateWindowEnd = lateGraceEnd;
+    let effectiveReportingTime = isDriver ? shiftStartTime : normalGraceEnd;
 
-    if (permission) {
+    let effectiveLateWindowEnd = isDriver
+      ? new Date(shiftStartTime.getTime() + 10 * 60000)
+      : lateGraceEnd;
+    if (permission && !isDriver) {
       const [hour, minute] = permission.toTime.split(":").map(Number);
       effectiveReportingTime = new Date(attendance.attendanceDate);
 

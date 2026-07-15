@@ -4,23 +4,38 @@ const Faculty = require("../models/Faculty");
 const LeaveApplication = require("../models/Leave/leaveApplication");
 const AttendanceLateCounter = require("../models/attendanceLateCounter");
 const Permission = require("../models/permission");
-const { getDayRange } = require("../utils/getDayRange");
 
 async function processSingleFacultyAttendance(facultyId, attendanceDate) {
   const processDate = new Date(attendanceDate);
-processDate.setUTCHours(0, 0, 0, 0);
+  processDate.setUTCHours(0, 0, 0, 0);
 
-const date = new Date(processDate);
-date.setUTCHours(18, 30, 0, 0);
-date.setUTCDate(date.getUTCDate() - 1);
+  const date = new Date(processDate);
+  date.setUTCHours(18, 30, 0, 0);
+  date.setUTCDate(date.getUTCDate() - 1);
 
-const nextAttendanceDate = new Date(date);
-nextAttendanceDate.setUTCDate(nextAttendanceDate.getUTCDate() + 1);
+  const nextAttendanceDate = new Date(date);
+  nextAttendanceDate.setUTCDate(nextAttendanceDate.getUTCDate() + 1);
 
   const faculty = await Faculty.findById(facultyId).populate("shiftId");
-
   if (!faculty) {
     return false;
+  }
+
+  const isDriver = faculty.employeeCategory === "Driver";
+
+  const isSupportStaff = [
+    "Housekeeping",
+    "Security",
+    "Electrical-Maintenance",
+  ].includes(faculty.employeeCategory);
+
+
+  const shift = faculty.shiftId;
+
+  if (!shift) {
+    console.log(`Shift not assigned for ${faculty.empId}`);
+
+    return;
   }
 
   let attendance = await Attendance.findOne({
@@ -28,7 +43,7 @@ nextAttendanceDate.setUTCDate(nextAttendanceDate.getUTCDate() + 1);
     attendanceDate: {
       $gte: date,
       $lt: nextAttendanceDate,
-    }
+    },
   });
 
   // HOLIDAY
@@ -42,7 +57,7 @@ nextAttendanceDate.setUTCDate(nextAttendanceDate.getUTCDate() + 1);
     holidayDate: {
       $gte: processDate,
       $lt: nextDate,
-    }
+    },
   });
 
   if (holiday && !attendance) {
@@ -52,9 +67,9 @@ nextAttendanceDate.setUTCDate(nextAttendanceDate.getUTCDate() + 1);
   // SUNDAY CHECK
 
   const istDate = new Date(processDate);
-istDate.setUTCMinutes(istDate.getUTCMinutes() + 330);
+  istDate.setUTCMinutes(istDate.getUTCMinutes() + 330);
 
-const isSunday = istDate.getUTCDay() === 0;
+  const isSunday = istDate.getUTCDay() === 0;
 
   if (isSunday && !attendance) {
     console.log("SKIPPED - Sunday and no attendance");
@@ -62,7 +77,7 @@ const isSunday = istDate.getUTCDay() === 0;
   }
 
   // LEAVE
-   console.log("checking leavev :",date)
+  // console.log("checking leavev :", date);
   const leaveApplication = await LeaveApplication.findOne({
     facultyId: faculty._id,
     status: "Approved",
@@ -73,7 +88,7 @@ const isSunday = istDate.getUTCDay() === 0;
       $gte: processDate,
     },
   }).populate("leaveTypeId");
-  console.log("Leave Found:", leaveApplication);
+  // console.log("Leave Found:", leaveApplication);
   if (leaveApplication) {
     let leaveStatus = "Leave";
     console.log(`LEAVE FOUND - ${leaveStatus} ${leaveApplication._id}`);
@@ -119,12 +134,11 @@ const isSunday = istDate.getUTCDay() === 0;
     // console.log(` Permission found till ${permission.toTime}`),
     facultyId: faculty._id,
     status: "Approved",
-    
+
     permissionDate: {
       $gte: processDate,
       $lt: new Date(processDate.getTime() + 24 * 60 * 60 * 1000),
     },
-   
   });
   // ABSENT
 
@@ -156,6 +170,28 @@ const isSunday = istDate.getUTCDay() === 0;
     return;
   }
 
+  // =================================
+  // SUPPORT STAFF
+  // =================================
+
+  if (isSupportStaff) {
+    if (attendance.workingMinutes >= shift.workingMinutes) {
+      attendance.status = "Present";
+      attendance.lopDays = 0;
+      attendance.remarks = "";
+
+      await attendance.save();
+      return;
+    }
+
+    attendance.status = "Second Half Leave";
+    attendance.lopDays = 0;
+    attendance.remarks = "Insufficient Working Hours";
+
+    await attendance.save();
+    return;
+  }
+
   // LATE LOGIC
   // NEXT STEP
 
@@ -163,41 +199,40 @@ const isSunday = istDate.getUTCDay() === 0;
   // SHIFT VALIDATION
   // =================================
 
-  const shift = faculty.shiftId;
-
-  if (!shift) {
-    console.log(`Shift not assigned for ${faculty.empId}`);
-
-    return;
-  }
-
   const [startHour, startMinute] = shift.startTime.split(":").map(Number);
 
   const shiftStartTime = new Date(attendance.attendanceDate);
 
-shiftStartTime.setUTCMinutes(
-  shiftStartTime.getUTCMinutes() +
-  startHour * 60 +
-  startMinute
+  shiftStartTime.setUTCMinutes(
+    shiftStartTime.getUTCMinutes() + startHour * 60 + startMinute,
+  );
+
+  const [endHour, endMinute] = shift.endTime.split(":").map(Number);
+
+const shiftEndTime = new Date(attendance.attendanceDate);
+
+shiftEndTime.setUTCMinutes(
+  shiftEndTime.getUTCMinutes() +
+  endHour * 60 +
+  endMinute
 );
 
   const normalGraceEnd = new Date(shiftStartTime);
 
   normalGraceEnd.setUTCMinutes(
-    normalGraceEnd.getUTCMinutes() + shift.graceTime
+    normalGraceEnd.getUTCMinutes() + shift.graceTime,
   );
 
   const lateGraceEnd = new Date(normalGraceEnd);
 
-  lateGraceEnd.setUTCMinutes(
-    lateGraceEnd.getUTCMinutes() + 10
-  );
+  lateGraceEnd.setUTCMinutes(lateGraceEnd.getUTCMinutes() + 10);
 
   const requiredMinutes = shift.workingMinutes;
 
   const hasCompletedWorkingHours = attendance.workingMinutes >= requiredMinutes;
 
   const punchInTime = attendance.inTime;
+  const punchOutTime = attendance.outTime;
 
   if (!punchInTime) {
     attendance.status = "Absent";
@@ -207,29 +242,42 @@ shiftStartTime.setUTCMinutes(
     await attendance.save();
     return;
   }
+  if (
+    isDriver &&
+    (
+      !punchOutTime ||
+      punchOutTime.getTime() < shiftEndTime.getTime()
+    )
+  ) {
+      attendance.status = "Second Half Leave";
+      attendance.lopDays = 0;
+      attendance.remarks = "Early Out";
+  
+      await attendance.save();
+      return;
+  }
+  let effectiveReportingTime = isDriver ? shiftStartTime : normalGraceEnd;
 
-  let effectiveReportingTime = normalGraceEnd;
+  let effectiveLateWindowEnd = isDriver
+    ? new Date(shiftStartTime.getTime() + 10 * 60000)
+    : lateGraceEnd;
 
-  let effectiveLateWindowEnd = lateGraceEnd;
-
-  if (permission) {
+  if (permission && !isDriver) {
     const [hour, minute] = permission.toTime.split(":").map(Number);
 
     effectiveReportingTime = new Date(attendance.attendanceDate);
 
     effectiveReportingTime.setUTCMinutes(
-      effectiveReportingTime.getUTCMinutes() +
-      hour * 60 +
-      minute
+      effectiveReportingTime.getUTCMinutes() + hour * 60 + minute,
     );
 
     effectiveLateWindowEnd = new Date(effectiveReportingTime);
 
     effectiveLateWindowEnd.setUTCMinutes(
-      effectiveLateWindowEnd.getUTCMinutes() + 10
+      effectiveLateWindowEnd.getUTCMinutes() + 10,
     );
 
-    console.log(`${faculty.empId} Permission Applied`);
+    // console.log(`${faculty.empId} Permission Applied`);
   }
 
   // =================================
@@ -277,10 +325,10 @@ shiftStartTime.setUTCMinutes(
 
   if (punchMinutes <= lateWindowMinutes) {
     const attendanceDay = new Date(attendance.attendanceDate);
-attendanceDay.setUTCMinutes(attendanceDay.getUTCMinutes() + 330);
+    attendanceDay.setUTCMinutes(attendanceDay.getUTCMinutes() + 330);
 
-const month = attendanceDay.getUTCMonth() + 1;
-const year = attendanceDay.getUTCFullYear();
+    const month = attendanceDay.getUTCMonth() + 1;
+    const year = attendanceDay.getUTCFullYear();
 
     let lateCounter = await AttendanceLateCounter.findOne({
       facultyId: faculty._id,

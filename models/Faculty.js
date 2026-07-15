@@ -113,7 +113,7 @@ const facultySchema = new mongoose.Schema(
     employeeCategory: {
       type: String,
       required: true,
-      enum: ["Teaching", "Non-Teaching", "Driver", "Housekeeping"],
+      enum: ["Teaching", "Non-Teaching", "Driver", "Housekeeping","Security","Electrical-Maintenance"],
     },
 
     doj: {
