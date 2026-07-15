@@ -10,6 +10,7 @@ const {
   bulkUpdateAttendanceByDateRange,
   bulkUpdateAttendanceByEmployee,
   getAttendanceOverrideHistory,
+  getAttendanceOverride,
 } = require("../controllers/attendanceOverrideController");
 
 router.get("/date/:date", protect, getAttendanceByDate);
@@ -35,4 +36,7 @@ router.put(
 );
 
 router.get("/history", protect, getAttendanceOverrideHistory);
+
+router.get("/muster", protect, getAttendanceOverride);
+
 module.exports = router;
