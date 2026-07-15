@@ -314,13 +314,13 @@ exports.updateAttendanceOverride = async (req, res) => {
     }
 
     // Update attendance
-    if (firstIn !== undefined) {
-      attendance.inTime = firstIn;
-    }
+    // if (firstIn !== undefined) {
+    //   attendance.inTime = firstIn;
+    // }
 
-    if (lastOut !== undefined) {
-      attendance.outTime = lastOut;
-    }
+    // if (lastOut !== undefined) {
+    //   attendance.outTime = lastOut;
+    // }
 
     if (requestedSession1 !== null && requestedSession2 !== null) {
       const statusKey = getStatusFromSessions(
@@ -349,11 +349,11 @@ exports.updateAttendanceOverride = async (req, res) => {
     }
 
     // Recalculate working minutes
-    if (attendance.inTime && attendance.outTime) {
-      attendance.workingMinutes = Math.floor(
-        (new Date(attendance.outTime) - new Date(attendance.inTime)) / 60000,
-      );
-    }
+    // if (attendance.inTime && attendance.outTime) {
+    //   attendance.workingMinutes = Math.floor(
+    //     (new Date(attendance.outTime) - new Date(attendance.inTime)) / 60000,
+    //   );
+    // }
 
     await attendance.save();
 
@@ -489,15 +489,15 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
         const previousInTime = attendance.inTime;
         const previousOutTime = attendance.outTime;
 
-        // Update In Time
-        if (firstIn !== undefined) {
-          attendance.inTime = firstIn;
-        }
+        // // Update In Time
+        // if (firstIn !== undefined) {
+        //   attendance.inTime = firstIn;
+        // }
 
-        // Update Out Time
-        if (lastOut !== undefined) {
-          attendance.outTime = lastOut;
-        }
+        // // Update Out Time
+        // if (lastOut !== undefined) {
+        //   attendance.outTime = lastOut;
+        // }
         let newStatus = attendance.status;
 
         // Update Status
@@ -530,12 +530,12 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
         }
 
         // Calculate working minutes
-        if (attendance.inTime && attendance.outTime) {
-          attendance.workingMinutes = Math.floor(
-            (new Date(attendance.outTime) - new Date(attendance.inTime)) /
-              60000,
-          );
-        }
+        // if (attendance.inTime && attendance.outTime) {
+        //   attendance.workingMinutes = Math.floor(
+        //     (new Date(attendance.outTime) - new Date(attendance.inTime)) /
+        //       60000,
+        //   );
+        // }
 
         await attendance.save();
 
@@ -679,8 +679,8 @@ exports.bulkUpdateAttendanceByEmployee = async (req, res) => {
       const previousInTime = attendance.inTime;
       const previousOutTime = attendance.outTime;
 
-      if (firstIn !== undefined) attendance.inTime = firstIn;
-      if (lastOut !== undefined) attendance.outTime = lastOut;
+      // if (firstIn !== undefined) attendance.inTime = firstIn;
+      // if (lastOut !== undefined) attendance.outTime = lastOut;
 
       if (requestedSession1 !== null && requestedSession2 !== null) {
         const newStatus = getStatusFromSessions(
@@ -699,11 +699,11 @@ exports.bulkUpdateAttendanceByEmployee = async (req, res) => {
         attendance.overrideStatus = newStatus;
       }
 
-      if (attendance.inTime && attendance.outTime) {
-        attendance.workingMinutes = Math.floor(
-          (new Date(attendance.outTime) - new Date(attendance.inTime)) / 60000,
-        );
-      }
+      // if (attendance.inTime && attendance.outTime) {
+      //   attendance.workingMinutes = Math.floor(
+      //     (new Date(attendance.outTime) - new Date(attendance.inTime)) / 60000,
+      //   );
+      // }
 
       await attendance.save();
 
