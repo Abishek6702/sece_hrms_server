@@ -503,12 +503,19 @@ const formatISTDate = (date) => {
 };
 exports.getFacultyAttendanceHistory = async (req, res) => {
   try {
-    const { facultyId, page = 1 } = req.query;
+    const { facultyId, fromDate, toDate, status } = req.query;
 
     if (!facultyId) {
       return res.status(400).json({
         success: false,
         message: "facultyId is required",
+      });
+    }
+
+    if (!fromDate || !toDate) {
+      return res.status(400).json({
+        success: false,
+        message: "fromDate and toDate are required",
       });
     }
 
@@ -521,7 +528,7 @@ exports.getFacultyAttendanceHistory = async (req, res) => {
 
     const faculty = await Faculty.findById(facultyId).populate(
       "shiftId",
-      "shiftName workingMinutes",
+      "shiftName workingMinutes"
     );
 
     if (!faculty) {
@@ -531,17 +538,32 @@ exports.getFacultyAttendanceHistory = async (req, res) => {
       });
     }
 
-    const limit = 7;
-    const currentPage = Number(page);
-    const skip = (currentPage - 1) * limit;
+    const startDate = new Date(fromDate);
+    startDate.setHours(0, 0, 0, 0);
+
+    const endDate = new Date(toDate);
+    endDate.setHours(0, 0, 0, 0);
+
+    if (isNaN(startDate) || isNaN(endDate)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid date format",
+      });
+    }
+
+    if (startDate > endDate) {
+      return res.status(400).json({
+        success: false,
+        message: "fromDate cannot be greater than toDate",
+      });
+    }
 
     const records = [];
 
-    for (let i = skip; i < skip + limit; i++) {
-      const date = new Date();
+    let current = new Date(startDate);
 
-      date.setHours(0, 0, 0, 0);
-      date.setDate(date.getDate() - i);
+    while (current <= endDate) {
+      const date = new Date(current);
 
       const nextDate = new Date(date);
       nextDate.setDate(nextDate.getDate() + 1);
@@ -572,6 +594,7 @@ exports.getFacultyAttendanceHistory = async (req, res) => {
             : null,
         });
 
+        current.setDate(current.getDate() + 1);
         continue;
       }
 
@@ -594,6 +617,7 @@ exports.getFacultyAttendanceHistory = async (req, res) => {
           holidayName: holiday.holidayName,
         });
 
+        current.setDate(current.getDate() + 1);
         continue;
       }
 
@@ -606,6 +630,7 @@ exports.getFacultyAttendanceHistory = async (req, res) => {
           status: "OFF",
         });
 
+        current.setDate(current.getDate() + 1);
         continue;
       }
 
@@ -616,14 +641,27 @@ exports.getFacultyAttendanceHistory = async (req, res) => {
         workingHours: 0,
         status: "-",
       });
+
+      current.setDate(current.getDate() + 1);
+    }
+
+    // Latest date first
+    records.reverse();
+
+    let filteredRecords = records;
+
+    if (status) {
+      filteredRecords = filteredRecords.filter(
+        (record) =>
+          record.status &&
+          record.status.toLowerCase() === status.toLowerCase()
+      );
     }
 
     return res.status(200).json({
       success: true,
-      currentPage,
-      pageSize: limit,
-      totalPages: Math.ceil(365 / limit), // optional
-      records,
+      totalRecords: filteredRecords.length,
+      records: filteredRecords,
     });
   } catch (error) {
     console.error(error);
