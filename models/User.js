@@ -62,6 +62,7 @@ const userSchema = new mongoose.Schema(
         "non-teaching",
         "driver",
         "housekeeping",
+        "security",
         "dean-academics",
         "supervisor-driver",
         "supervisor-housekeeping",
