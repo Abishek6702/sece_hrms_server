@@ -26,20 +26,38 @@ const parseDate = (value) => {
     return value;
   }
 
-  if (typeof value === "string") {
-    const parts = value.includes(".")
-      ? value.split(".")
-      : value.includes("-")
-        ? value.split("-")
-        : null;
+  // Excel sometimes stores dates as numbers
+  if (typeof value === "number") {
+    const excelDate = XLSX.SSF.parse_date_code(value);
 
-    if (parts?.length === 3) {
-      const [day, month, year] = parts;
+    return new Date(
+      excelDate.y,
+      excelDate.m - 1,
+      excelDate.d
+    );
+  }
+
+  if (typeof value === "string") {
+    const str = value.trim();
+
+    let parts;
+
+    if (str.includes("/")) {
+      parts = str.split("/");
+    } else if (str.includes("-")) {
+      parts = str.split("-");
+    } else if (str.includes(".")) {
+      parts = str.split(".");
+    }
+
+    if (parts && parts.length === 3) {
+      const [day, month, year] = parts.map(Number);
+
       return new Date(year, month - 1, day);
     }
   }
 
-  return value;
+  return null;
 };
 exports.importExcelFaculty = async (req, res) => {
   try {
@@ -54,7 +72,10 @@ exports.importExcelFaculty = async (req, res) => {
     const sheet = workbook.Sheets[sheetName];
 
     // 👉 convert to JSON
-    const faculties = XLSX.utils.sheet_to_json(sheet);
+    const faculties = XLSX.utils.sheet_to_json(sheet, {
+      raw: false,
+      defval: "",
+    });
 
     if (!Array.isArray(faculties)) {
       return res.status(400).json({ message: "Invalid Excel format" });
