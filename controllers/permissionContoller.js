@@ -303,27 +303,27 @@ exports.applyPermission = async (req, res, next) => {
 
     // NOTE: weekend check removed — permissions allowed any day unless holiday
 
-    // 3) Block permission dates older than the previous 2 days; future dates remain allowed
-    const now = new Date();
-    const todayStart = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      0,
-      0,
-      0,
-      0,
-    );
-    const allowedStart = new Date(todayStart);
-    allowedStart.setDate(allowedStart.getDate() - 2); // start of day (today - 2)
+    // // 3) Block permission dates older than the previous 2 days; future dates remain allowed
+    // const now = new Date();
+    // const todayStart = new Date(
+    //   now.getFullYear(),
+    //   now.getMonth(),
+    //   now.getDate(),
+    //   0,
+    //   0,
+    //   0,
+    //   0,
+    // );
+    // const allowedStart = new Date(todayStart);
+    // allowedStart.setDate(allowedStart.getDate() - 2); // start of day (today - 2)
 
-    if (startOfDay < allowedStart) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Permission cannot be applied for dates earlier than the previous 2 days. Applications are allowed only within the last 2 days from today.",
-      });
-    }
+    // if (startOfDay < allowedStart) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message:
+    //       "Permission cannot be applied for dates earlier than the previous 2 days. Applications are allowed only within the last 2 days from today.",
+    //   });
+    // }
 
     // 4) Permission date must fall in the current 26th -> 25th window
     const getCurrentWindowRange = (date) => {
