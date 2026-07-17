@@ -99,12 +99,12 @@ exports.applyLeave = async (req, res) => {
     const startDate = new Date(fromDate);
     startDate.setHours(0, 0, 0, 0);
 
-    if (startDate < allowedPastDate) {
-      return res.status(400).json({
-        success: false,
-        message: "Leave can only be applied up to 2 days in the past",
-      });
-    }
+    // if (startDate < allowedPastDate) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "Leave can only be applied up to 2 days in the past",
+    //   });
+    // }
 
     if (new Date(fromDate) > new Date(toDate)) {
       return res.status(400).json({
