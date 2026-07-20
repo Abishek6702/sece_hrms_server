@@ -344,7 +344,8 @@ exports.applyPermission = async (req, res, next) => {
     };
 
     const { start: currentWindowStart, end: currentWindowEnd } =
-      getCurrentWindowRange(now);
+      // Use current date to determine the active 26th->25th permission window
+      getCurrentWindowRange(new Date());
     if (startOfDay < currentWindowStart || startOfDay > currentWindowEnd) {
       return res.status(400).json({
         success: false,
