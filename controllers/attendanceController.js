@@ -282,7 +282,7 @@ exports.getAttendanceMusterV1 = async (req, res) => {
     }
 
     const faculties = await Faculty.find(facultyFilter).select(
-      "empId firstName middleName lastName designation department employeeCategory",
+      "empId firstName middleName lastName designation department employeeCategory punchId",
     );
 
     const facultyIds = faculties.map((faculty) => faculty._id);
@@ -462,6 +462,7 @@ exports.getAttendanceMusterV1 = async (req, res) => {
         designation: faculty.designation,
         department: faculty.department,
         employeeCategory: faculty.employeeCategory,
+        punchId: faculty.punchId,
         attendance: attendanceDays,
       };
     });
