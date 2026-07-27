@@ -57,9 +57,11 @@ async function processAttendance(attendanceDate) {
 
     // HOLIDAY
 
+    // HOLIDAY
+
     const nextDate = new Date(processDate);
     nextDate.setUTCDate(nextDate.getUTCDate() + 1);
-
+    
     const holiday = await Holiday.findOne({
       isActive: true,
       applicableEmployeeCategories: faculty.employeeCategory,
@@ -68,8 +70,21 @@ async function processAttendance(attendanceDate) {
         $lt: nextDate,
       },
     });
-
-    if (holiday) {
+    
+    // console.log("Holiday:", holiday);
+    
+    if (holiday && attendance) {
+      if (attendance.inTime) {
+        attendance.status = "Present";
+        attendance.remarks = `Holiday - ${holiday.holidayName}`;
+      } else {
+        attendance.status = "Holiday";
+        attendance.remarks = holiday.holidayName;
+      }
+    
+      attendance.lopDays = 0;
+      await attendance.save();
+    
       continue;
     }
     // SUNDAY CHECK

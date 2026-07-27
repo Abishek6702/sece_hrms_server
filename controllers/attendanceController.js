@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const Attendance = require("../models/attendance");
 const Faculty = require("../models/Faculty");
 const Holiday = require("../models/holiday");
+const LeaveApplication = require("../models/Leave/leaveApplication");
 
 exports.getAttendanceMuster = async (req, res) => {
   try {
@@ -303,6 +304,50 @@ exports.getAttendanceMusterV1 = async (req, res) => {
       },
     }).select("holidayDate applicableEmployeeCategories");
 
+    // Fetch approved leave applications covering this muster period
+    const approvedLeaves = await LeaveApplication.find({
+      facultyId: { $in: facultyIds },
+      status: "Approved",
+      fromDate: { $lte: endDate },
+      toDate: { $gte: startDate },
+    }).populate("leaveTypeId", "leaveName leaveCategory");
+
+    // Map: "facultyId" -> array of { fromDate, toDate, abbr }
+    const leaveAppMap = {};
+    approvedLeaves.forEach((app) => {
+      const fid = app.facultyId.toString();
+      if (!leaveAppMap[fid]) leaveAppMap[fid] = [];
+      const name = (app.leaveTypeId?.leaveName || "").trim().toLowerCase();
+      const category = app.leaveTypeId?.leaveCategory || "Regular";
+      let abbr;
+      if (category === "On Duty") {
+        if (name.includes("research")) abbr = "OD-R";
+        else if (name.includes("exam")) abbr = "OD-E";
+        else if (name.includes("official")) abbr = "OD-O";
+        else abbr = "OD";
+      } else {
+        if (name.includes("casual")) abbr = "CL";
+        else if (name.includes("medical")) abbr = "ML";
+        else if (name.includes("lop") || name.includes("loss of pay")) abbr = "LOP";
+        else if (name.includes("maternity")) abbr = "MA";
+        else abbr = "L";
+      }
+      leaveAppMap[fid].push({
+        fromDate: new Date(app.fromDate),
+        toDate: new Date(app.toDate),
+        abbr,
+      });
+    });
+
+    // Returns the approved leave abbreviation for a faculty on a given date, or null
+    const getApprovedLeaveAbbr = (facultyIdStr, dayDate) => {
+      const apps = leaveAppMap[facultyIdStr] || [];
+      const match = apps.find(
+        (a) => dayDate >= a.fromDate && dayDate <= a.toDate,
+      );
+      return match ? match.abbr : null;
+    };
+
     const attendanceMap = {};
 
     attendances.forEach((attendance) => {
@@ -313,14 +358,24 @@ exports.getAttendanceMusterV1 = async (req, res) => {
       }
 
       let day;
+      let dayDate;
 
       if (attendance.inTime) {
         day = attendance.inTime.getUTCDate();
+        dayDate = new Date(Date.UTC(
+          attendance.inTime.getUTCFullYear(),
+          attendance.inTime.getUTCMonth(),
+          attendance.inTime.getUTCDate(),
+        ));
       } else {
         const istDate = new Date(attendance.attendanceDate);
         istDate.setMinutes(istDate.getMinutes() + 330);
-
         day = istDate.getUTCDate();
+        dayDate = new Date(Date.UTC(
+          istDate.getUTCFullYear(),
+          istDate.getUTCMonth(),
+          istDate.getUTCDate(),
+        ));
       }
 
       // Decide which status to display
@@ -378,6 +433,32 @@ exports.getAttendanceMusterV1 = async (req, res) => {
         case "Second Half OD":
           value = "P:OD";
           break;
+      }
+
+      // If there is an approved leave application for this day, override
+      // the generic L / A:P / P:A / OD / OD:P / P:OD with the specific abbreviation
+      const approvedAbbr = getApprovedLeaveAbbr(facultyId, dayDate);
+      if (approvedAbbr) {
+        switch (displayStatus) {
+          case "Leave":
+            value = approvedAbbr;
+            break;
+          case "First Half Leave":
+            value = approvedAbbr + ":P";
+            break;
+          case "Second Half Leave":
+            value = "P:" + approvedAbbr;
+            break;
+          case "On Duty":
+            value = approvedAbbr;
+            break;
+          case "First Half OD":
+            value = approvedAbbr + ":P";
+            break;
+          case "Second Half OD":
+            value = "P:" + approvedAbbr;
+            break;
+        }
       }
 
       attendanceMap[facultyId][day] = {

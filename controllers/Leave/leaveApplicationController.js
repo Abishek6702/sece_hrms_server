@@ -552,7 +552,10 @@ exports.approveLeave = async (req, res) => {
         });
       }
 
-      if (leaveApplication.leaveTypeId.leaveName === "LOP") {
+      if (
+        leaveApplication.leaveTypeId.leaveName === "LOP" ||
+        leaveApplication.leaveTypeId.leaveName === "On Duty - Official"
+      ) {
         leaveBalance.usedDays += leaveApplication.totalDays;
       } else {
         leaveBalance.usedDays += leaveApplication.totalDays;
