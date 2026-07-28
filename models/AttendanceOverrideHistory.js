@@ -35,9 +35,42 @@ const attendanceOverrideHistorySchema = new mongoose.Schema(
       required: true,
     },
 
+    leaveTypeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "LeaveType",
+      default: null,
+    },
+
+    leaveName: {
+      type: String,
+      default: null,
+    },
+
+    days: {
+      type: Number,
+      default: 0,
+    },
+
+    academicYear: {
+      type: String,
+      default: null,
+    },
+
+    currentMonth: {
+      type: Number,
+      min: 1,
+      max: 12,
+      default: null,
+    },
+
+    deductedDays: {
+      type: Number,
+      default: 0,
+    },
+
     session1: {
       type: String,
-      default: "abi",
+      default: null,
     },
 
     session2: {
