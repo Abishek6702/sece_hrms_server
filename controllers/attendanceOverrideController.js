@@ -3,6 +3,9 @@ const Attendance = require("../models/attendance");
 const AttendanceOverrideHistory = require("../models/AttendanceOverrideHistory");
 const Faculty = require("../models/Faculty");
 const Holiday = require("../models/holiday");
+const LeaveType = require("../models/Leave/leaveType");
+const LeaveBalance = require("../models/Leave/leaveBalance");
+// const deductLeaveBalance = require("../utils/deductLeaveBalance");
 
 const STATUS_CODE_MAP = {
   Present: "P:P",
@@ -50,34 +53,236 @@ const SESSION_STATUS_MAP = {
   // Optional aliases
   "OD:A": "First Half OD",
   "A:OD": "Second Half OD",
+
+  // Leave type-specific session codes
+  "CL:CL": "Leave",
+  "ML:ML": "Leave",
+  "LOP:LOP": "Leave",
+  "CL:P": "First Half Leave",
+  "P:CL": "Second Half Leave",
+  "ML:P": "First Half Leave",
+  "P:ML": "Second Half Leave",
+  "LOP:P": "First Half Leave",
+  "P:LOP": "Second Half Leave",
+  "L:P": "First Half Leave",
+  "P:L": "Second Half Leave",
 };
 
 const STATUS_SESSION_MAP = {
+  // Present
   Present: ["P", "P"],
 
-  Absent: ["A", "A"],
+  // Leave Types
+  CL: ["CL", "CL"],
+  LOP: ["LOP", "LOP"],
+  ML: ["ML", "ML"],
 
-  "Half Day": ["A", "P"],
+  // Half Day Leave
+  "First Half CL": ["CL", "P"],
+  "Second Half CL": ["P", "CL"],
 
-  "First Half Leave": ["A", "P"],
-  "Second Half Leave": ["P", "A"],
+  "First Half LOP": ["LOP", "P"],
+  "Second Half LOP": ["P", "LOP"],
 
-  Leave: ["L", "L"],
+  "First Half ML": ["ML", "P"],
+  "Second Half ML": ["P", "ML"],
+
+  // On Duty
+  "On Duty": ["OD", "OD"],
+  "OD-E": ["OD-E", "OD-E"],
+  "OD-O": ["OD-O", "OD-O"],
+  "OD-R": ["OD-R", "OD-R"],
+
+  // Half Day OD
+  "First Half OD-E": ["OD-E", "P"],
+  "Second Half OD-E": ["P", "OD-E"],
+
+  "First Half OD-O": ["OD-O", "P"],
+  "Second Half OD-O": ["P", "OD-O"],
+
+  "First Half OD-R": ["OD-R", "P"],
+  "Second Half OD-R": ["P", "OD-R"],
+
+  // Other Types
+  Exam: ["EXAM", "EXAM"],
+  Official: ["OFFICIAL", "OFFICIAL"],
+  Research: ["RESEARCH", "RESEARCH"],
 
   Holiday: ["H", "H"],
-
-  "On Duty": ["OD", "OD"],
-
-  "First Half OD": ["OD", "P"],
-  "Second Half OD": ["A", "OD"],
 };
+
+const normalizeSessionCode = (value) =>
+  String(value || "").trim().toUpperCase();
 
 const getSessionCodes = (status) => STATUS_SESSION_MAP[status] || ["", ""];
 const getStatusFromSessions = (session1, session2) => {
   if (session1 === undefined || session2 === undefined) {
     return null;
   }
-  return SESSION_STATUS_MAP[`${session1}:${session2}`] || null;
+
+  const first = normalizeSessionCode(session1);
+  const second = normalizeSessionCode(session2);
+  const key = `${first}:${second}`;
+
+  // Exact mappings first
+  if (SESSION_STATUS_MAP[key]) {
+    return SESSION_STATUS_MAP[key];
+  }
+
+  const leaveCodes = ["CL", "ML", "LOP"];
+  const odCodes = ["OD-E", "OD-O", "OD-R", "OD"];
+
+  const isFirstLeave = leaveCodes.includes(first);
+  const isSecondLeave = leaveCodes.includes(second);
+  const isFirstOD = odCodes.includes(first);
+  const isSecondOD = odCodes.includes(second);
+
+  if (first === "P" && second === "P") {
+    return "Present";
+  }
+
+  if (first === "A" && second === "A") {
+    return "Absent";
+  }
+
+  if (first === "H" && second === "H") {
+    return "Holiday";
+  }
+
+  if (isFirstLeave && isSecondLeave) {
+    return "Leave";
+  }
+
+  if (isFirstOD && isSecondOD) {
+    return "On Duty";
+  }
+
+  if (isFirstLeave && second === "P") {
+    return "First Half Leave";
+  }
+
+  if (first === "P" && isSecondLeave) {
+    return "Second Half Leave";
+  }
+
+  if (isFirstOD && second === "P") {
+    return "First Half OD";
+  }
+
+  if (first === "P" && isSecondOD) {
+    return "Second Half OD";
+  }
+
+  if ((isFirstLeave && isSecondOD) || (isFirstOD && isSecondLeave)) {
+    return "Leave";
+  }
+
+  return null;
+};
+
+const LEAVE_SESSION_TYPE_MAP = {
+  CL: "Casual Leave",
+  ML: "Medical Leave",
+  LOP: "LOP",
+};
+
+const getLeaveDeductionDetails = (session1, session2) => {
+  const first = String(session1 || "").trim().toUpperCase();
+  const second = String(session2 || "").trim().toUpperCase();
+
+  const leaveCodes = ["CL", "ML", "LOP"];
+  if (leaveCodes.includes(first) && leaveCodes.includes(second) && first === second) {
+    return {
+      leaveName: LEAVE_SESSION_TYPE_MAP[first],
+      days: 1,
+    };
+  }
+
+  if (first === "P" && leaveCodes.includes(second)) {
+    return {
+      leaveName: LEAVE_SESSION_TYPE_MAP[second],
+      days: 0.5,
+    };
+  }
+
+  if (second === "P" && leaveCodes.includes(first)) {
+    return {
+      leaveName: LEAVE_SESSION_TYPE_MAP[first],
+      days: 0.5,
+    };
+  }
+
+  return null;
+};
+
+const getAttendanceAcademicYear = (date) => {
+  const targetDate = date ? new Date(date) : new Date();
+  const year = targetDate.getFullYear();
+  const month = targetDate.getMonth() + 1;
+
+  if (month >= 7) {
+    return `${year}-${year + 1}`;
+  }
+
+  return `${year - 1}-${year}`;
+};
+
+const getAttendanceMonth = (date) => {
+  const targetDate = date ? new Date(date) : new Date();
+  return targetDate.getMonth() + 1;
+};
+
+const deductOverrideLeaveBalance = async ({
+  facultyId,
+  leaveName,
+  days,
+  academicYear,
+  currentMonth,
+}) => {
+  const leaveType = await LeaveType.findOne({ leaveName });
+  if (!leaveType) {
+    return {
+      success: false,
+      message: `Leave type ${leaveName} not found.`,
+    };
+  }
+
+  const leaveBalance = await LeaveBalance.findOne({
+    facultyId,
+    leaveTypeId: leaveType._id,
+    academicYear,
+  });
+
+  if (!leaveBalance) {
+    return {
+      success: false,
+      message: `${leaveName} balance not found for the selected academic year.`,
+    };
+  }
+
+  if (leaveName !== "LOP" && leaveBalance.remainingDays < days) {
+    return {
+      success: false,
+      message: `Insufficient ${leaveName} balance.`,
+    };
+  }
+
+  leaveBalance.usedDays += days;
+  if (leaveName !== "LOP") {
+    leaveBalance.remainingDays -= days;
+  }
+
+  await leaveBalance.save();
+
+  return {
+    success: true,
+    leaveTypeId: leaveType._id,
+    leaveName,
+    days,
+    academicYear,
+    currentMonth,
+    deductedDays: days,
+  };
 };
 
 const getDayRange = (date) => {
@@ -322,6 +527,7 @@ exports.updateAttendanceOverride = async (req, res) => {
     //   attendance.outTime = lastOut;
     // }
 
+    let leaveBalanceDeduction = null;
     if (requestedSession1 !== null && requestedSession2 !== null) {
       const statusKey = getStatusFromSessions(
         requestedSession1,
@@ -341,6 +547,36 @@ exports.updateAttendanceOverride = async (req, res) => {
       attendance.session2 = requestedSession2;
       attendance.isOverridden = true;
       attendance.overrideStatus = statusKey;
+
+      const leaveDeductionInfo = getLeaveDeductionDetails(
+        requestedSession1,
+        requestedSession2,
+      );
+
+      if (leaveDeductionInfo) {
+        const academicYear = getAttendanceAcademicYear(
+          attendance.attendanceDate || new Date(),
+        );
+        const currentMonth = getAttendanceMonth(
+          attendance.attendanceDate || new Date(),
+        );
+        const leaveResult = await deductOverrideLeaveBalance({
+          facultyId: attendance.facultyId,
+          leaveName: leaveDeductionInfo.leaveName,
+          days: leaveDeductionInfo.days,
+          academicYear,
+          currentMonth,
+        });
+
+        if (!leaveResult.success) {
+          return res.status(400).json({
+            success: false,
+            message: leaveResult.message,
+          });
+        }
+
+        leaveBalanceDeduction = leaveResult;
+      }
     }
 
     if (remarks !== undefined) {
@@ -365,7 +601,7 @@ exports.updateAttendanceOverride = async (req, res) => {
 
     // Save override history
     const [historySessions1, historySessions2] = getSessionCodes(
-      attendance.status,
+      attendance.overrideStatus || attendance.status,
     );
     await AttendanceOverrideHistory.create({
       facultyId: attendance.facultyId._id,
@@ -374,7 +610,13 @@ exports.updateAttendanceOverride = async (req, res) => {
       endDate: attendance.attendanceDate,
 
       previousStatus,
-      newStatus: attendance.status,
+      newStatus: attendance.overrideStatus || attendance.status,
+      leaveTypeId: leaveBalanceDeduction?.leaveTypeId || null,
+      leaveName: leaveBalanceDeduction?.leaveName || null,
+      days: leaveBalanceDeduction?.days || 0,
+      academicYear: leaveBalanceDeduction?.academicYear || null,
+      currentMonth: leaveBalanceDeduction?.currentMonth || null,
+      deductedDays: leaveBalanceDeduction?.deductedDays || 0,
       session1: attendance.session1 || historySessions1 || null,
       session2: attendance.session2 || historySessions2 || null,
 
@@ -498,7 +740,8 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
         // if (lastOut !== undefined) {
         //   attendance.outTime = lastOut;
         // }
-        let newStatus = attendance.status;
+
+        let leaveBalanceDeduction = null;
 
         // Update Status
         if (requestedSession1 !== null && requestedSession2 !== null) {
@@ -507,26 +750,48 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
             requestedSession2,
           );
 
-          console.log("Employee:", employeeId);
-          console.log("session1:", requestedSession1);
-          console.log("session2:", requestedSession2);
-          console.log("combined:", `${requestedSession1}:${requestedSession2}`);
-          console.log("statusKey:", newStatus);
-
-          if (!newStatus) {
+          if (!statusKey) {
             console.log(
-              "Available combinations:",
-              Object.keys(SESSION_STATUS_MAP),
+              "Invalid session combination for bulk override:",
+              `${requestedSession1}:${requestedSession2}`,
             );
-
-            continue; // skip invalid employee instead of stopping whole bulk update
+            continue; // skip invalid update instead of stopping whole bulk update
           }
 
-          // don't update attendance.status
           attendance.session1 = requestedSession1;
           attendance.session2 = requestedSession2;
           attendance.isOverridden = true;
-          attendance.overrideStatus = newStatus;
+          attendance.overrideStatus = statusKey;
+
+          const leaveDeductionInfo = getLeaveDeductionDetails(
+            requestedSession1,
+            requestedSession2,
+          );
+
+          if (leaveDeductionInfo) {
+            const academicYear = getAttendanceAcademicYear(
+              attendance.attendanceDate || new Date(),
+            );
+            const currentMonth = getAttendanceMonth(
+              attendance.attendanceDate || new Date(),
+            );
+            const leaveResult = await deductOverrideLeaveBalance({
+              facultyId: attendance.facultyId,
+              leaveName: leaveDeductionInfo.leaveName,
+              days: leaveDeductionInfo.days,
+              academicYear,
+              currentMonth,
+            });
+
+            if (!leaveResult.success) {
+              return res.status(400).json({
+                success: false,
+                message: leaveResult.message,
+              });
+            }
+
+            leaveBalanceDeduction = leaveResult;
+          }
         }
 
         // Calculate working minutes
@@ -553,6 +818,12 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
 
           previousStatus,
           newStatus: attendance.overrideStatus || attendance.status,
+          leaveTypeId: leaveBalanceDeduction?.leaveTypeId || null,
+          leaveName: leaveBalanceDeduction?.leaveName || null,
+          days: leaveBalanceDeduction?.days || 0,
+          academicYear: leaveBalanceDeduction?.academicYear || null,
+          currentMonth: leaveBalanceDeduction?.currentMonth || null,
+          deductedDays: leaveBalanceDeduction?.deductedDays || 0,
           session1: attendance.session1 || historySessions1 || null,
           session2: attendance.session2 || historySessions2 || null,
 
@@ -868,10 +1139,7 @@ exports.bulkUpdateAttendanceByEmployee = async (req, res) => {
       await AttendanceOverrideHistory.insertMany(historyInserts);
     }
 
-    const responsePayload = groupedRecords.map((group) => {
-      const { rows, previousStatusSummary, attendanceStatus, ...item } = group;
-      return item;
-    });
+    const responsePayload = updatedRecords;
 
     return res.status(200).json({
       success: true,
