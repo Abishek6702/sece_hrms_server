@@ -13,6 +13,7 @@ const {
   deleteDocument,
   searchFaculty,
   bulkUpdateReportingManager,
+  resignFaculty,
 } = require("../controllers/facultyController");
 const protect = require("../middleware/protect");
 
@@ -73,5 +74,7 @@ router.delete(
   validateObjectId(),
   deleteProfileImage,
 );
+
+router.patch('/:id/resign', protect, validateObjectId(), resignFaculty);
 
 module.exports = router;

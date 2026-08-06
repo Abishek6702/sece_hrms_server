@@ -395,6 +395,29 @@ exports.deleteFaculty = async (req, res) => {
   }
 };
 
+// ================= RESIGN =================
+exports.resignFaculty = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason, date } = req.body;
+    const resignationDate = date ? new Date(date) : new Date();
+    const faculty = await Faculty.findByIdAndUpdate(
+      id,
+      { isActive: false, resignationReason: reason, resignationDate },
+      { new: true }
+    );
+    if (!faculty) {
+      return res.status(404).json({ message: "Faculty not found" });
+    }
+    await User.findOneAndUpdate({ facultyId: id }, { hasAccess: false });
+    res.status(200).json({ message: "Faculty resignation processed", faculty });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+
 
 exports.uploadProfileImage = async (req, res) => {
   try {

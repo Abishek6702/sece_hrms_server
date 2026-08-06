@@ -156,6 +156,16 @@ const facultySchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    resignationReason: {
+      type: String,
+    },
+    resignationDate: {
+      type: Date,
+    },
 
     address: {
       doorNo: String,
