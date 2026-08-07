@@ -434,15 +434,19 @@ exports.cancelLeave = async (req, res) => {
       });
     }
 
-    if (
-      leaveApplication.currentApprovalLevel !== "hod" &&
-      leaveApplication.currentApprovalLevel !== "supervisor"
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Leave cannot be cancelled after approval process has started",
-      });
-    }
+    const approvalStarted =
+    leaveApplication.approvalStatus.hodStatus === "Approved" ||
+    leaveApplication.approvalStatus.researchStatus === "Approved" ||
+    leaveApplication.approvalStatus.coeStatus === "Approved" ||
+    leaveApplication.approvalStatus.iqacStatus === "Approved" ||
+    leaveApplication.approvalStatus.principalStatus === "Approved";
+  
+  if (approvalStarted) {
+    return res.status(400).json({
+      success: false,
+      message: "Leave cannot be cancelled after approval process has started",
+    });
+  }
 
     await LeaveApplication.findByIdAndDelete(req.params.id);
 
