@@ -15,7 +15,8 @@ const {
   approveRequest,
   rejectRequest,
   cancelRequest,
-  revokeRequestByHod
+  revokeRequestByHod,
+  bulkApproveRequests
 } = require("../controllers/attendanceRegularizationController");
 const router = express.Router();
 
@@ -52,6 +53,8 @@ router.get("/dean/list", protect, getRequestsForDean);
 router.get("/principal/list", protect, getRequestsForPrincipal);
 
 router.get("/", protect, getRequests);
+// Place static bulk approve route before dynamic `/:id` to avoid route collisions
+router.patch("/approve", protect, bulkApproveRequests);
 router.get("/:id", protect, getRequestById);
 
 router.patch("/:id", protect, updateRequest);

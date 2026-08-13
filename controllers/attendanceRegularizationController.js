@@ -2,6 +2,7 @@ const AttendanceRegularization = require("../models/AttendanceRegularization");
 const Attendance = require("../models/attendance");
 const User = require("../models/User");
 const Faculty = require("../models/Faculty");
+const mongoose = require("mongoose");
 
 const requireRole = (req, role) => {
   const roles = Array.isArray(role) ? role : [role];
@@ -675,6 +676,88 @@ exports.updateRequest = async (req, res) => {
   }
 };
 
+const applyApprovalToRequest = async (request, user, role, remarks) => {
+  const deanRoles = ["dean", "dean-academics", "dean-iqac", "dean-research"];
+
+  if (role === "hod") {
+    if (request.currentApprovalLevel !== "hod" || request.status !== "Pending") {
+      return { success: false, message: "Request is not pending HOD approval" };
+    }
+
+    request.currentApprovalLevel = "principal";
+    request.approvalRemarks = remarks;
+    request.approvalHistory.push({
+      role: "hod",
+      approvedBy: user._id,
+      action: "Approved",
+      remarks,
+    });
+
+    await request.save();
+    return { success: true, message: "Request approved by HOD and forwarded to Principal", request };
+  }
+
+  if (role === "principal" || deanRoles.includes(role)) {
+    if (request.currentApprovalLevel !== "principal" || request.status !== "Pending") {
+      return { success: false, message: "Request is not pending Principal approval" };
+    }
+
+    request.currentApprovalLevel = "completed";
+    request.status = "Approved";
+    request.approvedBy = user._id;
+    request.processedAt = new Date();
+    request.approvalRemarks = remarks;
+    const approverRole = deanRoles.includes(role) ? "dean" : "principal";
+    request.approvalHistory.push({
+      role: approverRole,
+      approvedBy: user._id,
+      action: "Approved",
+      remarks,
+    });
+
+    await request.save();
+
+    const attendanceDate = new Date(request.attendanceDate);
+    const startOfDay = new Date(Date.UTC(
+      attendanceDate.getUTCFullYear(),
+      attendanceDate.getUTCMonth(),
+      attendanceDate.getUTCDate(),
+      0,
+      0,
+      0,
+      0,
+    ));
+    const endOfDay = new Date(Date.UTC(
+      attendanceDate.getUTCFullYear(),
+      attendanceDate.getUTCMonth(),
+      attendanceDate.getUTCDate(),
+      23,
+      59,
+      59,
+      999,
+    ));
+
+    const attendance = await Attendance.findOne({
+      facultyId: request.facultyId,
+      attendanceDate: {
+        $gte: startOfDay,
+        $lte: endOfDay,
+      },
+    });
+
+    if (attendance) {
+      attendance.regularization = true;
+      attendance.regularizationRemarks = request.reason || remarks;
+      attendance.regularizationStatus = "Present";
+      await attendance.save();
+    }
+
+    return { success: true, message: "Request approved by Principal", request };
+  }
+
+  return { success: false, message: "You are not authorized to approve this request" };
+};
+
 exports.approveRequest = async (req, res) => {
   try {
     requireRole(req, ["hod", "principal"]);
@@ -686,85 +769,82 @@ exports.approveRequest = async (req, res) => {
     const remarks = req.body.approvalRemarks || "Approved";
     const user = await User.findById(req.user.id);
 
-    const deanRoles = ["dean", "dean-academics", "dean-iqac", "dean-research"];
-
-    if (req.user.role === "hod") {
-      if (request.currentApprovalLevel !== "hod") {
-        return res.status(403).json({ success: false, message: "Request is not pending HOD approval" });
-      }
-
-      request.currentApprovalLevel = "principal";
-      request.approvalRemarks = remarks;
-      request.approvalHistory.push({
-        role: "hod",
-        approvedBy: user._id,
-        action: "Approved",
-        remarks,
-      });
-
-      await request.save();
-      return res.status(200).json({ success: true, message: "Request approved by HOD and forwarded to Principal", request });
+    const result = await applyApprovalToRequest(request, user, req.user.role, remarks);
+    if (!result.success) {
+      return res.status(400).json({ success: false, message: result.message });
     }
 
-    if (req.user.role === "principal" || deanRoles.includes(req.user.role)) {
-      if (request.currentApprovalLevel !== "principal") {
-        return res.status(403).json({ success: false, message: "Request is not pending Principal approval" });
+    return res.status(200).json({ success: true, message: result.message, request: result.request });
+  } catch (error) {
+    const status = error.status || 500;
+    res.status(status).json({ success: false, message: error.message });
+  }
+};
+
+exports.bulkApproveRequests = async (req, res) => {
+  try {
+    requireRole(req, ["hod", "principal"]);
+
+    const { requestIds: rawRequestIds, approvalRemarks } = req.body || {};
+
+    let requestIds = rawRequestIds;
+    if (!Array.isArray(requestIds)) {
+      if (typeof requestIds === "string") {
+        try {
+          requestIds = JSON.parse(requestIds);
+        } catch (e) {
+          requestIds = requestIds.split(",").map((s) => s.trim()).filter(Boolean);
+        }
       }
-
-      request.currentApprovalLevel = "completed";
-      request.status = "Approved";
-      request.approvedBy = req.user.id;
-      request.processedAt = new Date();
-      request.approvalRemarks = remarks;
-      const approverRole = deanRoles.includes(req.user.role) ? "dean" : "principal";
-      request.approvalHistory.push({
-        role: approverRole,
-        approvedBy: user._id,
-        action: "Approved",
-        remarks,
-      });
-
-      await request.save();
-
-      const attendanceDate = new Date(request.attendanceDate);
-      const startOfDay = new Date(Date.UTC(
-        attendanceDate.getUTCFullYear(),
-        attendanceDate.getUTCMonth(),
-        attendanceDate.getUTCDate(),
-        0,
-        0,
-        0,
-        0,
-      ));
-      const endOfDay = new Date(Date.UTC(
-        attendanceDate.getUTCFullYear(),
-        attendanceDate.getUTCMonth(),
-        attendanceDate.getUTCDate(),
-        23,
-        59,
-        59,
-        999,
-      ));
-
-      const attendance = await Attendance.findOne({
-        facultyId: request.facultyId,
-        attendanceDate: {
-          $gte: startOfDay,
-          $lte: endOfDay,
-        },
-      });
-// console.log("Attendance found for regularization:", attendance);
-      if (attendance) {
-        attendance.regularization = true;
-        attendance.regularizationRemarks = request.reason || remarks;
-        attendance.regularizationStatus = "Present";
-        await attendance.save();
-      }
-
-      return res.status(200).json({ success: true, message: "Request approved by Principal", request });
     }
 
-    res.status(403).json({ success: false, message: "You are not authorized to approve this request" });
+    if (!Array.isArray(requestIds) || requestIds.length === 0) {
+      return res.status(400).json({ success: false, message: "requestIds array is required" });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(401).json({ success: false, message: "User not found" });
+    }
+
+    const remarks = approvalRemarks || "Approved";
+    const results = [];
+
+    // Normalize requestIds into an array of strings
+    let normalized = [];
+    if (Array.isArray(requestIds)) {
+      normalized = requestIds;
+    } else if (requestIds && typeof requestIds === "object") {
+      normalized = Object.values(requestIds);
+    } else if (typeof requestIds === "string") {
+      normalized = [requestIds];
+    }
+
+    normalized = normalized.flat().map((v) => (v == null ? "" : String(v).trim())).filter(Boolean);
+
+    // Collect invalid ids up-front
+    const invalids = normalized.filter((id) => !mongoose.Types.ObjectId.isValid(id));
+    for (const bad of invalids) results.push({ requestId: bad, success: false, message: "Invalid request id" });
+
+    const validIds = normalized.filter((id) => mongoose.Types.ObjectId.isValid(id));
+
+    for (const requestId of validIds) {
+      try {
+        const request = await AttendanceRegularization.findById(requestId);
+        if (!request) {
+          results.push({ requestId, success: false, message: "Request not found" });
+          continue;
+        }
+
+        const result = await applyApprovalToRequest(request, user, req.user.role, remarks);
+        results.push({ requestId, success: result.success, message: result.message, request: result.request });
+      } catch (e) {
+        results.push({ requestId, success: false, message: e.message });
+      }
+    }
+
+    const approvedCount = results.filter((item) => item.success).length;
+    return res.status(200).json({ success: true, approvedCount, results });
   } catch (error) {
     const status = error.status || 500;
     res.status(status).json({ success: false, message: error.message });

@@ -22,14 +22,16 @@ router.get("/dean/list", protect, permissionCtrl.getPermissionsForDean);
 
 // Principal: list all permissions
 router.get("/principal/list", protect, permissionCtrl.getPermissionsForPrincipal);
-
+router.patch("/approve", protect, permissionCtrl.bulkApprovePermission);
 // View single
 router.get("/:id", protect, permissionCtrl.getPermissionById);
 
 
 // HOD / Principal: approve / reject
 router.patch("/:id/approve", protect, permissionCtrl.approvePermission);
-router.patch("/:id/reject", protect, permissionCtrl.rejectPermission);router.post('/:id/approve', protect, permissionCtrl.approvePermission);
+
+router.patch("/:id/reject", protect, permissionCtrl.rejectPermission);
+router.post('/:id/approve', protect, permissionCtrl.approvePermission);
 router.post('/:id/reject', protect, permissionCtrl.rejectPermission);
 // Faculty: cancel
 router.patch("/:id/cancel", protect, permissionCtrl.cancelPermission);
@@ -38,5 +40,4 @@ router.put(
   protect,
   permissionCtrl.revokePermissionByHod
 );
-
 module.exports = router;

@@ -435,29 +435,41 @@ exports.getAttendanceMusterV1 = async (req, res) => {
           break;
       }
 
-      // If there is an approved leave application for this day, override
-      // the generic L / A:P / P:A / OD / OD:P / P:OD with the specific abbreviation
-      const approvedAbbr = getApprovedLeaveAbbr(facultyId, dayDate);
-      if (approvedAbbr) {
-        switch (displayStatus) {
-          case "Leave":
-            value = approvedAbbr;
-            break;
-          case "First Half Leave":
-            value = approvedAbbr + ":P";
-            break;
-          case "Second Half Leave":
-            value = "P:" + approvedAbbr;
-            break;
-          case "On Duty":
-            value = approvedAbbr;
-            break;
-          case "First Half OD":
-            value = approvedAbbr + ":P";
-            break;
-          case "Second Half OD":
-            value = "P:" + approvedAbbr;
-            break;
+      if (
+        attendance.isOverridden &&
+        attendance.session1 !== undefined &&
+        attendance.session2 !== undefined &&
+        String(attendance.session1).trim() !== "" &&
+        String(attendance.session2).trim() !== ""
+      ) {
+        const session1 = String(attendance.session1).trim().toUpperCase();
+        const session2 = String(attendance.session2).trim().toUpperCase();
+        value = `${session1}:${session2}`;
+      } else {
+        // If there is an approved leave application for this day, override
+        // the generic L / A:P / P:A / OD / OD:P / P:OD with the specific abbreviation
+        const approvedAbbr = getApprovedLeaveAbbr(facultyId, dayDate);
+        if (approvedAbbr) {
+          switch (displayStatus) {
+            case "Leave":
+              value = approvedAbbr;
+              break;
+            case "First Half Leave":
+              value = approvedAbbr + ":P";
+              break;
+            case "Second Half Leave":
+              value = "P:" + approvedAbbr;
+              break;
+            case "On Duty":
+              value = approvedAbbr;
+              break;
+            case "First Half OD":
+              value = approvedAbbr + ":P";
+              break;
+            case "Second Half OD":
+              value = "P:" + approvedAbbr;
+              break;
+          }
         }
       }
 
@@ -583,6 +595,9 @@ const formatISTDate = (date) => {
 
   return istDate.toISOString().split("T")[0];
 };
+
+
+
 exports.getFacultyAttendanceHistory = async (req, res) => {
   try {
     const { facultyId, fromDate, toDate, status } = req.query;
