@@ -22,7 +22,7 @@ async function processAttendance(attendanceDate) {
 
   const faculties = await Faculty.find({
     employmentStatus: true,
-    isActive: true,
+    // isActive: true,
   }).populate("shiftId");
 
   for (const faculty of faculties) {
