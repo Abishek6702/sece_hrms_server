@@ -16,6 +16,7 @@ const {
   searchFaculty,
   bulkUpdateReportingManager,
   resignFaculty,
+  searchFacultyForAvailability
 } = require("../controllers/facultyController");
 const protect = require("../middleware/protect");
 
@@ -31,7 +32,9 @@ router.post("/", protect, addIndividualFaculty);
 
 router.get("/", protect, getFaculties);
 
-router.get("/search", protect, searchFaculty);
+router.get("/search", searchFaculty);
+router.get("/search-available", searchFacultyForAvailability);
+
 
 router.put("/add-manger",protect, bulkUpdateReportingManager);
 

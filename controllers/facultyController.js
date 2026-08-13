@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 
 const Faculty = require("../models/Faculty");
 const User = require("../models/User");
+const Attendance = require("../models/attendance");
 const Shift = require("../models/shift");
 const generateEmployeeId = require("../utils/empIdGenerator");
 const cloudinary = require("cloudinary").v2;
@@ -705,19 +706,28 @@ exports.searchFaculty = async (req, res) => {
     const { q = "" } = req.query;
 
     const faculties = await Faculty.find({
-      isActive: true,
-      $or: [
-        { firstName: { $regex: q, $options: "i" } },
-        { lastName: { $regex: q, $options: "i" } },
-        { empId: { $regex: q, $options: "i" } },
+      $and: [
         {
-          $expr: {
-            $regexMatch: {
-              input: { $concat: ["$firstName", " ", "$lastName"] },
-              regex: q,
-              options: "i",
+          $or: [
+            { isActive: true },
+            { isActive: { $exists: false } },
+          ],
+        },
+        {
+          $or: [
+            { firstName: { $regex: q, $options: "i" } },
+            { lastName: { $regex: q, $options: "i" } },
+            { empId: { $regex: q, $options: "i" } },
+            {
+              $expr: {
+                $regexMatch: {
+                  input: { $concat: ["$firstName", " ", "$lastName"] },
+                  regex: q,
+                  options: "i",
+                },
+              },
             },
-          },
+          ],
         },
       ],
     })
@@ -780,6 +790,91 @@ exports.bulkUpdateReportingManager = async (req, res) => {
       success: true,
       message: `Updated ${result.modifiedCount} faculty members`,
       modifiedCount: result.modifiedCount,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+exports.searchFacultyForAvailability = async (req, res) => {
+  try {
+    const { q = "" } = req.query;
+
+    const faculties = await Faculty.find({
+      $and: [
+        {
+          $or: [
+            { isActive: true },
+            { isActive: { $exists: false } },
+          ],
+        },
+        {
+          $or: [
+            { firstName: { $regex: q, $options: "i" } },
+            { lastName: { $regex: q, $options: "i" } },
+            { empId: { $regex: q, $options: "i" } },
+            {
+              $expr: {
+                $regexMatch: {
+                  input: { $concat: ["$firstName", " ", "$lastName"] },
+                  regex: q,
+                  options: "i",
+                },
+              },
+            },
+          ],
+        },
+      ],
+    })
+      .select(
+        "_id empId salutation firstName lastName organizationEmail phone designation department profileImage",
+      )
+      .limit(10);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const facultyIds = faculties.map((faculty) => faculty._id);
+
+    const punchedFacultyIds = facultyIds.length
+      ? await Attendance.find({
+          facultyId: { $in: facultyIds },
+          attendanceDate: {
+            $gte: today,
+            $lt: tomorrow,
+          },
+          inTime: { $ne: null },
+        }).distinct("facultyId")
+      : [];
+
+    const punchedSet = new Set(
+      punchedFacultyIds.map((id) => id.toString()),
+    );
+
+    const result = faculties.map((faculty) => ({
+      facultyId: faculty._id,
+      empId: faculty.empId,
+      salutation: faculty.salutation,
+      firstName: faculty.firstName,
+      lastName: faculty.lastName,
+      email: faculty.organizationEmail,
+      phone: faculty.phone,
+      designation: faculty.designation,
+      department: faculty.department,
+      profileImage: faculty.profileImage?.url || null,
+      hasPunchedToday: punchedSet.has(faculty._id.toString()),
+      punchedToday: punchedSet.has(faculty._id.toString()),
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: result,
     });
   } catch (error) {
     res.status(500).json({
