@@ -311,6 +311,7 @@ exports.getFaculties = async (req, res) => {
     const faculties = await Faculty.find()
       .populate("shiftId")
       .populate("reportingTo.facultyId")
+      .select("-documents -identityDetails -bankDetails")
       .sort({ createdAt: -1 });
     res.status(200).json(faculties);
   } catch (err) {
@@ -324,6 +325,7 @@ exports.getFacultyId = async (req, res) => {
     const { id } = req.params;
 
     const faculty = await Faculty.findById(id)
+      .select("-documents -identityDetails -bankDetails")
       .populate("shiftId")
       .populate("reportingTo.facultyId");
 
@@ -373,7 +375,90 @@ exports.editFaculty = async (req, res) => {
   }
 };
 
-// ================= DELETE =================
+// ================= REQUEST SECURE DATA =================
+// Verify password, send OTP to faculty email
+exports.requestSecureData = async (req, res) => {
+  try {
+    const { id } = req.params; // faculty ID
+    const { password } = req.body;
+
+    // Find the user linked to this faculty
+    const user = await User.findOne({ facultyId: id });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Verify password (user.password is hashed)
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid password" });
+    }
+
+    // Generate OTP (valid 5 minutes)
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.loginOtp = otp;
+    user.loginOtpExpiry = new Date(Date.now() + 5 * 60 * 1000);
+    await user.save();
+
+    // Send OTP via email
+    await sendMail(
+      user.email,
+      "Login OTP",
+      `<h3>Your Login OTP</h3>
+       <p>${otp}</p>
+       <p>Valid for 5 minutes.</p>`
+    ).catch(console.error);
+
+    return res.status(200).json({ message: "OTP sent to registered email" });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+// ================= VERIFY SECURE DATA =================
+// Validate OTP and return sensitive data
+exports.verifySecureData = async (req, res) => {
+  try {
+    const { id } = req.params; // faculty ID
+    const { otp } = req.body;
+
+    const user = await User.findOne({ facultyId: id });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Validate OTP
+    if (!user.loginOtp || user.loginOtp !== otp || !user.loginOtpExpiry || user.loginOtpExpiry < new Date()) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+
+    // OTP is valid – clear it
+    user.loginOtp = undefined;
+    user.loginOtpExpiry = undefined;
+    await user.save();
+
+    // Fetch sensitive faculty data (including previously excluded fields)
+    const faculty = await Faculty.findById(id)
+      .select("identityDetails bankDetails documents")
+      .populate("shiftId")
+      .populate("reportingTo.facultyId");
+
+    if (!faculty) {
+      return res.status(404).json({ message: "Faculty not found" });
+    }
+
+    return res.status(200).json({
+      identityDetails: faculty.identityDetails,
+      bankDetails: faculty.bankDetails,
+      documents: faculty.documents,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: err.message });
+  }
+};
+
 exports.deleteFaculty = async (req, res) => {
   try {
     const { id } = req.params;
@@ -395,7 +480,6 @@ exports.deleteFaculty = async (req, res) => {
   }
 };
 
-// ================= RESIGN =================
 exports.resignFaculty = async (req, res) => {
   try {
     const { id } = req.params;
@@ -621,6 +705,7 @@ exports.searchFaculty = async (req, res) => {
     const { q = "" } = req.query;
 
     const faculties = await Faculty.find({
+      isActive: true,
       $or: [
         { firstName: { $regex: q, $options: "i" } },
         { lastName: { $regex: q, $options: "i" } },

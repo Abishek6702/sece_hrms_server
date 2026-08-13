@@ -679,6 +679,98 @@ exports.rejectLeave = async (req, res) => {
   }
 };
 
+// Bulk approval for principal
+exports.bulkApproveLeave = async (req, res) => {
+  try {
+    // Ensure only principal can access
+    if (req.user.role !== "principal") {
+      return res.status(403).json({
+        success: false,
+        message: "Only principal can perform bulk approval",
+      });
+    }
+
+    const { leaveIds, remarks } = req.body;
+    if (!Array.isArray(leaveIds) || leaveIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "leaveIds array is required",
+      });
+    }
+    // if (leaveIds.length > 10) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "Cannot process more than 10 leave applications at a time",
+    //   });
+    // }
+
+    const results = { approved: [], failed: [] };
+    const commonRemark = remarks || "Approved";
+
+    for (const id of leaveIds) {
+      try {
+        const leave = await LeaveApplication.findById(id).populate("leaveTypeId");
+        if (!leave) throw new Error("Leave not found");
+        if (leave.status !== "Pending") throw new Error("Leave not pending");
+        if (leave.currentApprovalLevel !== "principal")
+          throw new Error("Leave not at principal approval level");
+
+        // Principal final approval logic (same as in approveLeave)
+        const academicYear = getCurrentAcademicYear();
+        const leaveBalance = await LeaveBalance.findOne({
+          facultyId: leave.facultyId,
+          leaveTypeId: leave.leaveTypeId._id,
+          academicYear,
+        });
+        if (!leaveBalance) throw new Error("Leave balance not found");
+
+        if (
+          leave.leaveTypeId.leaveName === "LOP" ||
+          leave.leaveTypeId.leaveName === "On Duty - Official"
+        ) {
+          leaveBalance.usedDays += leave.totalDays;
+        } else {
+          leaveBalance.usedDays += leave.totalDays;
+          leaveBalance.remainingDays -= leave.totalDays;
+        }
+        await leaveBalance.save();
+
+        // Update leave document
+        leave.approvalHistory.push({
+          role: "principal",
+          approvedBy: req.user.id,
+          action: "Approved",
+          remarks: commonRemark,
+        });
+        leave.status = "Approved";
+        leave.currentApprovalLevel = "completed";
+        leave.approvalStatus.principalStatus = "Approved";
+        await leave.save();
+
+        await reprocessFacultyDateRange(
+          leave.facultyId,
+          leave.fromDate,
+          leave.toDate,
+        );
+
+        results.approved.push(id);
+      } catch (innerErr) {
+        results.failed.push({ id, message: innerErr.message });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      results,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 exports.revokeHodApproval = async (req, res) => {
   try {
     const leave = await LeaveApplication.findById(req.params.id);

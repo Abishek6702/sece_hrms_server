@@ -11,6 +11,7 @@ exports.getFacultyDesignationSummary = async (req, res) => {
 
     const match = {
       employmentStatus: true,
+      isActive: true,
     };
 
     if (department) {
@@ -122,6 +123,7 @@ exports.getTodayPunchSummary = async (req, res) => {
 
     const totalStaff = await Faculty.countDocuments({
       employmentStatus: true,
+      isActive: true,
     });
 
     const punchedIn = await Attendance.countDocuments({
@@ -160,11 +162,20 @@ exports.getAttendanceDashboardSummary = async (req, res) => {
 
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const totalStaff = await Faculty.countDocuments({
-      employmentStatus: true,
-    });
+    const activeFacultyIds = await Faculty.find(
+      {
+        employmentStatus: true,
+        isActive: true,
+      },
+      { _id: 1 },
+    ).distinct("_id");
+
+    const totalStaff = activeFacultyIds.length;
 
     const checkedInToday = await Attendance.countDocuments({
+      facultyId: {
+        $in: activeFacultyIds,
+      },
       attendanceDate: {
         $gte: today,
         $lt: tomorrow,
@@ -249,6 +260,7 @@ exports.getAttendanceList = async (req, res) => {
 
     const facultyFilter = {
       employmentStatus: true,
+      isActive: true,
     };
 
     if (department) {

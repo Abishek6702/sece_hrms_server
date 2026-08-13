@@ -7,6 +7,8 @@ const {
   getFacultyId,
   deleteFaculty,
   editFaculty,
+  requestSecureData,
+  verifySecureData,
   uploadProfileImage,
   deleteProfileImage,
   uploadDocuments,
@@ -35,7 +37,8 @@ router.put("/add-manger",protect, bulkUpdateReportingManager);
 
 router.get("/:id", protect, validateObjectId(), getFacultyId);
 
-router.delete("/:id", protect, validateObjectId(), deleteFaculty);
+router.post('/:id/request-secure-data', protect, validateObjectId(), requestSecureData);
+router.post('/:id/verify-secure-data', protect, validateObjectId(), verifySecureData);
 
 router.put("/:id", protect, validateObjectId(), editFaculty);
 

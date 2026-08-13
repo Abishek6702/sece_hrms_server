@@ -28,6 +28,7 @@ exports.getAttendanceMuster = async (req, res) => {
 
     const facultyFilter = {
       employmentStatus: true,
+      isActive: true,
     };
 
     if (department) {
@@ -238,6 +239,7 @@ exports.getAttendanceMusterV1 = async (req, res) => {
 
     const facultyFilter = {
       employmentStatus: true,
+      isActive: true,
     };
 
     if (department) {

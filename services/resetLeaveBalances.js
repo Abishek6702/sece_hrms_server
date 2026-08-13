@@ -12,6 +12,7 @@ const resetLeaveBalances = async () => {
 
   const faculties = await Faculty.find({
     employmentStatus: true,
+    isActive: true,
   });
 
   const leaveTypes = await LeaveType.find({

@@ -175,6 +175,7 @@ exports.updateLeaveType = async (req, res) => {
     // Category added
     const faculties = await Faculty.find({
       employmentStatus: true,
+      isActive: true,
       employeeCategory: {
         $in: leaveType.employeeCategories,
       },
