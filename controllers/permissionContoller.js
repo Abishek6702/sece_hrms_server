@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Permission = require("../models/permission");
 const Faculty = require("../models/Faculty");
 const Holiday = require("../models/holiday");
@@ -645,6 +646,64 @@ exports.getPermissionById = async (req, res) => {
   }
 };
 
+const applyPermissionApproval = async (perm, user, role, remarks) => {
+  const deanRoles = ["dean", "dean-academics", "dean-iqac", "dean-research"];
+  const approverId = user.facultyId || user._id;
+  const approvalRole = deanRoles.includes(role) ? "dean" : role;
+
+  if (perm.status !== "Pending") {
+    return { success: false, message: `Permission already ${perm.status}` };
+  }
+
+  if (role === "hod") {
+    if (perm.currentApprovalLevel !== "hod") {
+      return { success: false, message: "Permission is not pending HOD approval" };
+    }
+
+    perm.currentApprovalLevel = "principal";
+    perm.remarks = remarks || "Forwarded to Principal";
+    perm.approvalHistory.push({
+      role: "hod",
+      approvedBy: approverId,
+      action: "Approved",
+      remarks: remarks || "Approved by HOD",
+      actionDate: new Date(),
+    });
+
+    await perm.save();
+    return { success: true, message: "Permission approved by HOD and forwarded to Principal", perm };
+  }
+
+  if (role === "principal" || deanRoles.includes(role)) {
+    if (perm.currentApprovalLevel !== "principal") {
+      return { success: false, message: "Waiting for HOD approval" };
+    }
+
+    perm.status = "Approved";
+    perm.approvedBy = approverId;
+    perm.approvedAt = new Date();
+    perm.remarks = remarks || "Approved";
+    perm.approvalHistory.push({
+      role: approvalRole,
+      approvedBy: approverId,
+      action: "Approved",
+      remarks: remarks || `Approved by ${approvalRole === "dean" ? "Dean" : "Principal"}`,
+      actionDate: new Date(),
+    });
+
+    await incrementPermissionBalanceOnApproval(
+      perm.facultyId,
+      perm.totalMinutes,
+      perm.permissionDate,
+    );
+
+    await perm.save();
+    return { success: true, message: "Permission approved", perm };
+  }
+
+  return { success: false, message: "You are not authorized to approve this permission" };
+};
+
 // Principal &hod: approve permission
 
 exports.approvePermission = async (req, res) => {
@@ -737,6 +796,62 @@ exports.approvePermission = async (req, res) => {
   } catch (error) {
     console.error("approvePermission error:", error);
 
+    return res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Server error",
+    });
+  }
+};
+
+exports.bulkApprovePermission = async (req, res) => {
+  try {
+    requireRole(req, ["hod", "principal"]);
+
+    const { requestIds, remarks } = req.body;
+    if (!Array.isArray(requestIds) || requestIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "requestIds array is required",
+      });
+    }
+
+    const results = [];
+
+    for (const requestId of requestIds) {
+      if (!mongoose.Types.ObjectId.isValid(requestId)) {
+        results.push({ requestId, success: false, message: "Invalid request id" });
+        continue;
+      }
+
+      const perm = await Permission.findById(requestId);
+      if (!perm) {
+        results.push({ requestId, success: false, message: "Permission not found" });
+        continue;
+      }
+
+      const result = await applyPermissionApproval(
+        perm,
+        req.user,
+        req.user.role,
+        remarks,
+      );
+
+      results.push({
+        requestId,
+        success: result.success,
+        message: result.message,
+        data: result.success ? result.perm : null,
+      });
+    }
+
+    const approvedCount = results.filter((item) => item.success).length;
+    return res.status(200).json({
+      success: true,
+      approvedCount,
+      results,
+    });
+  } catch (error) {
+    console.error("bulkApprovePermission error:", error);
     return res.status(error.status || 500).json({
       success: false,
       message: error.message || "Server error",

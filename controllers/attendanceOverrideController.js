@@ -5,7 +5,9 @@ const Faculty = require("../models/Faculty");
 const Holiday = require("../models/holiday");
 const LeaveType = require("../models/Leave/leaveType");
 const LeaveBalance = require("../models/Leave/leaveBalance");
+const LeaveApplication = require("../models/Leave/leaveApplication");
 // const deductLeaveBalance = require("../utils/deductLeaveBalance");
+const { calculateLeaveBalanceAdjustments } = require("../utils/leaveBalanceAdjustment");
 
 const STATUS_CODE_MAP = {
   Present: "P:P",
@@ -72,6 +74,9 @@ const STATUS_SESSION_MAP = {
   // Present
   Present: ["P", "P"],
 
+  // Generic Leave -> use L for both sessions when specific leave type isn't present
+  Leave: ["L", "L"],
+
   // Leave Types
   CL: ["CL", "CL"],
   LOP: ["LOP", "LOP"],
@@ -114,7 +119,76 @@ const STATUS_SESSION_MAP = {
 const normalizeSessionCode = (value) =>
   String(value || "").trim().toUpperCase();
 
-const getSessionCodes = (status) => STATUS_SESSION_MAP[status] || ["", ""];
+const getSessionCodes = (status) => {
+  const normalizedStatus = String(status || "").trim();
+  return STATUS_SESSION_MAP[normalizedStatus] || ["", ""];
+};
+
+const getEffectiveSessionCodes = ({ status, session1, session2 } = {}) => {
+  const [fallback1, fallback2] = getSessionCodes(status);
+  const first = normalizeSessionCode(session1);
+  const second = normalizeSessionCode(session2);
+
+  return [first || fallback1 || "L", second || fallback2 || "L"];
+};
+
+const isSessionBlank = (sessionValue) =>
+  sessionValue === undefined ||
+  sessionValue === null ||
+  String(sessionValue).trim() === "";
+
+const getLeaveSessionCodes = (leaveApplication) => {
+  if (!leaveApplication || !leaveApplication.leaveTypeId) {
+    return null;
+  }
+
+  const leaveName = String(
+    leaveApplication.leaveTypeId.leaveName || "",
+  )
+    .trim()
+    .toLowerCase();
+  const leaveCategory = String(
+    leaveApplication.leaveTypeId.leaveCategory || "",
+  )
+    .trim()
+    .toLowerCase();
+  const leaveSession = String(leaveApplication.leaveSession || "")
+    .trim()
+    .toLowerCase();
+
+  let code = null;
+
+  if (leaveCategory === "on duty" || leaveName.includes("on duty")) {
+    if (leaveName.includes("od-e") || leaveName.includes("exam")) {
+      code = "OD-E";
+    } else if (leaveName.includes("od-o") || leaveName.includes("official")) {
+      code = "OD-O";
+    } else if (leaveName.includes("od-r") || leaveName.includes("research")) {
+      code = "OD-R";
+    } else {
+      code = "OD";
+    }
+  } else if (leaveName.includes("casual")) {
+    code = "CL";
+  } else if (leaveName.includes("medical")) {
+    code = "ML";
+  } else if (leaveName.includes("lop") || leaveName.includes("loss of pay")) {
+    code = "LOP";
+  } else {
+    return null;
+  }
+
+  if (leaveSession === "first half") {
+    return [code, "P"];
+  }
+
+  if (leaveSession === "second half") {
+    return ["P", code];
+  }
+
+  return [code, code];
+};
+
 const getStatusFromSessions = (session1, session2) => {
   if (session1 === undefined || session2 === undefined) {
     return null;
@@ -180,40 +254,50 @@ const getStatusFromSessions = (session1, session2) => {
   return null;
 };
 
-const LEAVE_SESSION_TYPE_MAP = {
+const getLeaveSessionMapping = {
   CL: "Casual Leave",
   ML: "Medical Leave",
   LOP: "LOP",
+  "OD-O": "On Duty - Official",
+  "OD-E": "On Duty - Exam",
+  "OD-R": "On Duty - Research",
+  OD: "On Duty",
 };
 
-const getLeaveDeductionDetails = (session1, session2) => {
-  const first = String(session1 || "").trim().toUpperCase();
-  const second = String(session2 || "").trim().toUpperCase();
-
+const getSessionLeaveDetails = (sessionCode) => {
+  const code = normalizeSessionCode(sessionCode);
   const leaveCodes = ["CL", "ML", "LOP"];
-  if (leaveCodes.includes(first) && leaveCodes.includes(second) && first === second) {
-    return {
-      leaveName: LEAVE_SESSION_TYPE_MAP[first],
-      days: 1,
-    };
+  const odCodes = ["OD-O", "OD-E", "OD-R", "OD"];
+  const allDeductibleCodes = [...leaveCodes, ...odCodes];
+
+  if (!allDeductibleCodes.includes(code)) {
+    return null;
   }
 
-  if (first === "P" && leaveCodes.includes(second)) {
-    return {
-      leaveName: LEAVE_SESSION_TYPE_MAP[second],
-      days: 0.5,
-    };
-  }
-
-  if (second === "P" && leaveCodes.includes(first)) {
-    return {
-      leaveName: LEAVE_SESSION_TYPE_MAP[first],
-      days: 0.5,
-    };
-  }
-
-  return null;
+  return {
+    code,
+    leaveName: getLeaveSessionMapping[code],
+    days: 0.5,
+  };
 };
+
+const getSessionLeaveDetailsForPair = (session1, session2) => {
+  const details = [];
+  const first = getSessionLeaveDetails(session1);
+  const second = getSessionLeaveDetails(session2);
+
+  if (first) details.push(first);
+  if (second) details.push(second);
+  return details;
+};
+
+const groupLeaveDetailsByName = (details) =>
+  details.reduce((acc, item) => {
+    const name = item.leaveName;
+    if (!acc[name]) acc[name] = 0;
+    acc[name] += item.days;
+    return acc;
+  }, {});
 
 const getAttendanceAcademicYear = (date) => {
   const targetDate = date ? new Date(date) : new Date();
@@ -260,16 +344,43 @@ const deductOverrideLeaveBalance = async ({
     };
   }
 
-  if (leaveName !== "LOP" && leaveBalance.remainingDays < days) {
+  let adjustmentDays = Number(days) || 0;
+  const isUnlimitedLeave =
+    leaveName === "LOP" || leaveName === "On Duty - Official";
+
+  if (
+    adjustmentDays > 0 &&
+    !isUnlimitedLeave &&
+    leaveBalance.remainingDays < adjustmentDays
+  ) {
     return {
       success: false,
       message: `Insufficient ${leaveName} balance.`,
     };
   }
 
-  leaveBalance.usedDays += days;
-  if (leaveName !== "LOP") {
-    leaveBalance.remainingDays -= days;
+  if (adjustmentDays < 0) {
+    const maxReverse = -leaveBalance.usedDays;
+    if (adjustmentDays < maxReverse) {
+      adjustmentDays = maxReverse;
+    }
+  }
+
+  if (adjustmentDays === 0) {
+    return {
+      success: true,
+      leaveTypeId: leaveType._id,
+      leaveName,
+      days: 0,
+      academicYear,
+      currentMonth,
+      deductedDays: 0,
+    };
+  }
+
+  leaveBalance.usedDays += adjustmentDays;
+  if (!isUnlimitedLeave) {
+    leaveBalance.remainingDays -= adjustmentDays;
   }
 
   await leaveBalance.save();
@@ -327,6 +438,30 @@ exports.getAttendanceByDate = async (req, res) => {
       )
       .sort({ createdAt: 1 });
 
+    const facultyIds = attendanceList
+      .map((attendance) =>
+        attendance.facultyId && attendance.facultyId._id
+          ? attendance.facultyId._id.toString()
+          : attendance.facultyId
+          ? attendance.facultyId.toString()
+          : null,
+      )
+      .filter(Boolean);
+
+    const approvedLeaves = await LeaveApplication.find({
+      facultyId: { $in: facultyIds },
+      status: "Approved",
+      fromDate: { $lte: endDate },
+      toDate: { $gte: startDate },
+    }).populate("leaveTypeId", "leaveName leaveCategory");
+
+    const leaveAppsByFaculty = approvedLeaves.reduce((acc, app) => {
+      const fid = app.facultyId.toString();
+      if (!acc[fid]) acc[fid] = [];
+      acc[fid].push(app);
+      return acc;
+    }, {});
+
     const data = attendanceList.map((attendance) => {
       const employeeName = attendance.facultyId
         ? [attendance.facultyId.firstName, attendance.facultyId.lastName]
@@ -336,8 +471,31 @@ exports.getAttendanceByDate = async (req, res) => {
       const employeeNo = attendance.facultyId?.empId || "";
       const employeeId = attendance.facultyId?._id || null;
       // prefer stored session1/session2 (requested order), fallback to status-derived
-      const s1 = attendance.session1 || getSessionCodes(attendance.status)[0];
-      const s2 = attendance.session2 || getSessionCodes(attendance.status)[1];
+      let [s1, s2] = getEffectiveSessionCodes(attendance);
+
+      if (
+        attendance.status === "Leave" &&
+        isSessionBlank(attendance.session1) &&
+        isSessionBlank(attendance.session2)
+      ) {
+        const leaveApps = leaveAppsByFaculty[attendance.facultyId?._id?.toString()];
+        const leaveApp = (leaveApps || []).find((app) => {
+          const attendanceDate = new Date(attendance.attendanceDate);
+          attendanceDate.setHours(0, 0, 0, 0, 0);
+
+          const fromDate = new Date(app.fromDate);
+          fromDate.setHours(0, 0, 0, 0, 0);
+          const toDate = new Date(app.toDate);
+          toDate.setHours(0, 0, 0, 0, 0);
+
+          return attendanceDate >= fromDate && attendanceDate <= toDate;
+        });
+
+        const leaveCodes = getLeaveSessionCodes(leaveApp);
+        if (leaveCodes) {
+          [s1, s2] = leaveCodes;
+        }
+      }
 
       return {
         facultyId: attendance.facultyId?._id,
@@ -407,6 +565,39 @@ exports.getAttendanceByEmployee = async (req, res) => {
       )
       .sort({ attendanceDate: 1 });
     console.log(" Attendance List:", attendanceList);
+
+    const attendanceDates = attendanceList.map((attendance) => attendance.attendanceDate);
+    const minDate = attendanceDates.length
+      ? new Date(Math.min(...attendanceDates.map((dt) => new Date(dt).getTime())))
+      : null;
+    const maxDate = attendanceDates.length
+      ? new Date(Math.max(...attendanceDates.map((dt) => new Date(dt).getTime())))
+      : null;
+
+    const leaveQuery = {
+      facultyId: employeeId,
+      status: "Approved",
+    };
+
+    if (startDateQuery && endDateQuery) {
+      leaveQuery.fromDate = { $lte: getDayRange(endDateQuery).endDate };
+      leaveQuery.toDate = { $gte: getDayRange(startDateQuery).startDate };
+    } else if (minDate && maxDate) {
+      leaveQuery.fromDate = { $lte: maxDate };
+      leaveQuery.toDate = { $gte: minDate };
+    }
+
+    const approvedLeaves = await LeaveApplication.find(leaveQuery).populate(
+      "leaveTypeId",
+      "leaveName leaveCategory",
+    );
+
+    const leaveAppsByFaculty = approvedLeaves.reduce((acc, app) => {
+      const fid = app.facultyId.toString();
+      if (!acc[fid]) acc[fid] = [];
+      acc[fid].push(app);
+      return acc;
+    }, {});
     const data = attendanceList.map((attendance) => {
       
       const employeeName = attendance.facultyId
@@ -415,8 +606,31 @@ exports.getAttendanceByEmployee = async (req, res) => {
             .join(" ")
         : "";
       const employeeNo = attendance.facultyId?.empId || "";
-      const s1 = attendance.session1 || getSessionCodes(attendance.status)[0];
-      const s2 = attendance.session2 || getSessionCodes(attendance.status)[1];
+      let [s1, s2] = getEffectiveSessionCodes(attendance);
+
+      if (
+        attendance.status === "Leave" &&
+        isSessionBlank(attendance.session1) &&
+        isSessionBlank(attendance.session2)
+      ) {
+        const leaveApps = leaveAppsByFaculty[attendance.facultyId?._id?.toString()];
+        const leaveApp = (leaveApps || []).find((app) => {
+          const attendanceDate = new Date(attendance.attendanceDate);
+          attendanceDate.setHours(0, 0, 0, 0, 0);
+
+          const fromDate = new Date(app.fromDate);
+          fromDate.setHours(0, 0, 0, 0, 0);
+          const toDate = new Date(app.toDate);
+          toDate.setHours(0, 0, 0, 0, 0);
+
+          return attendanceDate >= fromDate && attendanceDate <= toDate;
+        });
+
+        const leaveCodes = getLeaveSessionCodes(leaveApp);
+        if (leaveCodes) {
+          [s1, s2] = leaveCodes;
+        }
+      }
 
       return {
         _id: attendance._id,
@@ -541,42 +755,52 @@ exports.updateAttendanceOverride = async (req, res) => {
         });
       }
 
-      // attendance.status = statusKey;
-      // persist requested order
+      const previousSession1 =
+        attendance.session1 || getSessionCodes(attendance.status)[0];
+      const previousSession2 =
+        attendance.session2 || getSessionCodes(attendance.status)[1];
+
       attendance.session1 = requestedSession1;
       attendance.session2 = requestedSession2;
       attendance.isOverridden = true;
       attendance.overrideStatus = statusKey;
 
-      const leaveDeductionInfo = getLeaveDeductionDetails(
+      const leaveAdjustments = calculateLeaveBalanceAdjustments(
+        previousSession1,
+        previousSession2,
         requestedSession1,
         requestedSession2,
       );
 
-      if (leaveDeductionInfo) {
+      if (leaveAdjustments.length > 0) {
         const academicYear = getAttendanceAcademicYear(
           attendance.attendanceDate || new Date(),
         );
         const currentMonth = getAttendanceMonth(
           attendance.attendanceDate || new Date(),
         );
-        const leaveResult = await deductOverrideLeaveBalance({
-          facultyId: attendance.facultyId,
-          leaveName: leaveDeductionInfo.leaveName,
-          days: leaveDeductionInfo.days,
-          academicYear,
-          currentMonth,
-        });
 
-        if (!leaveResult.success) {
-          return res.status(400).json({
-            success: false,
-            message: leaveResult.message,
+        for (const adjustment of leaveAdjustments) {
+          const leaveResult = await deductOverrideLeaveBalance({
+            facultyId: attendance.facultyId,
+            leaveName: adjustment.leaveName,
+            days: adjustment.net,
+            academicYear,
+            currentMonth,
           });
-        }
 
-        leaveBalanceDeduction = leaveResult;
+          if (!leaveResult.success) {
+            return res.status(400).json({
+              success: false,
+              message: leaveResult.message,
+            });
+          }
+
+          leaveBalanceDeduction = leaveResult;
+        }
       }
+
+      attendance.leaveBalanceAdjustments = leaveAdjustments;
     }
 
     if (remarks !== undefined) {
@@ -668,6 +892,7 @@ exports.updateAttendanceOverride = async (req, res) => {
 
       session1: responseStatus1,
       session2: responseStatus2,
+      leaveBalanceAdjustments: attendance.leaveBalanceAdjustments || [],
     };
     res.status(200).json({
       success: true,
@@ -758,39 +983,51 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
             continue; // skip invalid update instead of stopping whole bulk update
           }
 
+          const previousSession1 =
+            attendance.session1 || getSessionCodes(attendance.status)[0];
+          const previousSession2 =
+            attendance.session2 || getSessionCodes(attendance.status)[1];
+
           attendance.session1 = requestedSession1;
           attendance.session2 = requestedSession2;
           attendance.isOverridden = true;
           attendance.overrideStatus = statusKey;
 
-          const leaveDeductionInfo = getLeaveDeductionDetails(
+          const leaveAdjustments = calculateLeaveBalanceAdjustments(
+            previousSession1,
+            previousSession2,
             requestedSession1,
             requestedSession2,
           );
 
-          if (leaveDeductionInfo) {
+          if (leaveAdjustments.length > 0) {
             const academicYear = getAttendanceAcademicYear(
               attendance.attendanceDate || new Date(),
             );
             const currentMonth = getAttendanceMonth(
               attendance.attendanceDate || new Date(),
             );
-            const leaveResult = await deductOverrideLeaveBalance({
-              facultyId: attendance.facultyId,
-              leaveName: leaveDeductionInfo.leaveName,
-              days: leaveDeductionInfo.days,
-              academicYear,
-              currentMonth,
-            });
 
-            if (!leaveResult.success) {
-              return res.status(400).json({
-                success: false,
-                message: leaveResult.message,
+            for (const adjustment of leaveAdjustments) {
+              const leaveResult = await deductOverrideLeaveBalance({
+                facultyId: attendance.facultyId,
+                leaveName: adjustment.leaveName,
+                days: adjustment.net,
+                academicYear,
+                currentMonth,
               });
+
+              if (!leaveResult.success) {
+                return res.status(400).json({
+                  success: false,
+                  message: leaveResult.message,
+                });
+              }
+
+              leaveBalanceDeduction = leaveResult;
             }
 
-            leaveBalanceDeduction = leaveResult;
+            attendance.leaveBalanceAdjustments = leaveAdjustments;
           }
         }
 
@@ -876,6 +1113,7 @@ exports.bulkUpdateAttendanceByDateRange = async (req, res) => {
 
           session1: responseSession1,
           session2: responseSession2,
+          leaveBalanceAdjustments: attendance.leaveBalanceAdjustments || [],
         });
       }
     }
@@ -963,11 +1201,51 @@ exports.bulkUpdateAttendanceByEmployee = async (req, res) => {
           continue;
         }
 
+        const previousSession1 =
+          attendance.session1 || getSessionCodes(attendance.status)[0];
+        const previousSession2 =
+          attendance.session2 || getSessionCodes(attendance.status)[1];
+
         // don't update attendance.status
         attendance.session1 = requestedSession1;
         attendance.session2 = requestedSession2;
         attendance.isOverridden = true;
         attendance.overrideStatus = newStatus;
+
+        const leaveAdjustments = calculateLeaveBalanceAdjustments(
+          previousSession1,
+          previousSession2,
+          requestedSession1,
+          requestedSession2,
+        );
+
+        if (leaveAdjustments.length > 0) {
+          const academicYear = getAttendanceAcademicYear(
+            attendance.attendanceDate || new Date(),
+          );
+          const currentMonth = getAttendanceMonth(
+            attendance.attendanceDate || new Date(),
+          );
+
+          for (const adjustment of leaveAdjustments) {
+            const leaveResult = await deductOverrideLeaveBalance({
+              facultyId: attendance.facultyId,
+              leaveName: adjustment.leaveName,
+              days: adjustment.net,
+              academicYear,
+              currentMonth,
+            });
+
+            if (!leaveResult.success) {
+              return res.status(400).json({
+                success: false,
+                message: leaveResult.message,
+              });
+            }
+          }
+
+          attendance.leaveBalanceAdjustments = leaveAdjustments;
+        }
       }
 
       // if (attendance.inTime && attendance.outTime) {
@@ -1005,6 +1283,7 @@ exports.bulkUpdateAttendanceByEmployee = async (req, res) => {
         lastOut: attendance.outTime,
         session1: responseSession1,
         session2: responseSession2,
+        leaveBalanceAdjustments: attendance.leaveBalanceAdjustments || [],
         previousStatus,
         previousInTime,
         previousOutTime,
@@ -1322,7 +1601,7 @@ exports.getAttendanceOverride = async (req, res) => {
     }
 
     const faculties = await Faculty.find(facultyFilter).select(
-      "empId firstName middleName lastName designation department employeeCategory",
+      "empId firstName middleName lastName designation department employeeCategory punchId",
     );
 
     const facultyIds = faculties.map((faculty) => faculty._id);
@@ -1343,6 +1622,50 @@ exports.getAttendanceOverride = async (req, res) => {
       },
     }).select("holidayDate applicableEmployeeCategories");
 
+    // Fetch approved leave applications covering this muster period
+    const approvedLeaves = await LeaveApplication.find({
+      facultyId: { $in: facultyIds },
+      status: "Approved",
+      fromDate: { $lte: endDate },
+      toDate: { $gte: startDate },
+    }).populate("leaveTypeId", "leaveName leaveCategory");
+
+    // Map: "facultyId" -> array of { fromDate, toDate, abbr }
+    const leaveAppMap = {};
+    approvedLeaves.forEach((app) => {
+      const fid = app.facultyId.toString();
+      if (!leaveAppMap[fid]) leaveAppMap[fid] = [];
+      const name = (app.leaveTypeId?.leaveName || "").trim().toLowerCase();
+      const category = app.leaveTypeId?.leaveCategory || "Regular";
+      let abbr;
+      if (category === "On Duty") {
+        if (name.includes("research")) abbr = "OD-R";
+        else if (name.includes("exam")) abbr = "OD-E";
+        else if (name.includes("official")) abbr = "OD-O";
+        else abbr = "OD";
+      } else {
+        if (name.includes("casual")) abbr = "CL";
+        else if (name.includes("medical")) abbr = "ML";
+        else if (name.includes("lop") || name.includes("loss of pay")) abbr = "LOP";
+        else if (name.includes("maternity")) abbr = "MA";
+        else abbr = "L";
+      }
+      leaveAppMap[fid].push({
+        fromDate: new Date(app.fromDate),
+        toDate: new Date(app.toDate),
+        abbr,
+      });
+    });
+
+    // Returns the approved leave abbreviation for a faculty on a given date, or null
+    const getApprovedLeaveAbbr = (facultyIdStr, dayDate) => {
+      const apps = leaveAppMap[facultyIdStr] || [];
+      const match = apps.find(
+        (a) => dayDate >= a.fromDate && dayDate <= a.toDate,
+      );
+      return match ? match.abbr : null;
+    };
+
     const attendanceMap = {};
 
     attendances.forEach((attendance) => {
@@ -1353,14 +1676,24 @@ exports.getAttendanceOverride = async (req, res) => {
       }
 
       let day;
+      let dayDate;
 
       if (attendance.inTime) {
         day = attendance.inTime.getUTCDate();
+        dayDate = new Date(Date.UTC(
+          attendance.inTime.getUTCFullYear(),
+          attendance.inTime.getUTCMonth(),
+          attendance.inTime.getUTCDate(),
+        ));
       } else {
         const istDate = new Date(attendance.attendanceDate);
         istDate.setMinutes(istDate.getMinutes() + 330);
-
         day = istDate.getUTCDate();
+        dayDate = new Date(Date.UTC(
+          istDate.getUTCFullYear(),
+          istDate.getUTCMonth(),
+          istDate.getUTCDate(),
+        ));
       }
 
       // Decide which status to display
@@ -1420,10 +1753,45 @@ exports.getAttendanceOverride = async (req, res) => {
           break;
       }
 
+          if (
+        attendance.isOverridden &&
+        attendance.session1 !== undefined &&
+        attendance.session2 !== undefined &&
+        String(attendance.session1).trim() !== "" &&
+        String(attendance.session2).trim() !== ""
+      ) {
+        const session1 = String(attendance.session1).trim().toUpperCase();
+        const session2 = String(attendance.session2).trim().toUpperCase();
+        value = `${session1}:${session2}`;
+      } else {
+        // If there is an approved leave application for this day, override
+        // the generic L / A:P / P:A / OD / OD:P / P:OD with the specific abbreviation
+        const approvedAbbr = getApprovedLeaveAbbr(facultyId, dayDate);
+        if (approvedAbbr) {
+          switch (displayStatus) {
+            case "Leave":
+              value = approvedAbbr;
+              break;
+            case "First Half Leave":
+              value = approvedAbbr + ":P";
+              break;
+            case "Second Half Leave":
+              value = "P:" + approvedAbbr;
+              break;
+            case "On Duty":
+              value = approvedAbbr;
+              break;
+            case "First Half OD":
+              value = approvedAbbr + ":P";
+              break;
+            case "Second Half OD":
+              value = "P:" + approvedAbbr;
+              break;
+          }
+        }
+      }
       attendanceMap[facultyId][day] = {
         status: value,
-        inTime: attendance.inTime,
-        outTime: attendance.outTime,
         isOverridden: attendance.isOverridden,
         regularization: attendance.regularization,
       };
@@ -1475,13 +1843,7 @@ exports.getAttendanceOverride = async (req, res) => {
         if (facultyAttendance[day] !== undefined) {
           attendanceDays.push({
             day,
-            status: {
-              status: facultyAttendance[day].status,
-              isOverridden: !!facultyAttendance[day].isOverridden,
-              regularization: !!facultyAttendance[day].regularization,
-            },
-            inTime: facultyAttendance[day].inTime || null,
-            outTime: facultyAttendance[day].outTime || null,
+            status: facultyAttendance[day],
           });
         }
 
@@ -1489,18 +1851,14 @@ exports.getAttendanceOverride = async (req, res) => {
         else if (dateObj.getUTCDay() === 0 || facultyHolidayMap.has(day)) {
           attendanceDays.push({
             day,
-            status: { status: "OFF", isOverridden: false, regularization: false },
-            inTime: null,
-            outTime: null,
+            status: "OFF",
           });
         }
         // No record
         else {
           attendanceDays.push({
             day,
-            status: { status: "-", isOverridden: false, regularization: false },
-            inTime: null,
-            outTime: null,
+            status: "-",
           });
         }
       }
@@ -1514,6 +1872,7 @@ exports.getAttendanceOverride = async (req, res) => {
         designation: faculty.designation,
         department: faculty.department,
         employeeCategory: faculty.employeeCategory,
+        punchId: faculty.punchId,
         attendance: attendanceDays,
       };
     });
