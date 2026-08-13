@@ -31,11 +31,7 @@ const parseDate = (value) => {
   if (typeof value === "number") {
     const excelDate = XLSX.SSF.parse_date_code(value);
 
-    return new Date(
-      excelDate.y,
-      excelDate.m - 1,
-      excelDate.d
-    );
+    return new Date(excelDate.y, excelDate.m - 1, excelDate.d);
   }
 
   if (typeof value === "string") {
@@ -407,7 +403,7 @@ exports.requestSecureData = async (req, res) => {
       "Login OTP",
       `<h3>Your Login OTP</h3>
        <p>${otp}</p>
-       <p>Valid for 5 minutes.</p>`
+       <p>Valid for 5 minutes.</p>`,
     ).catch(console.error);
 
     return res.status(200).json({ message: "OTP sent to registered email" });
@@ -430,7 +426,12 @@ exports.verifySecureData = async (req, res) => {
     }
 
     // Validate OTP
-    if (!user.loginOtp || user.loginOtp !== otp || !user.loginOtpExpiry || user.loginOtpExpiry < new Date()) {
+    if (
+      !user.loginOtp ||
+      user.loginOtp !== otp ||
+      !user.loginOtpExpiry ||
+      user.loginOtpExpiry < new Date()
+    ) {
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 
@@ -489,7 +490,7 @@ exports.resignFaculty = async (req, res) => {
     const faculty = await Faculty.findByIdAndUpdate(
       id,
       { isActive: false, resignationReason: reason, resignationDate },
-      { new: true }
+      { new: true },
     );
     if (!faculty) {
       return res.status(404).json({ message: "Faculty not found" });
@@ -500,9 +501,6 @@ exports.resignFaculty = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
-
-
 
 exports.uploadProfileImage = async (req, res) => {
   try {
@@ -708,10 +706,7 @@ exports.searchFaculty = async (req, res) => {
     const faculties = await Faculty.find({
       $and: [
         {
-          $or: [
-            { isActive: true },
-            { isActive: { $exists: false } },
-          ],
+          $or: [{ isActive: true }, { isActive: { $exists: false } }],
         },
         {
           $or: [
@@ -806,10 +801,7 @@ exports.searchFacultyForAvailability = async (req, res) => {
     const faculties = await Faculty.find({
       $and: [
         {
-          $or: [
-            { isActive: true },
-            { isActive: { $exists: false } },
-          ],
+          $or: [{ isActive: true }, { isActive: { $exists: false } }],
         },
         {
           $or: [
@@ -853,9 +845,7 @@ exports.searchFacultyForAvailability = async (req, res) => {
         }).distinct("facultyId")
       : [];
 
-    const punchedSet = new Set(
-      punchedFacultyIds.map((id) => id.toString()),
-    );
+    const punchedSet = new Set(punchedFacultyIds.map((id) => id.toString()));
 
     const result = faculties.map((faculty) => ({
       facultyId: faculty._id,
@@ -878,6 +868,160 @@ exports.searchFacultyForAvailability = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const formatLocalDate = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+const getMatchingDateWithinNext7Days = (baseDate, startDate, endDate) => {
+  if (!baseDate || Number.isNaN(new Date(baseDate).getTime())) {
+    return null;
+  }
+
+  const month = baseDate.getMonth();
+  const day = baseDate.getDate();
+
+  const cursor = new Date(startDate);
+
+  // 7 days total: today + next 6 days
+  for (let i = 0; i < 7; i += 1) {
+    const candidate = new Date(cursor);
+
+    candidate.setDate(cursor.getDate() + i);
+    candidate.setHours(0, 0, 0, 0);
+
+    if (candidate < startDate || candidate > endDate) {
+      continue;
+    }
+
+    // Check month and day only
+    if (candidate.getMonth() === month && candidate.getDate() === day) {
+      return candidate;
+    }
+  }
+
+  return null;
+};
+
+exports.getUpcomingCelebrations = async (req, res) => {
+  try {
+
+    const today = new Date();
+
+    today.setHours(0, 0, 0, 0);
+
+    const endDate = new Date(today);
+
+    endDate.setDate(endDate.getDate() + 6);
+
+    endDate.setHours(23, 59, 59, 999);
+
+  
+    const faculties = await Faculty.find({
+      $or: [{ isActive: true }, { isActive: { $exists: false } }],
+    })
+      .select(
+        "_id empId salutation firstName lastName department designation employeeCategory profileImage dob doj",
+      )
+      .lean();
+
+    const celebrations = [];
+
+   
+    for (const faculty of faculties) {
+      if (!faculty) continue;
+
+      
+      const birthdayDate = faculty.dob ? new Date(faculty.dob) : null;
+
+     
+      const dojDate = faculty.doj ? new Date(faculty.doj) : null;
+
+     
+      if (birthdayDate && !Number.isNaN(birthdayDate.getTime())) {
+        const birthdayNextDate = getMatchingDateWithinNext7Days(
+          birthdayDate,
+          today,
+          endDate,
+        );
+
+        if (birthdayNextDate) {
+          const age =
+            birthdayNextDate.getFullYear() - birthdayDate.getFullYear();
+
+          celebrations.push({
+            type: "Birthday",
+
+            salutation: faculty.salutation,
+
+            firstName: faculty.firstName,
+
+            lastName: faculty.lastName,
+
+            department: faculty.department,
+
+            profileImage: faculty.profileImage?.url || null,
+
+          
+            date: formatLocalDate(birthdayNextDate),
+          });
+        }
+      }
+
+    
+      if (dojDate && !Number.isNaN(dojDate.getTime())) {
+        const anniversaryNextDate = getMatchingDateWithinNext7Days(
+          dojDate,
+          today,
+          endDate,
+        );
+
+        if (anniversaryNextDate) {
+          const yearsOfService =
+            anniversaryNextDate.getFullYear() - dojDate.getFullYear();
+
+          celebrations.push({
+            type: "Work Anniversary",
+
+            salutation: faculty.salutation,
+
+            firstName: faculty.firstName,
+
+            lastName: faculty.lastName,
+
+            department: faculty.department,
+
+            profileImage: faculty.profileImage?.url || null,
+
+          
+            date: formatLocalDate(anniversaryNextDate),
+          });
+        }
+      }
+    }
+
+  
+    celebrations.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  
+    return res.status(200).json({
+      success: true,
+      count: celebrations.length,
+      data: celebrations,
+    });
+  } catch (error) {
+    console.error("Error getting upcoming celebrations:", error);
+
+    return res.status(500).json({
       success: false,
       message: error.message,
     });

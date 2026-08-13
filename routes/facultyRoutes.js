@@ -16,7 +16,8 @@ const {
   searchFaculty,
   bulkUpdateReportingManager,
   resignFaculty,
-  searchFacultyForAvailability
+  searchFacultyForAvailability,
+  getUpcomingCelebrations,
 } = require("../controllers/facultyController");
 const protect = require("../middleware/protect");
 
@@ -34,7 +35,7 @@ router.get("/", protect, getFaculties);
 
 router.get("/search", searchFaculty);
 router.get("/search-available", searchFacultyForAvailability);
-
+router.get("/upcoming-celebrations", getUpcomingCelebrations);
 
 router.put("/add-manger",protect, bulkUpdateReportingManager);
 
