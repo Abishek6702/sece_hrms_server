@@ -34,8 +34,8 @@ router.post("/", protect, addIndividualFaculty);
 router.get("/", protect, getFaculties);
 
 router.get("/search", searchFaculty);
-router.get("/search-available", searchFacultyForAvailability);
-router.get("/upcoming-celebrations", getUpcomingCelebrations);
+router.get("/search-available",protect, searchFacultyForAvailability);
+router.get("/upcoming-celebrations",protect, getUpcomingCelebrations);
 
 router.put("/add-manger",protect, bulkUpdateReportingManager);
 
