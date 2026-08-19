@@ -15,6 +15,16 @@ async function processAttendance(attendanceDate) {
   date.setUTCHours(18, 30, 0, 0);
   date.setUTCDate(date.getUTCDate() - 1);
 
+  // Prevent processing future dates
+  const todayIST = new Date();
+  todayIST.setUTCHours(todayIST.getUTCHours() + 5, todayIST.getUTCMinutes() + 30, 0, 0);
+  todayIST.setUTCHours(0, 0, 0, 0); // Start of today IST
+
+  if (processDate > todayIST) {
+    console.log("Cannot process attendance for future dates:", processDate.toISOString());
+    return;
+  }
+
   console.log("================================");
   console.log("Process Date:", processDate.toISOString());
   console.log("Storage Date:", date.toISOString());

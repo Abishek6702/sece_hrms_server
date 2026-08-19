@@ -1678,23 +1678,14 @@ exports.getAttendanceOverride = async (req, res) => {
       let day;
       let dayDate;
 
-      if (attendance.inTime) {
-        day = attendance.inTime.getUTCDate();
-        dayDate = new Date(Date.UTC(
-          attendance.inTime.getUTCFullYear(),
-          attendance.inTime.getUTCMonth(),
-          attendance.inTime.getUTCDate(),
-        ));
-      } else {
-        const istDate = new Date(attendance.attendanceDate);
-        istDate.setMinutes(istDate.getMinutes() + 330);
-        day = istDate.getUTCDate();
-        dayDate = new Date(Date.UTC(
-          istDate.getUTCFullYear(),
-          istDate.getUTCMonth(),
-          istDate.getUTCDate(),
-        ));
-      }
+      const istDate = new Date(attendance.attendanceDate);
+      istDate.setMinutes(istDate.getMinutes() + 330);
+      day = istDate.getUTCDate();
+      dayDate = new Date(Date.UTC(
+        istDate.getUTCFullYear(),
+        istDate.getUTCMonth(),
+        istDate.getUTCDate(),
+      ));
 
       // Decide which status to display
       let displayStatus = attendance.status;
