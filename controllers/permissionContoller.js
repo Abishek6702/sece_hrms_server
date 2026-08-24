@@ -807,7 +807,8 @@ exports.bulkApprovePermission = async (req, res) => {
   try {
     requireRole(req, ["hod", "principal"]);
 
-    const { requestIds, remarks } = req.body;
+    const { requestIds, remarks, approvalRemarks } = req.body;
+    const resolvedRemarks = approvalRemarks ?? remarks;
     if (!Array.isArray(requestIds) || requestIds.length === 0) {
       return res.status(400).json({
         success: false,
@@ -833,7 +834,7 @@ exports.bulkApprovePermission = async (req, res) => {
         perm,
         req.user,
         req.user.role,
-        remarks,
+        resolvedRemarks,
       );
 
       results.push({
