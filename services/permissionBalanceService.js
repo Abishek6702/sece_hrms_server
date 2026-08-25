@@ -98,12 +98,6 @@ const incrementPermissionBalanceOnApproval = async (
     throw new Error("Unable to resolve permission balance for approval.");
   }
 
-  if (minutes > balance.remainingMinutes) {
-    throw new Error(
-      "Insufficient remaining permission minutes in the current window.",
-    );
-  }
-
   const updatedUsedMinutes = balance.usedMinutes + minutes;
   const updatedRemainingMinutes = Math.max(
     0,
