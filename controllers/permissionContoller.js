@@ -807,7 +807,8 @@ exports.bulkApprovePermission = async (req, res) => {
   try {
     requireRole(req, ["hod", "principal"]);
 
-    const { requestIds, remarks } = req.body;
+    const { requestIds, remarks, approvalRemarks } = req.body;
+    const resolvedRemarks = approvalRemarks ?? remarks;
     if (!Array.isArray(requestIds) || requestIds.length === 0) {
       return res.status(400).json({
         success: false,
@@ -829,19 +830,28 @@ exports.bulkApprovePermission = async (req, res) => {
         continue;
       }
 
-      const result = await applyPermissionApproval(
-        perm,
-        req.user,
-        req.user.role,
-        remarks,
-      );
+      try {
+        const result = await applyPermissionApproval(
+          perm,
+          req.user,
+          req.user.role,
+          resolvedRemarks,
+        );
 
-      results.push({
-        requestId,
-        success: result.success,
-        message: result.message,
-        data: result.success ? result.perm : null,
-      });
+        results.push({
+          requestId,
+          success: result.success,
+          message: result.message,
+          data: result.success ? result.perm : null,
+        });
+      } catch (error) {
+        // Capture error for this specific permission and continue with next
+        results.push({
+          requestId,
+          success: false,
+          message: error.message || "Error approving permission",
+        });
+      }
     }
 
     const approvedCount = results.filter((item) => item.success).length;
@@ -962,7 +972,7 @@ exports.cancelPermission = async (req, res) => {
       message: "Permission cancelled and deleted successfully",
     });
   } catch (error) {
-    console.error("cancelPermission error:", error);
+    console.error("cancel Permission    error:", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };

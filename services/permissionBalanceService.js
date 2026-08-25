@@ -30,35 +30,56 @@ const createPermissionBalanceForFaculty = async (facultyId, date = new Date()) =
     0,
   );
 
-  return PermissionBalance.findOneAndUpdate(
-    {
-      facultyId,
-      periodKey,
-    },
-    {
-      facultyId,
-      academicYear,
-      allocatedMinutes,
-      usedMinutes,
-      remainingMinutes: Math.max(0, allocatedMinutes - usedMinutes),
-      remainingHours: Math.round(Math.max(0, allocatedMinutes - usedMinutes) / 60 * 100) / 100,
-      periodKey,
-      windowStart: start,
-      windowEnd: end,
-    },
-    {
-      upsert: true,
-      new: true,
-      setDefaultsOnInsert: true,
-    },
-  );
+  const balanceUpdate = {
+    facultyId,
+    academicYear,
+    allocatedMinutes,
+    usedMinutes,
+    remainingMinutes: Math.max(0, allocatedMinutes - usedMinutes),
+    remainingHours: Math.round(Math.max(0, allocatedMinutes - usedMinutes) / 60 * 100) / 100,
+    periodKey,
+    windowStart: start,
+    windowEnd: end,
+  };
+
+  const balanceFilter = {
+    facultyId,
+    $or: [{ periodKey }, { academicYear }],
+  };
+
+  try {
+    return await PermissionBalance.findOneAndUpdate(
+      balanceFilter,
+      { $set: balanceUpdate },
+      {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true,
+      },
+    );
+  } catch (error) {
+    if (error?.code !== 11000) {
+      throw error;
+    }
+
+    const existingBalance = await PermissionBalance.findOne(balanceFilter);
+    if (!existingBalance) {
+      throw error;
+    }
+
+    return existingBalance;
+  }
 };
 
 const getPermissionBalanceForFaculty = async (facultyId, date = new Date()) => {
   const { start, end } = getPermissionWindowRange(date);
   const periodKey = formatPeriodKey(start, end);
 
-  let balance = await PermissionBalance.findOne({ facultyId, periodKey });
+  const academicYear = getPermissionAcademicYear(start);
+  let balance = await PermissionBalance.findOne({
+    facultyId,
+    $or: [{ periodKey }, { academicYear }],
+  });
 
   if (!balance) {
     balance = await createPermissionBalanceForFaculty(facultyId, date);
@@ -75,12 +96,6 @@ const incrementPermissionBalanceOnApproval = async (
   const balance = await getPermissionBalanceForFaculty(facultyId, date);
   if (!balance) {
     throw new Error("Unable to resolve permission balance for approval.");
-  }
-
-  if (minutes > balance.remainingMinutes) {
-    throw new Error(
-      "Insufficient remaining permission minutes in the current window.",
-    );
   }
 
   const updatedUsedMinutes = balance.usedMinutes + minutes;
