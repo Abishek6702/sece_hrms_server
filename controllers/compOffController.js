@@ -28,6 +28,19 @@ exports.createCompOffRequest = async (req, res) => {
       currentApprovalLevel = "principal";
     }
 
+    // If the faculty reports directly to the principal, skip HOD level
+    if (
+      currentApprovalLevel === "hod" &&
+      faculty.reportingTo?.facultyId
+    ) {
+      const reportingUser = await User.findOne({
+        facultyId: faculty.reportingTo.facultyId,
+      });
+      if (reportingUser?.role === "principal") {
+        currentApprovalLevel = "principal";
+      }
+    }
+
     const { workedFromDate, workedToDate, compOffDays, reason } = req.body;
 
     if (new Date(workedFromDate) > new Date(workedToDate)) {
@@ -392,7 +405,8 @@ exports.withdrawCompOff = async (req, res) => {
       });
     }
 
-    if (request.currentApprovalLevel !== "hod") {
+    // Cannot withdraw if HOD has already approved (request moved to principal after HOD sign-off)
+    if (request.approvalStatus?.hodStatus === "Approved") {
       return res.status(400).json({
         success: false,
         message: "Cannot withdraw after HOD approval",
