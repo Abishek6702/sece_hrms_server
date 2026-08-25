@@ -950,7 +950,7 @@ exports.cancelRequest = async (req, res) => {
       message: "Request withdrawn successfully",
     });
   } catch (error) {
-    console.error("cancelRequest error:", error);
+    console.error("cancelRequest  error:", error);
 
     return res.status(500).json({
       success: false,

@@ -972,7 +972,7 @@ exports.cancelPermission = async (req, res) => {
       message: "Permission cancelled and deleted successfully",
     });
   } catch (error) {
-    console.error("cancelPermission error:", error);
+    console.error("cancel Permission    error:", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
