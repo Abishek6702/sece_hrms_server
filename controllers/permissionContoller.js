@@ -830,19 +830,28 @@ exports.bulkApprovePermission = async (req, res) => {
         continue;
       }
 
-      const result = await applyPermissionApproval(
-        perm,
-        req.user,
-        req.user.role,
-        resolvedRemarks,
-      );
+      try {
+        const result = await applyPermissionApproval(
+          perm,
+          req.user,
+          req.user.role,
+          resolvedRemarks,
+        );
 
-      results.push({
-        requestId,
-        success: result.success,
-        message: result.message,
-        data: result.success ? result.perm : null,
-      });
+        results.push({
+          requestId,
+          success: result.success,
+          message: result.message,
+          data: result.success ? result.perm : null,
+        });
+      } catch (error) {
+        // Capture error for this specific permission and continue with next
+        results.push({
+          requestId,
+          success: false,
+          message: error.message || "Error approving permission",
+        });
+      }
     }
 
     const approvedCount = results.filter((item) => item.success).length;
