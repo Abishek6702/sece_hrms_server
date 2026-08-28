@@ -91,20 +91,22 @@ const deductLeaveBalance = async ({
     // Casual Leave Monthly Limit
     // ===========================
     if (leaveName === "Casual Leave") {
-      const year = new Date().getFullYear();
-      const month = currentMonth - 1;
+      // Company leave cycle: 26th of one month to 25th of the next month
+      const cycleDate = new Date();
+      const cycleDay = cycleDate.getDate();
+      const cycleMonth = cycleDate.getMonth(); // 0-indexed
+      const cycleYear = cycleDate.getFullYear();
 
-      const monthStart = new Date(year, month, 1);
-
-      const monthEnd = new Date(
-        year,
-        month + 1,
-        0,
-        23,
-        59,
-        59,
-        999
-      );
+      let monthStart, monthEnd;
+      if (cycleDay >= 26) {
+        // Cycle: 26th of current month to 25th of next month
+        monthStart = new Date(cycleYear, cycleMonth, 26, 0, 0, 0, 0);
+        monthEnd = new Date(cycleYear, cycleMonth + 1, 25, 23, 59, 59, 999);
+      } else {
+        // Cycle: 26th of previous month to 25th of current month
+        monthStart = new Date(cycleYear, cycleMonth - 1, 26, 0, 0, 0, 0);
+        monthEnd = new Date(cycleYear, cycleMonth, 25, 23, 59, 59, 999);
+      }
 
       const existingLeaves = await LeaveApplication.find({
         facultyId,

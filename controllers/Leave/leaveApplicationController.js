@@ -137,18 +137,29 @@ exports.applyLeave = async (req, res) => {
       });
     }
     if (leaveType.leaveName === "Casual Leave") {
-      const leaveMonth = new Date(fromDate).getMonth();
-      const leaveYear = new Date(fromDate).getFullYear();
+      // Company leave cycle: 26th of one month to 25th of the next month
+      const leaveDate = new Date(fromDate);
+      const leaveDay = leaveDate.getDate();
+      const leaveMonth = leaveDate.getMonth();
+      const leaveYear = leaveDate.getFullYear();
 
-      const monthStart = new Date(leaveYear, leaveMonth, 1);
-      const monthEnd = new Date(leaveYear, leaveMonth + 1, 0, 23, 59, 59, 999);
+      let cycleStart, cycleEnd;
+      if (leaveDay >= 26) {
+        // Cycle: 26th of current month to 25th of next month
+        cycleStart = new Date(leaveYear, leaveMonth, 26, 0, 0, 0, 0);
+        cycleEnd = new Date(leaveYear, leaveMonth + 1, 25, 23, 59, 59, 999);
+      } else {
+        // Cycle: 26th of previous month to 25th of current month
+        cycleStart = new Date(leaveYear, leaveMonth - 1, 26, 0, 0, 0, 0);
+        cycleEnd = new Date(leaveYear, leaveMonth, 25, 23, 59, 59, 999);
+      }
 
       const existingCLLeaves = await LeaveApplication.find({
         facultyId: faculty._id,
         status: { $in: ["Pending", "Approved"] },
         fromDate: {
-          $gte: monthStart,
-          $lte: monthEnd,
+          $gte: cycleStart,
+          $lte: cycleEnd,
         },
       }).populate("leaveTypeId", "leaveName");
 
