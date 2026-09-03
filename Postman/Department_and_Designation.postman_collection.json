@@ -1,0 +1,327 @@
+{
+  "info": {
+    "name": "Department and Designation APIs",
+    "description": "CRUD APIs for Department and Designation modules",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Departments",
+      "item": [
+        {
+          "name": "Create Department",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"departmentName\": \"Information Technology\",\n    \"description\": \"IT Department\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/departments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "departments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Departments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/departments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "departments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Department By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/departments/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "departments",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_WITH_DEPARTMENT_ID"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Department",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"departmentName\": \"Computer Science and Engineering\",\n    \"isActive\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/departments/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "departments",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_WITH_DEPARTMENT_ID"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Department",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/departments/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "departments",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_WITH_DEPARTMENT_ID"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Designations",
+      "item": [
+        {
+          "name": "Create Designation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"designationName\": \"Assistant Professor\",\n    \"description\": \"Teaching Staff\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/designations",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "designations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Designations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/designations",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "designations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Designation By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/designations/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "designations",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_WITH_DESIGNATION_ID"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Designation",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"designationName\": \"Associate Professor\",\n    \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/designations/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "designations",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_WITH_DESIGNATION_ID"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Designation",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/designations/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "designations",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "REPLACE_WITH_DESIGNATION_ID"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
