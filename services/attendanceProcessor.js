@@ -66,10 +66,10 @@ async function processAttendance(attendanceDate) {
       console.log("Attendance NOT Found");
     }
 
-    // HOLIDAY
-
-    // HOLIDAY
-
+    // =================================
+    // HOLIDAY CHECK
+    // =================================
+    
     const nextDate = new Date(processDate);
     nextDate.setUTCDate(nextDate.getUTCDate() + 1);
     
@@ -82,9 +82,34 @@ async function processAttendance(attendanceDate) {
       },
     });
     
-    // console.log("Holiday:", holiday);
+    console.log(
+      "Holiday Check:",
+      faculty.empId,
+      processDate.toISOString(),
+      holiday?.holidayName || "NO HOLIDAY"
+    );
     
-    if (holiday && attendance) {
+    if (holiday) {
+    
+      // No attendance/punch record → create Holiday
+      if (!attendance) {
+        await Attendance.create({
+          facultyId: faculty._id,
+          punchId: faculty.punchId,
+          attendanceDate: date,
+          status: "Holiday",
+          lopDays: 0,
+          remarks: holiday.holidayName,
+        });
+    
+        console.log(
+          `HOLIDAY CREATED: ${faculty.empId} - ${holiday.holidayName}`
+        );
+    
+        continue;
+      }
+    
+      // Attendance exists
       if (attendance.inTime) {
         attendance.status = "Present";
         attendance.remarks = `Holiday - ${holiday.holidayName}`;
@@ -94,21 +119,61 @@ async function processAttendance(attendanceDate) {
       }
     
       attendance.lopDays = 0;
+    
       await attendance.save();
+    
+      console.log(
+        `HOLIDAY APPLIED: ${faculty.empId} - ${holiday.holidayName}`
+      );
     
       continue;
     }
-    // SUNDAY CHECK
-
+    // =================================
+    // SUNDAY FALLBACK CHECK
+    // =================================
+    
     const istDate = new Date(processDate);
     istDate.setUTCMinutes(istDate.getUTCMinutes() + 330);
-
+    
     const isSunday = istDate.getUTCDay() === 0;
-
+    
     if (isSunday) {
+    
+      console.log(`SUNDAY FALLBACK: ${faculty.empId}`);
+    
+      // No attendance record → create Holiday
+      if (!attendance) {
+        await Attendance.create({
+          facultyId: faculty._id,
+          punchId: faculty.punchId,
+          attendanceDate: date,
+          status: "Holiday",
+          lopDays: 0,
+          remarks: "Sunday",
+        });
+    
+        console.log(`SUNDAY HOLIDAY CREATED: ${faculty.empId}`);
+    
+        continue;
+      }
+    
+      // Attendance exists
+      if (attendance.inTime) {
+        attendance.status = "Present";
+        attendance.remarks = "Holiday - Sunday";
+      } else {
+        attendance.status = "Holiday";
+        attendance.remarks = "Sunday";
+      }
+    
+      attendance.lopDays = 0;
+    
+      await attendance.save();
+    
+      console.log(`SUNDAY HOLIDAY APPLIED: ${faculty.empId}`);
+    
       continue;
     }
-
     // LEAVE
 
     const leaveApplication = await LeaveApplication.findOne({
