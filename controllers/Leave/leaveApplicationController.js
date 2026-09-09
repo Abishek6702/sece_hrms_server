@@ -234,6 +234,8 @@ exports.applyLeave = async (req, res) => {
         currentApprovalLevel = "dean-research";
       } else if (leaveType.leaveName === "On Duty - Examination") {
         currentApprovalLevel = "coe";
+      } else if (leaveType.leaveName === "On Duty - Official") {
+        currentApprovalLevel = "dean-iqac";
       } else {
         currentApprovalLevel = "principal";
       }
@@ -517,10 +519,13 @@ exports.approveLeave = async (req, res) => {
 
       if (leaveName === "On Duty - Research") {
         leaveApplication.currentApprovalLevel = "dean-research";
-      } else if (leaveName === "On Duty - Exam") {
+      } else if (
+        leaveName === "On Duty - Exam" ||
+        leaveName === "On Duty - Examination"
+      ) {
         leaveApplication.currentApprovalLevel = "coe";
       } else if (leaveName === "On Duty - Official") {
-        leaveApplication.currentApprovalLevel = "principal";
+        leaveApplication.currentApprovalLevel = "dean-iqac";
       } else {
         leaveApplication.currentApprovalLevel = "principal";
       }
@@ -529,13 +534,13 @@ exports.approveLeave = async (req, res) => {
 
     // Dean Approval
     else if (leaveApplication.currentApprovalLevel === "dean-research") {
-      leaveApplication.currentApprovalLevel = "principal";
+      leaveApplication.currentApprovalLevel = "dean-iqac";
       leaveApplication.approvalStatus.researchStatus = "Approved";
     }
 
     // COE Approval
     else if (leaveApplication.currentApprovalLevel === "coe") {
-      leaveApplication.currentApprovalLevel = "principal";
+      leaveApplication.currentApprovalLevel = "dean-iqac";
       leaveApplication.approvalStatus.coeStatus = "Approved";
     }
 
