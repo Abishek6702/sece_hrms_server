@@ -666,6 +666,7 @@ exports.getFacultyAttendanceHistory = async (req, res) => {
         records.push({
           attendanceId: attendance._id,
           date: formatISTDate(attendance.attendanceDate),
+          attendanceDate: attendance.attendanceDate,
           checkIn: attendance.inTime,
           checkOut: attendance.outTime,
           workingHours: attendance.workingMinutes,
