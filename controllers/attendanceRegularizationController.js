@@ -3,6 +3,7 @@ const Attendance = require("../models/attendance");
 const User = require("../models/User");
 const Faculty = require("../models/Faculty");
 const mongoose = require("mongoose");
+const { buildAttendanceDateRange } = require("../utils/attendanceDateUtils");
 
 const requireRole = (req, role) => {
   const roles = Array.isArray(role) ? role : [role];
@@ -226,11 +227,12 @@ exports.createAttendanceRegularization = async (req, res) => {
     // ==========================
     // Prevent duplicate request for same date
     // ==========================
+    const attendanceDayRange = buildAttendanceDateRange(attendanceDate);
     const existingRequest = await AttendanceRegularization.findOne({
       facultyId,
       attendanceDate: {
-        $gte: new Date(`${attendanceDate}T00:00:00.000Z`),
-        $lt: new Date(`${attendanceDate}T23:59:59.999Z`),
+        $gte: attendanceDayRange?.start,
+        $lt: attendanceDayRange?.end,
       },
       status: {
         $in: ["Pending", "Approved"],
@@ -718,30 +720,13 @@ const applyApprovalToRequest = async (request, user, role, remarks) => {
     await request.save();
 
     const attendanceDate = new Date(request.attendanceDate);
-    const startOfDay = new Date(Date.UTC(
-      attendanceDate.getUTCFullYear(),
-      attendanceDate.getUTCMonth(),
-      attendanceDate.getUTCDate(),
-      0,
-      0,
-      0,
-      0,
-    ));
-    const endOfDay = new Date(Date.UTC(
-      attendanceDate.getUTCFullYear(),
-      attendanceDate.getUTCMonth(),
-      attendanceDate.getUTCDate(),
-      23,
-      59,
-      59,
-      999,
-    ));
+    const attendanceDayRange = buildAttendanceDateRange(attendanceDate);
 
     const attendance = await Attendance.findOne({
       facultyId: request.facultyId,
       attendanceDate: {
-        $gte: startOfDay,
-        $lte: endOfDay,
+        $gte: attendanceDayRange?.start,
+        $lte: attendanceDayRange?.end,
       },
     });
 
