@@ -19,6 +19,7 @@ const attendanceProcessRoutes = require("./routes/attendanceProcessRoutes");
 const attendanceRoutes = require("./routes/attendanceRoutes");
 const esslRoutes = require("./routes/esslRoutes");
 const attendanceRegularizationRoutes = require("./routes/attendanceRegularizationRoutes");
+const overallRequestRoutes = require("./routes/overallRequestRoutes");
 const attendanceOverrideRoutes = require("./routes/attendanceOverrideRoutes");
 const principalRoutes = require("./routes/principalDashboardRoutes");
 const departmentRoutes = require("./routes/departmentRoutes");
@@ -92,6 +93,7 @@ app.use("/api/attendance-process", attendanceProcessRoutes);
 app.use("/api/comp-off", compOffRoutes);
 app.use("/api/essl", esslRoutes);
 app.use("/api/attendance-regularization", attendanceRegularizationRoutes);
+app.use("/api", overallRequestRoutes);
 
 app.use("/api/attendance-override", attendanceOverrideRoutes);
 
