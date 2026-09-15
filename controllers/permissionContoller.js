@@ -475,6 +475,28 @@ exports.getMyPermissions = async (req, res) => {
   }
 };
 
+exports.getOverallPermissions = async (req, res) => {
+  try {
+    const permissions = await Permission.find({})
+      .populate("facultyId", "firstName lastName department empId")
+      .populate("approvalHistory.approvedBy", "firstName lastName empId")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      count: permissions.length,
+      data: permissions.map(formatPermission),
+    });
+  } catch (error) {
+    console.error("getOverallPermissions error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 // HOD: list permissions for department
 
 exports.matchesDepartment = matchesDepartment;
