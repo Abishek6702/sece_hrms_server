@@ -346,6 +346,7 @@ exports.getAttendanceList = async (req, res) => {
         empId: emp.empId,
         employeeName: `${emp.firstName || ""} ${emp.lastName || ""}`.trim(),
         department: emp.department,
+        originalDepartment: emp.originalDepartment,
         designation: emp.designation,
         employeeCategory: emp.employeeCategory,
         fromDate: startDate,
@@ -494,6 +495,7 @@ exports.getAttendanceList = async (req, res) => {
             item.facultyId?.lastName || ""
           }`.trim(),
           department: item.facultyId?.department || "",
+          originalDepartment: item.facultyId?.originalDepartment,
           designation: item.facultyId?.designation || "",
           employeeCategory: item.facultyId?.employeeCategory || "",
           attendanceDate: item.attendanceDate,
