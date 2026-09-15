@@ -419,7 +419,7 @@ exports.getAttendanceList = async (req, res) => {
       .populate({
         path: "facultyId",
         select:
-          "empId firstName lastName department designation employeeCategory shiftId",
+          "empId firstName lastName department originalDepartment designation employeeCategory shiftId",
         populate: {
           path: "shiftId",
           select: "shiftName startTime endTime graceTime workingMinutes",
