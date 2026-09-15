@@ -453,6 +453,28 @@ exports.getRequests = async (req, res) => {
   }
 };
 
+exports.getOverallRequests = async (req, res) => {
+  try {
+    const requests = await AttendanceRegularization.find({})
+      .populate("facultyId", "firstName lastName department empId")
+      .populate("approvalHistory.approvedBy", "firstName lastName facultyId")
+      .sort({ createdAt: -1 });
+
+    const formatted = await Promise.all(requests.map(formatRequest));
+
+    return res.status(200).json({
+      success: true,
+      count: formatted.length,
+      requests: formatted,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 exports.getRequestsForHod = async (req, res) => {
   try {
     requireRole(req, "hod");
