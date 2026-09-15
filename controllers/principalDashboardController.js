@@ -185,12 +185,59 @@ exports.getAttendanceDashboardSummary = async (req, res) => {
       },
     });
 
+    const todayAttendances = await Attendance.find({
+      facultyId: {
+        $in: activeFacultyIds,
+      },
+      attendanceDate: {
+        $gte: today,
+        $lt: tomorrow,
+      },
+      inTime: {
+        $ne: null,
+      },
+    })
+      .populate({
+        path: "facultyId",
+        select: "shiftId",
+        populate: {
+          path: "shiftId",
+          select: "startTime graceTime",
+        },
+      })
+      .lean();
+
+    const lateCheckedIn = todayAttendances.filter((attendance) => {
+      const shift = attendance.facultyId?.shiftId;
+
+      if (!shift?.startTime || !attendance.inTime) {
+        return false;
+      }
+
+      const [shiftHours, shiftMinutes] = shift.startTime
+        .split(":")
+        .map(Number);
+      const shiftStart = new Date(attendance.inTime);
+
+      shiftStart.setHours(shiftHours, shiftMinutes, 0, 0);
+
+      const graceDeadline = new Date(
+        shiftStart.getTime() + (shift.graceTime || 0) * 60000,
+      );
+      const checkIn = new Date(attendance.inTime);
+
+      checkIn.setSeconds(0, 0);
+
+      return checkIn > graceDeadline;
+    }).length;
+
     const notCheckedInToday = totalStaff - checkedInToday;
 
     return res.status(200).json({
       success: true,
       totalStaff,
       checkedInToday,
+      lateCheckedIn,
       notCheckedInToday,
     });
   } catch (error) {
@@ -357,6 +404,7 @@ exports.getAttendanceList = async (req, res) => {
         workingHours: "0h 0m",
         lateMinutes: 0,
         status: "Not Checked In",
+        profileImage: emp.profileImage || null,
       }));
 
       return res.status(200).json({
@@ -419,7 +467,7 @@ exports.getAttendanceList = async (req, res) => {
       .populate({
         path: "facultyId",
         select:
-          "empId firstName lastName department originalDepartment designation employeeCategory shiftId",
+          "empId firstName lastName department originalDepartment designation employeeCategory shiftId profileImage",
         populate: {
           path: "shiftId",
           select: "shiftName startTime endTime graceTime workingMinutes",
@@ -510,6 +558,7 @@ exports.getAttendanceList = async (req, res) => {
           isLate: isLate,
           isOverridden: item.isOverridden || false,
           regularization: item.regularization || false,
+          profileImage: item.facultyId?.profileImage || null,
         };
       })
       .filter((item) => {
