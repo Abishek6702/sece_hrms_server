@@ -1,9 +1,11 @@
 const forgotPassword = require("./mailTemplates/forgotpassword.js");
 const welcomeFaculty = require("./mailTemplates/welcomeFaculty.js");
+const payrollSuccess = require("./mailTemplates/payrollSuccess.js");
 
 const templates = {
   forgotPassword,
   welcomeFaculty,
+  payrollSuccess,
 };
 
 function renderTemplate(templateName, data) {
