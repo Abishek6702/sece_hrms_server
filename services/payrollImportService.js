@@ -36,16 +36,17 @@ const parseCurrency = (val, rowIdx, fieldName, errors) => {
   return num;
 };
 
-// Based on the exact official template structure (Row 1 and 2)
-// Missing fields in the first table (like OD days, By Bank, By Cash) 
-// are mapped to 0 safely, since the exact template does not define them in Row 1/2.
+// Column map based on 'Salary final.xlsx' official template (0-indexed)
+// Row 1: S.No. | Emp Id | Name of the staff | Dept | Designation | Date of joining | Allowances(merged) | ... | Addl maint. Salary | No. of LOP | No. of OD in days | Deduction(merged) | ... | Salary after deduction | Total Deduction | Advance(merged) | ... | Addition(merged) | ... | Net Salary | ...
+// Row 2:                                                                                Basic | AGP | Basic Pay | DA | HRA | Food | Medical | TA | EPF | others | Gross Salary |    |     |        | LOP | Hostel | Trans. | EPF(1) | EPF(2) | ESI | TDS | Prof.Tax | Medical | Others |                  |               | Paid | Recd | Bal | OD amt | Maiint.amt | By Bank | By cash
 const COLUMN_MAP = {
-  empId: 0,              // S.No. is used as Emp ID in this template
-  name: 1,
-  department: 2,
-  designation: 3,
-  doj: 4,
-  
+  sno: 0,                // S.No.
+  empId: 1,             // Emp Id  ← dedicated column in new template
+  name: 2,
+  department: 3,
+  designation: 4,
+  doj: 5,
+
   basic: 6,
   agp: 7,
   basicPay: 8,
@@ -57,26 +58,49 @@ const COLUMN_MAP = {
   earningsEpf: 14,
   earningsOthers: 15,
   grossSalary: 16,
-  
-  lopDays: 17,
-  
-  deductionsLop: 19,
-  hostel: 20,
-  transportation: 21,
-  epf1: 22,
-  epf2: 23,
-  esi: 24,
-  tds: 25,
-  professionalTax: 26,
-  deductionsMedical: 27,
-  totalDeduction: 28,
-  
-  advancePaid: 29,
-  advanceReceived: 30,
-  advanceBalance: 31,
-  
-  netSalary: 32,
+
+  maintenanceSalary: 17,  // Addl maint. Salary (top-level, not sub-header)
+  lopDays: 18,            // No. of LOP
+  odDays: 19,             // No. of OD in days
+
+  deductionsLop: 20,
+  hostel: 21,
+  transportation: 22,
+  epf1: 23,
+  epf2: 24,
+  esi: 25,
+  tds: 26,
+  professionalTax: 27,
+  deductionsMedical: 28,
+  deductionsOthers: 29,
+
+  salaryAfterDeduction: 30,
+  totalDeduction: 31,
+
+  advancePaid: 32,
+  advanceReceived: 33,
+  advanceBalance: 34,
+
+  odAmount: 35,           // OD amt
+  maintenanceAmount: 36,  // Maiint.amt
+
+  byBank: 37,             // By Bank
+  byCash: 38,             // By cash
+  // col 38 = Net Salary in row1 header, but By cash is in row2 — Net Salary is at 37 in row1
+  netSalary: 37,          // "Net Salary" is at col 37 in Row 1
 };
+// NOTE: "By Bank" (row2[37]) and "Net Salary" (row1[37]) share the same column index.
+// Net Salary is the row-1 group header; By Bank/By cash are row-2 sub-columns at 37 and 38.
+// Re-mapping to avoid collision:
+// Based on exact output: row1[37]="Net Salary", row2[37]="By Bank", row2[38]="By cash"
+// So actual net salary column in row1 is 37, and payment cols in row2 are 37 and 38.
+// The data rows will have: col37 = By Bank value, col38 = By Cash value.
+// We need a separate net salary column. Looking at row1 again:
+// row1[37]="Net Salary", row1[38]="" → Net Salary header spans cols 37-38
+// row2[37]="By Bank", row2[38]="By cash"
+// So net salary = row1 col 37 header (merged), payment sub-cols are 37 & 38 in row2
+// This means data rows: col37 = By Bank, col38 = By cash — Net Salary has NO dedicated data column!
+// Net Salary must be calculated: grossSalary - totalDeduction + odAmount + maintenanceAmount - advance
 
 exports.processPayrollExcel = async (filePath, payrollMonth, payrollYear, userId) => {
   const workbook = xlsx.readFile(filePath);
@@ -92,7 +116,7 @@ exports.processPayrollExcel = async (filePath, payrollMonth, payrollYear, userId
   const row1 = data[0] || [];
   const row2 = data[1] || [];
   
-  // Validate template structure (ensuring it's the exact official template)
+  // Validate this is the correct official template
   const missingColumns = [];
   
   const checkHeader = (row, index, expectedSubstring) => {
@@ -102,13 +126,14 @@ exports.processPayrollExcel = async (filePath, payrollMonth, payrollYear, userId
     }
   };
 
-  checkHeader(row1, 0, "S.No."); // Used as Emp ID
-  checkHeader(row1, 1, "Name of the staff");
-  checkHeader(row2, 6, "Basic");
-  checkHeader(row2, 16, "Gross Salary");
-  checkHeader(row2, 19, "LOP");
-  checkHeader(row1, 28, "Total Deduction");
-  checkHeader(row1, 32, "Net Salary");
+  checkHeader(row1, 1, "Emp");           // col 1 = "Emp Id"
+  checkHeader(row1, 2, "Name");          // col 2 = "Name of the staff"
+  checkHeader(row2, 6, "Basic");         // col 6 = "Basic"
+  checkHeader(row2, 16, "Gross Salary"); // col 16 = "Gross Salary"
+  checkHeader(row2, 20, "LOP");          // col 20 = "LOP" (deduction)
+  checkHeader(row1, 31, "Total Deduction"); // col 31
+  checkHeader(row2, 37, "By Bank");      // col 37 = "By Bank"
+
 
   if (missingColumns.length > 0) {
     return {
@@ -215,7 +240,7 @@ exports.processPayrollExcel = async (filePath, payrollMonth, payrollYear, userId
       },
       attendance: {
         lopDays: parseCurrency(row[COLUMN_MAP.lopDays], rowIndex, 'lopDays', errors),
-        odDays: 0 // Not in Row 1/2 of exact template
+        odDays: parseCurrency(row[COLUMN_MAP.odDays], rowIndex, 'odDays', errors)
       },
       deductions: {
         lop: parseCurrency(row[COLUMN_MAP.deductionsLop], rowIndex, 'deductions.lop', errors),
@@ -227,7 +252,7 @@ exports.processPayrollExcel = async (filePath, payrollMonth, payrollYear, userId
         tds: parseCurrency(row[COLUMN_MAP.tds], rowIndex, 'tds', errors),
         professionalTax: parseCurrency(row[COLUMN_MAP.professionalTax], rowIndex, 'professionalTax', errors),
         medical: parseCurrency(row[COLUMN_MAP.deductionsMedical], rowIndex, 'deductions.medical', errors),
-        others: 0 // Not directly separated in this part of template
+        others: parseCurrency(row[COLUMN_MAP.deductionsOthers], rowIndex, 'deductions.others', errors)
       },
       advance: {
         paid: parseCurrency(row[COLUMN_MAP.advancePaid], rowIndex, 'advance.paid', errors),
@@ -235,24 +260,27 @@ exports.processPayrollExcel = async (filePath, payrollMonth, payrollYear, userId
         balance: parseCurrency(row[COLUMN_MAP.advanceBalance], rowIndex, 'advance.balance', errors)
       },
       additions: {
-        odAmount: 0,
-        maintenanceAmount: 0
+        odAmount: parseCurrency(row[COLUMN_MAP.odAmount], rowIndex, 'odAmount', errors),
+        maintenanceAmount: parseCurrency(row[COLUMN_MAP.maintenanceAmount], rowIndex, 'maintenanceAmount', errors)
       },
+      maintenanceSalary: parseCurrency(row[COLUMN_MAP.maintenanceSalary], rowIndex, 'maintenanceSalary', errors),
+
       totalDeduction: parseCurrency(row[COLUMN_MAP.totalDeduction], rowIndex, 'totalDeduction', errors),
-      salaryAfterDeduction: parseCurrency(row[COLUMN_MAP.totalDeduction], rowIndex, 'salaryAfterDeduction', errors), // Usually Gross - Total Deduction, but just reading from template if it exists, wait, row 1/2 has no Salary After Deduction. We will leave it as Gross - Total, but standard requires just saving 0 or calculated if missing.
-      netSalary: parseCurrency(row[COLUMN_MAP.netSalary], rowIndex, 'netSalary', errors),
+      salaryAfterDeduction: parseCurrency(row[COLUMN_MAP.salaryAfterDeduction], rowIndex, 'salaryAfterDeduction', errors),
+      netSalary: 0, // calculated below after all fields are set
       payment: {
-        byBank: 0,
-        byCash: 0
+        byBank: parseCurrency(row[COLUMN_MAP.byBank], rowIndex, 'payment.byBank', errors),
+        byCash: parseCurrency(row[COLUMN_MAP.byCash], rowIndex, 'payment.byCash', errors)
       },
       createdBy: userId,
       updatedBy: userId
     };
 
+    // Net Salary: By Bank + By Cash (since col 37 in data rows = By Bank, not Net Salary)
+    record.netSalary = record.payment.byBank + record.payment.byCash;
+
     insertedFacultyIds.add(faculty._id.toString());
-    
-    // Auto calculate some missing standard fields if not in template row 1/2
-    record.salaryAfterDeduction = record.earnings.grossSalary - record.totalDeduction;
+
 
     payrollRecords.push(record);
   }

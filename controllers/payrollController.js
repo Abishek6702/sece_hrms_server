@@ -159,6 +159,7 @@ exports.getPayrollByFacultyId = async (req, res) => {
     }
 
     const payrolls = await Payroll.find(query)
+    .populate("facultyId")
       .sort({ payrollYear: -1, payrollMonth: -1 })
       .lean();
     

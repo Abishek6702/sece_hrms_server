@@ -62,6 +62,8 @@ const payrollSchema = new mongoose.Schema(
       odAmount: { type: Number, default: 0 },
       maintenanceAmount: { type: Number, default: 0 },
     },
+    maintenanceSalary: { type: Number, default: 0 },  // Addl maint. Salary (col 17)
+
     totalDeduction: { type: Number, default: 0 },
     salaryAfterDeduction: { type: Number, default: 0 },
     netSalary: { type: Number, default: 0 },
