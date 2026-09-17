@@ -203,6 +203,10 @@ const facultySchema = new mongoose.Schema(
         type: String,
        
       },
+      uanNumber: {
+        type: String,
+       
+      },
     },
 
     bankDetails: {
