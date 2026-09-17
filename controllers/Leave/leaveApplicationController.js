@@ -229,6 +229,11 @@ exports.applyLeave = async (req, res) => {
       currentApprovalLevel = "supervisor";
     }
 
+    // HR department staff go directly to principal (skip HOD)
+    if (faculty.department?.toLowerCase() === "hr") {
+      currentApprovalLevel = "principal";
+    }
+
     if (role === "hod") {
       if (leaveType.leaveName === "On Duty - Research") {
         currentApprovalLevel = "dean-research";

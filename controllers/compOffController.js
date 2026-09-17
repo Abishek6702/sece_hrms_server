@@ -28,6 +28,10 @@ exports.createCompOffRequest = async (req, res) => {
       currentApprovalLevel = "principal";
     }
 
+    if (faculty.department?.toLowerCase() === "hr") {
+      currentApprovalLevel = "principal";
+    }
+
     // If the faculty reports directly to the principal, skip HOD level
     if (
       currentApprovalLevel === "hod" &&
