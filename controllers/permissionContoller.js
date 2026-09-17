@@ -6,6 +6,9 @@ const {
   incrementPermissionBalanceOnApproval,
 } = require("../services/permissionBalanceService");
 
+const isHrDepartment = (department) =>
+  typeof department === "string" && department.trim().toLowerCase() === "hr";
+
 // Helper to enforce role(s)
 const requireRole = (req, role) => {
   const roles = Array.isArray(role) ? role : [role];
@@ -166,24 +169,27 @@ const getApprovalStatus = (permission) => {
       ["principal", "dean"].includes(item.role) &&
       ["Approved", "Rejected"].includes(item.action),
   );
+  const skipsHodApproval = isHrDepartment(
+    permission.facultyId?.department || permission.facultyId?.originalDepartment,
+  );
 
   if (permission.status === "Pending") {
     if (permission.currentApprovalLevel === "hod") {
       status.hod = "Pending";
       status.principal = null;
     } else if (permission.currentApprovalLevel === "principal") {
-      status.hod = hodDecision?.action || "Approved";
+      status.hod = skipsHodApproval ? null : hodDecision?.action || "Approved";
       status.principal = "Pending";
     }
   } else if (permission.status === "Approved") {
-    status.hod = hodDecision?.action || "Approved";
+    status.hod = skipsHodApproval ? null : hodDecision?.action || "Approved";
     status.principal = "Approved";
   } else if (permission.status === "Rejected") {
     if (principalDecision) {
-      status.hod = hodDecision?.action || "Approved";
+      status.hod = skipsHodApproval ? null : hodDecision?.action || "Approved";
       status.principal = principalDecision.action;
     } else {
-      status.hod = hodDecision?.action || "Rejected";
+      status.hod = skipsHodApproval ? null : hodDecision?.action || "Rejected";
       status.principal = null;
     }
   }
@@ -392,14 +398,19 @@ exports.applyPermission = async (req, res, next) => {
       });
     }
 
-    // Determine the first approval stage based on who applies
+    const faculty = await Faculty.findById(req.user.facultyId).select(
+      "department originalDepartment",
+    );
+
+    // Determine the first approval stage based on department and submitter role
     const deanRoles = ["dean", "dean-academics", "dean-iqac", "dean-research"];
-    const currentApprovalLevel =
-      req.user.role === "hod"
+    const currentApprovalLevel = isHrDepartment(
+      faculty?.department || faculty?.originalDepartment || req.user.department,
+    )
+      ? "principal"
+      : req.user.role === "hod" || deanRoles.includes(req.user.role)
         ? "principal"
-        : deanRoles.includes(req.user.role)
-          ? "principal"
-          : "hod";
+        : "hod";
 
     // =====================================
     // Create permission request
@@ -553,6 +564,10 @@ exports.getPermissionsForHod = async (req, res) => {
 
       const facultyDepartment =
         p.facultyId.department || p.facultyId.originalDepartment;
+
+      if (isHrDepartment(facultyDepartment)) {
+        return false;
+      }
 
       return departments.some((requestedDepartment) =>
         matchesDepartment(requestedDepartment, facultyDepartment),
@@ -923,11 +938,32 @@ exports.rejectPermission = async (req, res) => {
       });
     }
 
+    const deanRoles = ["dean", "dean-academics", "dean-iqac", "dean-research"];
+
+    if (
+      req.user.role === "hod" &&
+      perm.currentApprovalLevel !== "hod"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Permission is not pending HOD approval",
+      });
+    }
+
+    if (
+      (req.user.role === "principal" || deanRoles.includes(req.user.role)) &&
+      perm.currentApprovalLevel !== "principal"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Permission is not pending Principal approval",
+      });
+    }
+
     // Resolve approver ID: use facultyId if available, otherwise use User ID
     const approverId = req.user.facultyId || req.user._id;
 
     // Resolve role for approval history (map dean variants to "dean")
-    const deanRoles = ["dean", "dean-academics", "dean-iqac", "dean-research"];
     const rejectionRole = deanRoles.includes(req.user.role) ? "dean" : req.user.role;
 
     perm.status = "Rejected";

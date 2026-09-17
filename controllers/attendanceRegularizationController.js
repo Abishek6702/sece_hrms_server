@@ -5,6 +5,9 @@ const Faculty = require("../models/Faculty");
 const mongoose = require("mongoose");
 const { buildAttendanceDateRange } = require("../utils/attendanceDateUtils");
 
+const isHrDepartment = (department) =>
+  typeof department === "string" && department.trim().toLowerCase() === "hr";
+
 const requireRole = (req, role) => {
   const roles = Array.isArray(role) ? role : [role];
   if (!req.user) {
@@ -119,19 +122,22 @@ const getApprovalStatus = (request) => {
     (item) =>
       ["principal", "dean"].includes(item.role) && ["Approved", "Rejected"].includes(item.action),
   );
+  const skipsHodApproval = isHrDepartment(
+    request.facultyId?.department || request.facultyId?.originalDepartment,
+  );
 
   if (request.status === "Pending") {
     if (request.currentApprovalLevel === "hod") {
       status.hod = "Pending";
       status.principal = null;
     } else if (request.currentApprovalLevel === "principal") {
-      status.hod = hodDecision?.action || "Approved";
+      status.hod = skipsHodApproval ? null : hodDecision?.action || "Approved";
       status.principal = "Pending";
     }
   } else if (request.currentApprovalLevel === "completed") {
     if (hodDecision) {
       status.hod = hodDecision.action;
-    } else if (request.currentApprovalLevel === "principal") {
+    } else if (!skipsHodApproval) {
       status.hod = "Approved";
     }
 
@@ -180,10 +186,9 @@ exports.createAttendanceRegularization = async (req, res) => {
       });
     }
 
-    const faculty =
-      user.facultyId
-        ? { _id: user.facultyId }
-        : await Faculty.findOne({ user: user._id });
+    const faculty = user.facultyId
+      ? await Faculty.findById(user.facultyId).select("_id department originalDepartment")
+      : await Faculty.findOne({ user: user._id }).select("_id department originalDepartment");
 
     const facultyId = faculty?._id;
 
@@ -325,9 +330,16 @@ exports.createAttendanceRegularization = async (req, res) => {
     // HOD/Dean -> Principal (skip HOD approval)
     // ==========================
     const deanRoles = ["dean", "dean-academics", "dean-iqac", "dean-research"];
-    let approvalLevel = "hod";
+    let approvalLevel = isHrDepartment(
+      faculty.department || faculty.originalDepartment || user.department,
+    )
+      ? "principal"
+      : "hod";
 
-    if (deanRoles.includes(req.user.role) || req.user.role === "hod") {
+    if (
+      approvalLevel !== "principal" &&
+      (deanRoles.includes(req.user.role) || req.user.role === "hod")
+    ) {
       approvalLevel = "principal";
     }
 
@@ -509,6 +521,10 @@ exports.getRequestsForHod = async (req, res) => {
       const facultyDept =
         request.facultyId?.department?.trim().toLowerCase();
 
+      if (isHrDepartment(facultyDept)) {
+        return false;
+      }
+
       // URL department-wise filter
       // Example: CFRD,QPT
       if (
@@ -615,7 +631,11 @@ exports.getRequestsForPrincipal = async (req, res) => {
         const submitter = request.approvalHistory[0].role;
 
         // Include dean and HOD submissions (go directly to principal)
-        if (submitter === "hod" || deanRoles.includes(submitter)) return true;
+        if (
+          submitter === "hod" ||
+          deanRoles.includes(submitter) ||
+          isHrDepartment(request.facultyId?.department)
+        ) return true;
 
         // Include faculty and non-teaching/driver/housekeeping submissions only if HOD already approved
         const requiresHodApproval = ["faculty", "non-teaching", "driver", "housekeeping"].includes(submitter);
@@ -941,11 +961,22 @@ exports.cancelRequest = async (req, res) => {
       });
     }
 
-    // Cannot withdraw after HOD approval
-    if (request.currentApprovalLevel !== "hod") {
+    const faculty = await Faculty.findById(request.facultyId).select(
+      "department originalDepartment",
+    );
+    const isHrRequest = isHrDepartment(
+      faculty?.department || faculty?.originalDepartment,
+    );
+
+    // HR requests remain withdrawable while waiting for Principal; other
+    // requests remain withdrawable only while waiting for HOD.
+    if (
+      request.currentApprovalLevel !== "hod" &&
+      !(isHrRequest && request.currentApprovalLevel === "principal")
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Cannot withdraw after HOD approval",
+        message: "Cannot withdraw after approval",
       });
     }
 
