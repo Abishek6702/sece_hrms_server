@@ -227,9 +227,7 @@ shiftEndTime.setUTCMinutes(
 
   lateGraceEnd.setUTCMinutes(lateGraceEnd.getUTCMinutes() + 10);
 
-  const requiredMinutes = shift.workingMinutes;
-
-  const hasCompletedWorkingHours = attendance.workingMinutes >= requiredMinutes;
+  let requiredMinutes = shift.workingMinutes;
 
   const punchInTime = attendance.inTime;
   const punchOutTime = attendance.outTime;
@@ -271,6 +269,12 @@ shiftEndTime.setUTCMinutes(
       effectiveReportingTime.getUTCMinutes() + hour * 60 + minute,
     );
 
+    const shiftStartMinutes = startHour * 60 + startMinute;
+    const permissionEndMinutes = hour * 60 + minute;
+    if (permissionEndMinutes > shiftStartMinutes) {
+      requiredMinutes -= (permissionEndMinutes - shiftStartMinutes);
+    }
+
     effectiveLateWindowEnd = new Date(effectiveReportingTime);
 
     effectiveLateWindowEnd.setUTCMinutes(
@@ -279,6 +283,8 @@ shiftEndTime.setUTCMinutes(
 
     // console.log(`${faculty.empId} Permission Applied`);
   }
+
+  const hasCompletedWorkingHours = attendance.workingMinutes >= requiredMinutes;
 
   // =================================
   // PRESENT

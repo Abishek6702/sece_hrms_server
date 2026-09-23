@@ -331,10 +331,7 @@ async function processAttendance(attendanceDate) {
     console.log("Normal Grace End:", normalGraceEnd.toISOString());
     console.log("Late Window End:", lateGraceEnd.toISOString());
 
-    const requiredMinutes = shift.workingMinutes;
-
-    const hasCompletedWorkingHours =
-      attendance.workingMinutes >= requiredMinutes;
+    let requiredMinutes = shift.workingMinutes;
 
     const punchInTime = attendance.inTime;
     const punchOutTime = attendance.outTime;
@@ -375,6 +372,13 @@ async function processAttendance(attendanceDate) {
       effectiveReportingTime.setUTCMinutes(
         effectiveReportingTime.getUTCMinutes() + hour * 60 + minute,
       );
+      
+      const shiftStartMinutes = startHour * 60 + startMinute;
+      const permissionEndMinutes = hour * 60 + minute;
+      if (permissionEndMinutes > shiftStartMinutes) {
+        requiredMinutes -= (permissionEndMinutes - shiftStartMinutes);
+      }
+
       effectiveLateWindowEnd = new Date(effectiveReportingTime);
 
       effectiveLateWindowEnd.setUTCMinutes(
@@ -383,6 +387,9 @@ async function processAttendance(attendanceDate) {
 
       console.log(`${faculty.empId} Permission Applied`);
     }
+
+    const hasCompletedWorkingHours =
+      attendance.workingMinutes >= requiredMinutes;
 
     // =================================
     // PRESENT
