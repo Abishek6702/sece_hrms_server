@@ -15,7 +15,7 @@ const generateToken = (user) => {
       hasAccess: user.hasAccess,
     },
     process.env.JWT_SECRET,
-    { expiresIn: "2h" }
+    { expiresIn: "30m" } //30 minutes
   );
 };
 
