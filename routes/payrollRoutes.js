@@ -33,7 +33,7 @@ const upload = multer({
   },
 });
 
-// router.use(protect);
+router.use(protect);
 
 router.post("/import", upload.single("file"), payrollController.importPayrollExcel);
 router.get("/faculty/:facultyId", payrollController.getPayrollByFacultyId);
