@@ -147,7 +147,7 @@ exports.updateLeaveBalance = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const { allocatedDays } = req.body;
+    const { allocatedDays, usedDays, remainingDays } = req.body;
 
     const leaveBalance = await LeaveBalance.findById(id);
 
@@ -158,16 +158,41 @@ exports.updateLeaveBalance = async (req, res) => {
       });
     }
 
-    if (allocatedDays !== undefined) {
-      if (allocatedDays < leaveBalance.usedDays) {
+    const updates = { allocatedDays, usedDays, remainingDays };
+    for (const [field, value] of Object.entries(updates)) {
+      if (
+        value !== undefined &&
+        (typeof value !== "number" || !Number.isFinite(value) || value < 0)
+      ) {
         return res.status(400).json({
           success: false,
-          message: "Allocated days cannot be less than used days",
+          message: `${field} must be a non-negative number`,
         });
       }
-      leaveBalance.allocatedDays = allocatedDays;
+    }
 
-      leaveBalance.remainingDays = allocatedDays - leaveBalance.usedDays;
+    const nextAllocatedDays = allocatedDays ?? leaveBalance.allocatedDays;
+    const nextUsedDays = usedDays ?? leaveBalance.usedDays;
+    const nextRemainingDays = nextAllocatedDays - nextUsedDays;
+
+    if (nextRemainingDays < 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Allocated days cannot be less than used days",
+      });
+    }
+
+    if (remainingDays !== undefined && remainingDays !== nextRemainingDays) {
+      return res.status(400).json({
+        success: false,
+        message: "Remaining days must equal allocated days minus used days",
+      });
+    }
+
+    if (allocatedDays !== undefined || usedDays !== undefined) {
+      leaveBalance.allocatedDays = nextAllocatedDays;
+      leaveBalance.usedDays = nextUsedDays;
+      leaveBalance.remainingDays = nextRemainingDays;
     }
 
     await leaveBalance.save();
