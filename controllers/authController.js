@@ -7,9 +7,10 @@ const Faculty = require("../models/Faculty");
 const sendMail = require("../utils/sendMail");
 const generateToken = require("../utils/generateToken");
 const renderTemplate = require("../utils/renderTemplate");
+const ALLOWED_DEVICES = require("../utils/allowedDevices");
 
 exports.loginv1 = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, deviceId } = req.body;
 
   try {
     const user = await User.findOne({ email });
@@ -23,6 +24,18 @@ exports.loginv1 = async (req, res) => {
         message: "Access denied. Contact HR.",
       });
     }
+    if (["admin", "hr"].includes(user.role)) {
+      if (!deviceId) {
+        return res.status(400).json({ message: "Device ID is required for Admin/HR" });
+      }
+
+      if (!ALLOWED_DEVICES.includes(deviceId)) {
+        return res.status(403).json({
+          message: "Login denied from this device. Contact Admin to register device.",
+        });
+      }
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
 
     // ❌ WRONG PASSWORD
@@ -49,7 +62,7 @@ exports.loginv1 = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, deviceId } = req.body;
 
   try {
     const user = await User.findOne({ email });
@@ -63,11 +76,25 @@ exports.login = async (req, res) => {
         message: "Access denied. Contact HR.",
       });
     }
+    
+
     const isMatch = await bcrypt.compare(password, user.password);
 
     // ❌ WRONG PASSWORD
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    if (["admin", "hr"].includes(user.role)) {
+      if (!deviceId) {
+        return res.status(400).json({ message: "Device ID is required for Admin/HR" });
+      }
+
+      if (!ALLOWED_DEVICES.includes(deviceId)) {
+        return res.status(403).json({
+          message: "Unauthorized Device. Please Contact your HR/Admin to register your device.",
+        });
+      }
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
