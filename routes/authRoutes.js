@@ -17,7 +17,7 @@ const { loginLimiter } = require("../middleware/rateLimiter");
 
 const router = express.Router();
 
-router.post("/login/v1", loginv1);
+// router.post("/login/v1", loginv1);
 router.post("/login", login);
 router.post("/verify-login-otp", verifyLoginOtp);
 router.post("/verify-password",protect, verifyPassword);
