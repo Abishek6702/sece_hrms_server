@@ -10,6 +10,9 @@ const ALLOWED_DEVICES = [
 
   // haritha
   "be8e8f76d66cf67cd406722b368115e8",
+
+  // dharshan
+  "82189a5832e6505383d8d565eaae442e",
 ];
 
 module.exports = ALLOWED_DEVICES;
