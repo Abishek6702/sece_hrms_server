@@ -975,3 +975,84 @@ exports.getMyAttendanceSummary = async (req, res) => {
     });
   }
 };
+
+exports.getMonthlyLateMinutes = async (req, res) => {
+  try {
+    const month = Number(req.query.month);
+    const year = Number(req.query.year);
+
+    if (!month || !year) {
+      return res.status(400).json({
+        success: false,
+        message: "Month and year are required",
+      });
+    }
+
+    const startDate = new Date(year, month - 2, 26);
+    startDate.setHours(0, 0, 0, 0);
+
+    const endDate = new Date(year, month - 1, 25);
+    endDate.setHours(23, 59, 59, 999);
+
+    const faculties = await Faculty.find({ isActive: true }).populate("shiftId").lean();
+    
+    const attendances = await Attendance.find({
+      attendanceDate: {
+        $gte: startDate,
+        $lte: endDate,
+      },
+      inTime: { $ne: null }
+    }).lean();
+
+    const attendanceMap = {};
+    attendances.forEach(att => {
+      const fId = att.facultyId.toString();
+      if (!attendanceMap[fId]) attendanceMap[fId] = [];
+      attendanceMap[fId].push(att);
+    });
+
+    const result = faculties.map(faculty => {
+      let totalLateMinutes = 0;
+      const facultyAttendances = attendanceMap[faculty._id.toString()] || [];
+
+      if (faculty.shiftId && faculty.shiftId.startTime) {
+        const [shiftHour, shiftMinute] = faculty.shiftId.startTime.split(":").map(Number);
+
+        facultyAttendances.forEach(att => {
+          if (att.inTime) {
+            const inTimeDate = new Date(att.inTime);
+            
+            const expectedInTime = new Date(inTimeDate);
+            expectedInTime.setHours(shiftHour, shiftMinute, 0, 0);
+
+            const diffMs = inTimeDate.getTime() - expectedInTime.getTime();
+            if (diffMs > 0) {
+              const lateMins = Math.floor(diffMs / (1000 * 60));
+              totalLateMinutes += lateMins;
+            }
+          }
+        });
+      }
+
+      return {
+        facultyId: faculty._id,
+        name: `${faculty.firstName} ${faculty.lastName}`,
+        empId: faculty.empId,
+        punchId:faculty.punchId,
+        totalLateMinutes
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      totalFacultyCount: result.length,
+      data: result,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch monthly late minutes",
+    });
+  }
+};
