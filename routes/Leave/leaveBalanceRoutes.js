@@ -8,6 +8,7 @@ const {
   resetSemester,
   getMyLeaveDashboard,
   updateLeaveBalance,
+  getFacultyLeaveReport,
 } = require("../../controllers/Leave/leaveBalanceController");
 
 const protect = require("../../middleware/protect");
@@ -15,6 +16,8 @@ const protect = require("../../middleware/protect");
 const router = express.Router();
 
 router.get("/", getLeaveBalances);
+
+router.get("/faculty-leave-report", protect, getFacultyLeaveReport);
 
 router.get("/faculty/:facultyId",protect, getFacultyLeaveBalances);
 

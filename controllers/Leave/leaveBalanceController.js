@@ -1,4 +1,5 @@
 const LeaveBalance = require("../../models/Leave/leaveBalance");
+const Faculty = require("../../models/Faculty");
 const User = require("../../models/User");
 const resetLeaveBalances = require("../../services/resetLeaveBalances");
 const resetSemesterLeaveBalances = require("../../services/resetSemesterLeaveBalances");
@@ -204,6 +205,76 @@ exports.updateLeaveBalance = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+/**
+ * GET /api/leave-balance/faculty-leave-report
+ * Returns all active faculty with their LOP and Casual Leave used & balance.
+ * Optional query: ?academicYear=2025-2026
+ */
+exports.getFacultyLeaveReport = async (req, res) => {
+  try {
+    const { academicYear } = req.query;
+
+    // Build leave-balance query filter
+    const balanceFilter = {};
+    if (academicYear) {
+      balanceFilter.academicYear = academicYear;
+    }
+
+    // Fetch all leave balances that belong to LOP & Casual Leave leave types
+    const balances = await LeaveBalance.find(balanceFilter)
+      .populate({
+        path: "facultyId",
+        select: "empId firstName lastName punchId isActive",
+        match: { isActive: true },
+      })
+      .populate({
+        path: "leaveTypeId",
+        select: "leaveName",
+        match: { leaveName: { $in: ["LOP", "Casual Leave"] } },
+      })
+      .lean();
+
+    // Filter out records where either populate returned null (not matching)
+    const filtered = balances.filter((b) => b.facultyId && b.leaveTypeId);
+
+    // Group by faculty
+    const reportMap = {};
+    for (const bal of filtered) {
+      const fId = String(bal.facultyId._id);
+      if (!reportMap[fId]) {
+        reportMap[fId] = {
+          facultyId: fId,
+          empId: bal.facultyId.empId,
+          name: `${bal.facultyId.firstName} ${bal.facultyId.lastName}`,
+          punchId: bal.facultyId.punchId || null,
+          leaveDetails: [],
+        };
+      }
+      reportMap[fId].leaveDetails.push({
+        leaveTypeId: String(bal.leaveTypeId._id),
+        leaveTypeName: bal.leaveTypeId.leaveName,
+        academicYear: bal.academicYear,
+        allocatedDays: bal.allocatedDays,
+        usedDays: bal.usedDays,
+        remainingDays: bal.remainingDays,
+      });
+    }
+
+    const report = Object.values(reportMap);
+
+    return res.status(200).json({
+      success: true,
+      count: report.length,
+      report,
+    });
+  } catch (error) {
+    return res.status(500).json({
       success: false,
       message: error.message,
     });
