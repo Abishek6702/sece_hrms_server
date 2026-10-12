@@ -78,16 +78,13 @@ describe("On Duty leave approval flows", () => {
     });
   });
 
-  it("routes Research through Dean Research, IQAC, then Principal", async () => {
+  it("routes Research through Dean Research then Principal", async () => {
     const leave = createLeave("On Duty - Research", "hod");
 
     await approveAs(leave, "hod");
     expect(leave.currentApprovalLevel).toBe("dean-research");
 
     await approveAs(leave, "dean-research");
-    expect(leave.currentApprovalLevel).toBe("dean-iqac");
-
-    await approveAs(leave, "dean-iqac");
     expect(leave.currentApprovalLevel).toBe("principal");
 
     await approveAs(leave, "principal");
@@ -95,17 +92,18 @@ describe("On Duty leave approval flows", () => {
     expect(leave.currentApprovalLevel).toBe("completed");
   });
 
-  it("routes Examination through COE, IQAC, then Principal", async () => {
+  it("routes Examination through COE then Principal", async () => {
     const leave = createLeave("On Duty - Examination", "hod");
 
     await approveAs(leave, "hod");
     expect(leave.currentApprovalLevel).toBe("coe");
 
     await approveAs(leave, "coe");
-    expect(leave.currentApprovalLevel).toBe("dean-iqac");
-
-    await approveAs(leave, "dean-iqac");
     expect(leave.currentApprovalLevel).toBe("principal");
+
+    await approveAs(leave, "principal");
+    expect(leave.status).toBe("Approved");
+    expect(leave.currentApprovalLevel).toBe("completed");
   });
 
   it("routes Official through IQAC, then Principal", async () => {
