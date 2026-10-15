@@ -26,6 +26,11 @@ const departmentRoutes = require("./routes/departmentRoutes");
 const designationRoutes = require("./routes/designationRoutes");
 const payrollRoutes = require("./routes/payrollRoutes");
 
+const {
+  startBackupService,
+  stopBackupService,
+} = require("./services/backupService");
+
 const { apiLimiter } = require("./middleware/rateLimiter");
 
 dotenv.config();
@@ -111,4 +116,28 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+});
+
+startBackupService();
+
+process.on("SIGINT", () => {
+  console.log("SIGINT received. Shutting down...");
+
+  stopBackupService();
+
+  server.close(() => {
+    console.log("Server closed.");
+    process.exit(0);
+  });
+});
+
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received. Shutting down...");
+
+  stopBackupService();
+
+  server.close(() => {
+    console.log("Server closed.");
+    process.exit(0);
+  });
 });
