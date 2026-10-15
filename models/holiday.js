@@ -15,7 +15,7 @@ const holidaySchema = new mongoose.Schema(
     },
     applicableEmployeeCategories: {
       type: [String],
-      enum: ["Teaching", "Non-Teaching", "Driver", "Housekeeping"],
+      enum: ["Teaching", "Non-Teaching", "Driver", "Housekeeping","Electrical-Maintenance","Security"],
       required: true,
     },
 
