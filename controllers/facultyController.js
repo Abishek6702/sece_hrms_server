@@ -130,6 +130,8 @@ exports.importExcelFaculty = async (req, res) => {
         phone: data.phone,
 
         gender: data.gender,
+        community: data.community,
+        caste: data.caste,
 
         dob: parseDate(data.dob),
         doj: parseDate(data.doj),

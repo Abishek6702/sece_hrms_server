@@ -68,6 +68,16 @@ const facultySchema = new mongoose.Schema(
       enum: ["Male", "Female", "Other"],
     },
 
+    community: {
+      type: String,
+      trim: true,
+    },
+
+    caste: {
+      type: String,
+      trim: true,
+    },
+
     dob: {
       type: Date,
       required: true,
