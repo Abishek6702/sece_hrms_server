@@ -18,6 +18,7 @@ const {
   resignFaculty,
   searchFacultyForAvailability,
   getUpcomingCelebrations,
+  getAdminFacultyId
 } = require("../controllers/facultyController");
 const protect = require("../middleware/protect");
 
@@ -40,6 +41,8 @@ router.get("/upcoming-celebrations",protect, getUpcomingCelebrations);
 router.put("/add-manger",protect, bulkUpdateReportingManager);
 
 router.get("/:id", protect, validateObjectId(), getFacultyId);
+
+router.get("/:id/admin-view", protect, validateObjectId(), getAdminFacultyId);
 
 router.post('/:id/request-secure-data', protect, validateObjectId(), requestSecureData);
 router.post('/:id/verify-secure-data', protect, validateObjectId(), verifySecureData);

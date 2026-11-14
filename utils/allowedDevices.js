@@ -13,6 +13,8 @@ const ALLOWED_DEVICES = [
 
   // dharshan
   "82189a5832e6505383d8d565eaae442e",
+
+  "873888d37ca13e4ef8e8ef406b8f6740",
 ];
 
 module.exports = ALLOWED_DEVICES;

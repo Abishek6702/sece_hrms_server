@@ -338,6 +338,26 @@ exports.getFacultyId = async (req, res) => {
   }
 };
 
+// ================= GET Admin =================
+
+exports.getAdminFacultyId = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const faculty = await Faculty.findById(id)
+      .populate("shiftId")
+      .populate("reportingTo.facultyId");
+
+    if (!faculty) {
+      return res.status(404).json({ message: "Faculty not found" });
+    }
+
+    res.status(200).json(faculty);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // ================= EDIT =================
 exports.editFaculty = async (req, res) => {
   try {
