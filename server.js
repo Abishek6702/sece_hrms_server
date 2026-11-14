@@ -25,6 +25,7 @@ const principalRoutes = require("./routes/principalDashboardRoutes");
 const departmentRoutes = require("./routes/departmentRoutes");
 const designationRoutes = require("./routes/designationRoutes");
 const payrollRoutes = require("./routes/payrollRoutes");
+const externalFacultyRoutes = require("./routes/externalFacultyRoutes");
 
 const {
   startBackupService,
@@ -48,6 +49,10 @@ app.use(
     },
   }),
 );
+
+// External Faculty API (Standalone read-only endpoint with dedicated CORS and site restriction)
+app.use("/api/external/faculties", externalFacultyRoutes);
+app.use("/api/external/faculty", externalFacultyRoutes);
 
 const allowedOrigins = [process.env.FRONTEND_URL, "http://localhost:5173"];
 app.use(
