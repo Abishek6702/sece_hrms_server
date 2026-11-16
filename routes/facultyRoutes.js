@@ -18,7 +18,8 @@ const {
   resignFaculty,
   searchFacultyForAvailability,
   getUpcomingCelebrations,
-  getAdminFacultyId
+  getAdminFacultyId,
+  getFacultiesAdminView
 } = require("../controllers/facultyController");
 const protect = require("../middleware/protect");
 
@@ -33,6 +34,7 @@ router.post("/import-faculty",protect, upload.single("faculties"), importExcelFa
 router.post("/", protect, addIndividualFaculty);
 
 router.get("/", protect, getFaculties);
+router.get("/admin-view/all", protect, getFacultiesAdminView);
 
 router.get("/search", searchFaculty);
 router.get("/search-available",protect, searchFacultyForAvailability);

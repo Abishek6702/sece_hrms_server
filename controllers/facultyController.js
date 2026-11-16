@@ -317,6 +317,17 @@ exports.getFaculties = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+exports.getFacultiesAdminView = async (req, res) => {
+  try {
+    const faculties = await Faculty.find()
+      .populate("shiftId")
+      .populate("reportingTo.facultyId")
+      .sort({ createdAt: -1 });
+    res.status(200).json(faculties);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 
 // ================= GET ONE =================
 exports.getFacultyId = async (req, res) => {
